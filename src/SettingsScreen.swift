@@ -182,6 +182,34 @@ struct SettingsScreen: View {
             }
         }
 
+        // 日志字号 + 刷新间隔（真机）
+        ZLCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("日志字号大小").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Text("调整日志界面上文字的显示大小").font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+                HStack {
+                    Slider(value: $logFontSize, in: 10...24, step: 1).tint(ZLTheme.primary)
+                    Text("\(Int(logFontSize))sp").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 48)
+                }
+            }
+        }
+        ZLCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("日志刷新间隔").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Text("设置日志刷新时间间隔，过低会加重负担").font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+                HStack {
+                    Slider(value: $logFlushMs, in: 50...1000, step: 50).tint(ZLTheme.primary)
+                    Text("\(Int(logFlushMs))ms").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 58)
+                }
+            }
+        }
+
         ZLCard {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -222,6 +250,14 @@ struct SettingsScreen: View {
 
 
     // MARK: 控制设置
+    @AppStorage("logFontSize") private var logFontSize = 16.0
+    @AppStorage("logFlushMs") private var logFlushMs = 200.0
+    @AppStorage("mouseSensitivity") private var mouseSensitivity = 156.0
+    @AppStorage("gyroInterval") private var gyroInterval = 16.0
+    @AppStorage("gyroSmooth") private var gyroSmooth = true
+    @AppStorage("animMode") private var animMode = 1
+    @AppStorage("animLow") private var animLow = 6.0
+    @AppStorage("animHeight") private var animHeight = 6.0
     @AppStorage("longPressDelay") private var longPressDelay = 256.0
     @AppStorage("physicalMouse") private var physicalMouse = false
     @AppStorage("matrixMouse") private var matrixMouse = false
@@ -270,6 +306,48 @@ struct SettingsScreen: View {
                 }
                 Spacer()
                 Toggle("", isOn: $matrixMouse).labelsHidden().tint(ZLTheme.primary)
+            }
+        }
+
+        // 抓取鼠标滑动灵敏度（真机 156%）
+        ZLCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("抓取鼠标滑动灵敏度").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Text("调节鼠标指针移动的灵敏度").font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+                HStack {
+                    Slider(value: $mouseSensitivity, in: 50...300, step: 1).tint(ZLTheme.primary)
+                    Text("\(Int(mouseSensitivity))%").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 52)
+                }
+            }
+        }
+
+        // 陀螺仪（真机：采样率 / 平滑 / 窗口）
+        ZLCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("陀螺仪采样率").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Text("使用手机陀螺仪控制视角的采样间隔").font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+                HStack {
+                    Slider(value: $gyroInterval, in: 4...50, step: 1).tint(ZLTheme.primary)
+                    Text("\(Int(gyroInterval))ms").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 52)
+                }
+            }
+        }
+        ZLCard {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("陀螺仪数据平滑").font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Text("降低抖动，让视角更稳").font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                }
+                Spacer()
+                Toggle("", isOn: $gyroSmooth).labelsHidden().tint(ZLTheme.primary)
             }
         }
 
@@ -348,6 +426,38 @@ struct SettingsScreen: View {
     @ViewBuilder
     private var launcherSettings: some View {
         themeCard
+        // 动画速度（真机：空白/从未加载/从网络加载）
+        ZLCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("动画速度").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Picker("", selection: $animMode) {
+                    Text("空白").tag(0)
+                    Text("从未加载").tag(1)
+                    Text("从网络加载").tag(2)
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+        ZLCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("动画低速 / 动画高度").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                HStack {
+                    Text("低速").font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+                    Slider(value: $animLow, in: 1...12, step: 1).tint(ZLTheme.primary)
+                    Text("\(Int(animLow))s").font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 34)
+                }
+                HStack {
+                    Text("高度").font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+                    Slider(value: $animHeight, in: 1...12, step: 1).tint(ZLTheme.primary)
+                    Text("\(Int(animHeight))s").font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 34)
+                }
+            }
+        }
+
         settingCard(title: "下载源", desc: "国内网络下官方源可能很慢，下载失败时可切镜像", current: "优先使用官方源", trailing: actionButtons())
         settingCard(title: "启动器语言", desc: nil, current: "简体中文", trailing: actionButtons())
         settingCard(title: "关于", desc: nl2(), current: nil)

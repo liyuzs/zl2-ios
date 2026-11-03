@@ -16,6 +16,8 @@ struct AccountScreen: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
+                // 账号列表（真机：卡片 + 添加按钮）
+                accountCards
                 current
                 section("登录方式") {
                     methodRow("微软账号", "person.badge.key", "microsoft")
@@ -79,6 +81,125 @@ struct AccountScreen: View {
                 showMSLogin = true
             }
         }
+    }
+
+    // MARK: 账号卡片列表（真机：皮肤预览 + 名字 + 添加账号）
+    @State private var showAddAccount = false
+
+    private var accountCards: some View {
+        VStack(spacing: 10) {
+            HStack {
+                Text("账号列表").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Spacer()
+                Button { showAddAccount = true } label: {
+                    Label("添加账号", systemImage: "plus")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(ZLTheme.textOnGold)
+                        .padding(.horizontal, 12).frame(height: 32)
+                        .background(ZLTheme.primary)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            ForEach(AccountStore.shared.accounts) { acc in
+                HStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(ZLTheme.primarySoft)
+                        .frame(width: 44, height: 44)
+                        .overlay(Text(String(acc.username.prefix(1))).font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(ZLTheme.primary))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(acc.username).font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(ZLTheme.textPrimary)
+                        Text(acc.type == .microsoft ? "微软账号" : (acc.type == .authlib ? "外置认证" : "离线账号"))
+                            .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+                    }
+                    Spacer()
+                    if AccountStore.shared.current?.id == acc.id {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(ZLTheme.success)
+                    } else {
+                        Button { AccountStore.shared.select(acc) } label: {
+                            Text("切换").font(.system(size: 11))
+                                .foregroundStyle(ZLTheme.primaryDeep)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(12)
+                .background(ZLTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+
+            if AccountStore.shared.accounts.isEmpty {
+                Text("还没有账号，点右上角添加").font(.system(size: 12))
+                    .foregroundStyle(ZLTheme.textSecond)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+            }
+        }
+        .sheet(isPresented: $showAddAccount) {
+            addAccountSheet
+        }
+    }
+
+    private var addAccountSheet: some View {
+        VStack(spacing: 14) {
+            Text("添加账号").font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(ZLTheme.textPrimary)
+                .padding(.top, 20)
+
+            VStack(spacing: 8) {
+                Button { showAddAccount = false; accountType = "microsoft" } label: {
+                    addRow("微软账号", "person.badge.key", "登录正版账号")
+                }
+                .buttonStyle(.plain)
+                Button { showAddAccount = false; accountType = "offline" } label: {
+                    addRow("离线账号", "person.fill", "指定用户名与皮肤")
+                }
+                .buttonStyle(.plain)
+                Button { showAddAccount = false; accountType = "authlib" } label: {
+                    addRow("认证服务器", "server.rack", "LittleSkin 等外置认证")
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, ZLTheme.screenPadding)
+
+            Button { showAddAccount = false } label: {
+                Text("关闭").font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(ZLTheme.primaryDeep)
+                    .frame(maxWidth: .infinity).frame(height: 44)
+                    .background(ZLTheme.primarySoft)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, ZLTheme.screenPadding)
+            .padding(.bottom, 20)
+        }
+        .background(ZLTheme.background)
+        .presentationDetents([.medium])
+    }
+
+    private func addRow(_ title: String, _ icon: String, _ desc: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon).font(.system(size: 16))
+                .foregroundStyle(ZLTheme.primary)
+                .frame(width: 40, height: 40)
+                .background(ZLTheme.primarySoft)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Text(desc).font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+            }
+            Spacer()
+            Image(systemName: "chevron.right").font(.system(size: 11))
+                .foregroundStyle(ZLTheme.textSecond)
+        }
+        .padding(12)
+        .background(ZLTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     // MARK: 当前账户
