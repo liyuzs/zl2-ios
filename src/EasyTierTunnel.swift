@@ -229,7 +229,9 @@ final class ZLTunnelManager {
     /// 创建房间
     func createRoom(code: String) async throws {
         let m = try await loadOrInstall()
-        m.protocolConfiguration?.providerConfiguration = ["roomCode": code]
+        if let proto = m.protocolConfiguration as? NETunnelProviderProtocol {
+            proto.providerConfiguration = ["roomCode": code]
+        }
         try await m.saveToPreferences()
         try m.connection.startVPNTunnel()
     }
