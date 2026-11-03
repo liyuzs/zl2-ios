@@ -24,6 +24,10 @@ struct ControlManageScreen: View {
     @State private var nameError = false
     @State private var nameErrorText = "该项不能为空"
     @State private var showEditor = false
+    @State private var showImporter = false
+    @State private var exportText = ""
+    @State private var showExport = false
+    @State private var importError: String?
 
     private let storeKey = "zl.control.layouts"
     // 对齐 ZL2 的 LayoutInfoCheck.kt
@@ -45,6 +49,49 @@ struct ControlManageScreen: View {
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
         .task { load() }
+        .fileImporter(isPresented: $showImporter,
+                      allowedContentTypes: [.json],
+                      allowsMultipleSelection: false) { result in
+            handleImport(result)
+        }
+        .alert("导入失败", isPresented: Binding(get: { importError != nil },
+                                                set: { if !$0 { importError = nil } })) {
+            Button("好", role: .cancel) { importError = nil }
+        } message: {
+            Text(importError ?? "")
+        }
+        .sheet(isPresented: $showExport) {
+            VStack(spacing: 12) {
+                Text("布局 JSON").font(.system(size: 15, weight: .semibold))
+                    .padding(.top, 16)
+                ScrollView {
+                    Text(exportText)
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                }
+                .frame(maxHeight: 320)
+                .background(ZLTheme.surfaceAlt)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .padding(.horizontal, ZLTheme.screenPadding)
+                HStack(spacing: 10) {
+                    Button("复制") {
+                        UIPasteboard.general.string = exportText
+                        showExport = false
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textOnGold)
+                    .frame(maxWidth: .infinity).frame(height: 44)
+                    .background(ZLTheme.primary)
+                    .clipShape(Capsule())
+                }
+                .padding(.horizontal, ZLTheme.screenPadding)
+                .padding(.bottom, 20)
+            }
+            .background(ZLTheme.background)
+            .presentationDetents([.medium, .large])
+        }
         .sheet(isPresented: $showCreate) { createSheet }
         .sheet(isPresented: $showEditor) {
             ControlEditorScreen(onBack: { showEditor = false }, onHome: { showEditor = false })
@@ -56,8 +103,9 @@ struct ControlManageScreen: View {
         VStack(spacing: 10) {
             HStack(spacing: 8) {
                 toolButton("刷新", "arrow.clockwise") { load() }
-                toolButton("导入", "square.and.arrow.down") { }
+                toolButton("导入", "square.and.arrow.down") { showImporter = true }
                 toolButton("创建", "plus") { showCreate = true }
+                toolButton("导出", "square.and.arrow.up") { exportCurrent() }
                 Spacer()
             }
 
@@ -283,6 +331,56 @@ struct ControlManageScreen: View {
         描述：\(m.desc)
         """
         UIPasteboard.general.string = text
+    }
+
+    /// 导入 ZL2 布局文件
+    private func handleImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            guard url.startAccessingSecurityScopedResource() else {
+                importError = "无法访问该文件"
+                return
+            }
+            defer { url.stopAccessingSecurityScopedResource() }
+            guard let layout = ZLLayoutStore.load(url) else {
+                importError = "不是有效的 ZL2 控制布局文件"
+                return
+            }
+            // 转成编辑器模型并加入列表
+            let doc = layout.toDoc()
+            var m = ControlLayoutMeta(name: doc.name,
+                                      author: doc.author,
+                                      version: doc.version,
+                                      desc: doc.desc)
+            m.isDefault = false
+            layouts.append(m)
+            selected = m.id
+            // 保存转换后的布局文件
+            ZLLayoutStore.save(layout, as: doc.name)
+            save()
+        case .failure(let e):
+            importError = e.localizedDescription
+        }
+    }
+
+    /// 导出当前布局为 ZL2 格式
+    private func exportCurrent() {
+        guard let meta = currentMeta else { return }
+        // 构造默认布局并导出
+        let doc = ControlLayoutDoc.default
+        var layout = ZLControlLayout.from(doc: doc)
+        layout.info = ZLLayoutInfo(name: meta.name, author: meta.author,
+                                   description: meta.desc, versionCode: 1,
+                                   versionName: meta.version)
+        guard let data = try? layout.exportJSON(),
+              let text = String(data: data, encoding: .utf8) else {
+            importError = "导出失败"
+            return
+        }
+        exportText = text
+        showExport = true
+        ZLLayoutStore.save(layout, as: meta.name)
     }
 
     private func load() {
