@@ -17,7 +17,7 @@ enum ZLThemeType: String, CaseIterable, Identifiable {
 }
 
 /// 一套完整色板（35 个 Material3 颜色角色）
-struct ZLPalette {
+struct ZLPaletteV2 {
     var primary: Color
     var onPrimary: Color
     var primaryContainer: Color
@@ -140,10 +140,10 @@ enum ZLPaletteDark {
 }
 
 // MARK: - 从色值构造色板
-extension ZLPalette {
-    static func light(index: Int) -> ZLPalette {
+extension ZLPaletteV2 {
+    static func light(index: Int) -> ZLPaletteV2 {
         let i = min(max(index, 0), 6)
-        return ZLPalette(
+        return ZLPaletteV2(
             primary: Color(hex: ZLPaletteLight.primary[i]),
             onPrimary: Color(hex: ZLPaletteLight.onPrimary[i]),
             primaryContainer: Color(hex: ZLPaletteLight.primaryContainer[i]),
@@ -182,9 +182,9 @@ extension ZLPalette {
         )
     }
 
-    static func dark(index: Int) -> ZLPalette {
+    static func dark(index: Int) -> ZLPaletteV2 {
         let i = min(max(index, 0), 6)
-        return ZLPalette(
+        return ZLPaletteV2(
             primary: Color(hex: ZLPaletteDark.primary[i]),
             onPrimary: Color(hex: ZLPaletteDark.onPrimary[i]),
             primaryContainer: Color(hex: ZLPaletteDark.primaryContainer[i]),
