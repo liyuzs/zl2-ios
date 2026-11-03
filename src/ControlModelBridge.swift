@@ -161,7 +161,7 @@ extension ZLControlLayout {
                                    version: info.versionName, desc: info.description,
                                    layers: [])
         doc.layers = layers.map { l in
-            var cl = ControlLayer(name: l.name)
+            var cl = ControlLayer(name: l.name, items: [])
             cl.hiddenByDefault = l.hide
             cl.hiddenByMouse = l.hideWhenMouse
             cl.hiddenByGamepad = l.hideWhenGamepad
@@ -185,7 +185,7 @@ extension ZLControlLayout {
             return cl
         }
         if doc.layers.isEmpty {
-            doc.layers = [ControlLayer(name: "默认")]
+            doc.layers = [ControlLayer(name: "默认", items: [])]
         }
         return doc
     }
