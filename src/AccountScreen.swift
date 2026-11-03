@@ -85,6 +85,8 @@ struct AccountScreen: View {
 
     // MARK: 账号卡片列表（真机：皮肤预览 + 名字 + 添加账号）
     @State private var showAddAccount = false
+    @State private var showLocalLogin = false
+    @State private var showAuthlibLogin = false
 
     private var accountCards: some View {
         VStack(spacing: 10) {
@@ -142,6 +144,18 @@ struct AccountScreen: View {
         .sheet(isPresented: $showAddAccount) {
             addAccountSheet
         }
+        .sheet(isPresented: $showLocalLogin) {
+            LocalLoginSheet { name, _ in
+                _ = try? AccountStore.shared.addOffline(name: name)
+            }
+        }
+        .sheet(isPresented: $showAuthlibLogin) {
+            AuthlibLoginSheet { server, email, _ in
+                // 外置认证：先按离线创建，后续补 Yggdrasil 验证
+                _ = try? AccountStore.shared.addOffline(name: email)
+                UserDefaults.standard.set(server, forKey: "zl.authlib.server")
+            }
+        }
     }
 
     private var addAccountSheet: some View {
@@ -155,11 +169,11 @@ struct AccountScreen: View {
                     addRow("微软账号", "person.badge.key", "登录正版账号")
                 }
                 .buttonStyle(.plain)
-                Button { showAddAccount = false; accountType = "offline" } label: {
+                Button { showAddAccount = false; showLocalLogin = true } label: {
                     addRow("离线账号", "person.fill", "指定用户名与皮肤")
                 }
                 .buttonStyle(.plain)
-                Button { showAddAccount = false; accountType = "authlib" } label: {
+                Button { showAddAccount = false; showAuthlibLogin = true } label: {
                     addRow("认证服务器", "server.rack", "LittleSkin 等外置认证")
                 }
                 .buttonStyle(.plain)
@@ -322,5 +336,107 @@ struct ZLTextField: View {
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(ZLTheme.cardStroke, lineWidth: 1))
+    }
+}
+
+// MARK: - 离线登录（对齐 ZL2 的 LocalLoginDialog）
+struct LocalLoginSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    var onLogin: (String, String?) -> Void   // 用户名, UUID
+    @State private var userName = ""
+    @State private var editUUID = false
+    @State private var uuid = ""
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("用户名") {
+                    TextField("输入用户名（3-16 字符）", text: $userName)
+                        .onChange(of: userName) { _ in error = nil }
+                    if let e = error {
+                        Text(e).font(.caption).foregroundStyle(.red)
+                    }
+                }
+                Section("UUID（可选）") {
+                    Toggle("自定义 UUID", isOn: $editUUID)
+                    if editUUID {
+                        TextField("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", text: $uuid)
+                            .font(.system(.body, design: .monospaced))
+                    } else {
+                        Text("将根据用户名自动生成离线 UUID")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Section {
+                    Button("登录") {
+                        let t = userName.trimmingCharacters(in: .whitespaces)
+                        guard t.count >= 3, t.count <= 16 else {
+                            error = "用户名长度需在 3-16 字符之间"
+                            return
+                        }
+                        onLogin(t, editUUID && !uuid.isEmpty ? uuid : nil)
+                        dismiss()
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .navigationTitle("离线登录")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - 外置服务器登录（对齐 ZL2 的 OtherServerLoginDialog）
+struct AuthlibLoginSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    var onLogin: (String, String, String) -> Void   // 服务器地址, 邮箱, 密码
+    @State private var server = "https://littleskin.cn/api/yggdrasil"
+    @State private var email = ""
+    @State private var password = ""
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("认证服务器") {
+                    TextField("服务器地址", text: $server)
+                        .font(.system(.body, design: .monospaced))
+                        .autocapitalization(.none)
+                    Text("支持 LittleSkin、Blessing Skin 等 Yggdrasil 服务")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Section("账号") {
+                    TextField("邮箱", text: $email)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                    SecureField("密码", text: $password)
+                }
+                if let e = error {
+                    Section { Text(e).font(.caption).foregroundStyle(.red) }
+                }
+                Section {
+                    Button("登录") {
+                        guard !email.isEmpty, !password.isEmpty else {
+                            error = "请填写邮箱和密码"
+                            return
+                        }
+                        onLogin(server, email, password)
+                        dismiss()
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .navigationTitle("外置登录")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+            }
+        }
     }
 }
