@@ -2,6 +2,7 @@
 // 参考：ZL2 的 ModsManagerScreen.kt（1536 行）
 // 功能：扫描 mods 目录、真实 jar 解析、排序、启用/禁用、删除
 import SwiftUI
+import Compression
 
 // MARK: - 模组信息
 struct ZLModInfo: Identifiable, Equatable {
@@ -380,24 +381,10 @@ enum ModJarParser {
         return nil
     }
 
-    /// 读取 jar（zip）里的一个文件
+    /// 读取 jar（zip）里的一个文件（纯 Swift ZIP 解析，iOS 无 Process）
     private static func readEntry(_ jarURL: URL, _ entry: String) -> Data? {
-        // 用系统 unzip 目录临时解（简化实现）
-        let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("modjar-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: tmp) }
-        try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
-
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        p.arguments = ["-o", "-q", jarURL.path, entry, "-d", tmp.path]
-        p.standardOutput = FileHandle.nullDevice
-        p.standardError = FileHandle.nullDevice
-        try? p.run()
-        p.waitUntilExit()
-
-        let f = tmp.appendingPathComponent(entry)
-        return try? Data(contentsOf: f)
+        guard let data = try? Data(contentsOf: jarURL) else { return nil }
+        return ZipReader.extract(data: data, entryName: entry)
     }
 
     private static func parseToml(_ text: String) -> ModJarInfo? {
@@ -421,5 +408,93 @@ enum ModJarParser {
         return line[line.index(after: eq)...]
             .trimmingCharacters(in: .whitespaces)
             .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+    }
+}
+
+// MARK: - 最小 ZIP 读取器（iOS 可用，不依赖外部工具）
+enum ZipReader {
+    /// 从 zip 数据中提取指定文件
+    static func extract(data: Data, entryName: String) -> Data? {
+        guard let eocd = findEOCD(data) else { return nil }
+        // EOCD: 签名4 + disk2 + cdDisk2 + entries2 + entries2 + cdSize4 + cdOffset4 + comment2
+        guard eocd + 22 <= data.count else { return nil }
+        let cdOffset = readU32(data, at: eocd + 16)
+        let cdCount = readU16(data, at: eocd + 10)
+        guard cdOffset < data.count else { return nil }
+
+        var p = cdOffset
+        for _ in 0..<cdCount {
+            guard p + 46 <= data.count else { return nil }
+            guard readU32(data, at: p) == 0x02014b50 else { return nil }
+            let method = readU16(data, at: p + 10)
+            let compSize = readU32(data, at: p + 20)
+            let uncompSize = readU32(data, at: p + 24)
+            let nameLen = readU16(data, at: p + 28)
+            let extraLen = readU16(data, at: p + 30)
+            let commentLen = readU16(data, at: p + 32)
+            let localOffset = readU32(data, at: p + 42)
+            guard p + 46 + nameLen <= data.count else { return nil }
+            let nameData = data.subdata(in: (p + 46)..<(p + 46 + nameLen))
+            let name = String(data: nameData, encoding: .utf8) ?? ""
+
+            if name == entryName {
+                return extractLocal(data, offset: localOffset, compSize: compSize,
+                                    uncompSize: uncompSize, method: method)
+            }
+            p += 46 + nameLen + extraLen + commentLen
+        }
+        return nil
+    }
+
+    private static func extractLocal(_ data: Data, offset: Int, compSize: Int,
+                                     uncompSize: Int, method: Int) -> Data? {
+        guard offset + 30 <= data.count else { return nil }
+        guard readU32(data, at: offset) == 0x04034b50 else { return nil }
+        let nameLen = readU16(data, at: offset + 26)
+        let extraLen = readU16(data, at: offset + 28)
+        let start = offset + 30 + nameLen + extraLen
+        guard start + compSize <= data.count else { return nil }
+        let raw = data.subdata(in: start..<(start + compSize))
+
+        if method == 0 { return raw }          // 存储
+        if method == 8 { return inflateRaw(raw, expected: uncompSize) }
+        return nil
+    }
+
+    /// raw deflate 解压（用 Compression framework）
+    private static func inflateRaw(_ input: Data, expected: Int) -> Data? {
+        guard expected > 0, expected < 64 * 1024 * 1024 else { return nil }
+        var out = Data(count: expected)
+        let result: Int = out.withUnsafeMutableBytes { dst in
+            guard let dstPtr = dst.bindMemory(to: UInt8.self).baseAddress else { return -1 }
+            return input.withUnsafeBytes { src in
+                guard let srcPtr = src.bindMemory(to: UInt8.self).baseAddress else { return -1 }
+                return compression_decode_buffer(dstPtr, expected, srcPtr, input.count, nil, COMPRESSION_ZLIB)
+            }
+        }
+        guard result > 0 else { return nil }
+        return out.prefix(result)
+    }
+
+    // MARK: 工具
+    private static func findEOCD(_ d: Data) -> Int? {
+        guard d.count >= 22 else { return nil }
+        let limit = max(0, d.count - 65557)
+        var i = d.count - 22
+        while i >= limit {
+            if readU32(d, at: i) == 0x06054b50 { return i }
+            i -= 1
+        }
+        return nil
+    }
+
+    private static func readU16(_ d: Data, at i: Int) -> Int {
+        guard i + 2 <= d.count else { return 0 }
+        return Int(d[i]) | (Int(d[i + 1]) << 8)
+    }
+
+    private static func readU32(_ d: Data, at i: Int) -> Int {
+        guard i + 4 <= d.count else { return 0 }
+        return Int(d[i]) | (Int(d[i + 1]) << 8) | (Int(d[i + 2]) << 16) | (Int(d[i + 3]) << 24)
     }
 }
