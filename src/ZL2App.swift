@@ -110,6 +110,8 @@ struct MultiplayerScreen: View {
     var onHome: () -> Void = {}
     @State private var tab = 0
     @State private var enabled = true
+    @StateObject private var lan = LanDiscovery()
+    @State private var lanTab = false
 
     private let tabs = ["用户须知", "房主教程", "房客教程"]
 
@@ -206,6 +208,7 @@ struct MultiplayerScreen: View {
                                 .foregroundStyle(ZLTheme.textSecond)
                         }
                     }
+                    lanCard
                     Spacer()
                 }
                 .frame(width: 300)
@@ -215,6 +218,56 @@ struct MultiplayerScreen: View {
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
+    }
+
+    // 局域网发现（同一 WiFi 下，零依赖）
+    private var lanCard: some View {
+        ZLCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("局域网游戏").font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Spacer()
+                    Toggle("", isOn: Binding(
+                        get: { lan.running },
+                        set: { on in
+                            if on { lan.start() } else { lan.stop() }
+                        }
+                    ))
+                    .labelsHidden()
+                    .tint(ZLTheme.primary)
+                }
+                if lan.servers.isEmpty {
+                    Text(lan.running ? "正在监听 4445 端口…" : "开启后自动发现同一 WiFi 下的游戏")
+                        .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+                } else {
+                    ForEach(lan.servers) { s in
+                        Button {
+                            UIPasteboard.general.string = "\(s.address):\(s.port)"
+                        } label: {
+                            HStack(spacing: 8) {
+                                Circle().fill(ZLTheme.success).frame(width: 6, height: 6)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(s.displayMOTD.isEmpty ? "Minecraft 世界" : s.displayMOTD)
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundStyle(ZLTheme.textPrimary).lineLimit(1)
+                                    Text("\(s.address):\(s.port)")
+                                        .font(.system(size: 10, design: .monospaced))
+                                        .foregroundStyle(ZLTheme.textSecond)
+                                }
+                                Spacer()
+                                Image(systemName: "doc.on.doc")
+                                    .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Text("房主在游戏里按 ESC → 对局域网开放，其他人就能在这里看到")
+                    .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     private func section(_ title: String, _ lines: [String]) -> some View {
