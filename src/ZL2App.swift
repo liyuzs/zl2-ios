@@ -36,6 +36,7 @@ enum AppRoute: Hashable {
     case controlManage
     case serverList
     case modsManager(String)
+    case savesManager(String)
 }
 
 struct RootView: View {
@@ -101,6 +102,10 @@ struct RootView: View {
                     SkinCapeScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .fileManager:
                     FileManagerScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .savesManager(let vid):
+                    SavesManagerScreen(versionID: vid,
+                                       onBack: { path.removeLast() },
+                                       onHome: { path.removeAll() })
                 case .modsManager(let vid):
                     ModsManagerScreen(versionID: vid,
                                       onBack: { path.removeLast() },
