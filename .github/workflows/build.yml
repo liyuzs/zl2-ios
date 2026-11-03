@@ -47,6 +47,9 @@ jobs:
             -DCMAKE_C_COMPILER="$CLANG" \
             -DCMAKE_CXX_COMPILER="$CLANGXX" \
             -DCONFIG_RELEASE=1 \
+            -DCONFIG_BRANCH=main \
+            -DCONFIG_COMMIT=zl2 \
+            -DCONFIG_CURSEFORGE_API_KEY= \
             -DCMAKE_BUILD_TYPE=Release
           cmake --build build --target ZL2Core -j 4
           ls -lh build/*.a || true
