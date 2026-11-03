@@ -1,0 +1,96 @@
+name: iOS Build
+
+# 用 GitHub 免费的 macOS 机器编译，全程不需要本地 Mac。
+# 产物：
+#   ZL2.ipa            —— 真机包（未签名，用 TrollStore 装 或 AltStore 签）
+#   ZL2-simulator.zip  —— 模拟器包（没设备时可在 Mac 上跑起来看界面）
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: |
+          xcodegen generate
+          ls -la
+          xcodebuild -list -project ZL2iOS.xcodeproj
+
+      - name: Build for device (未签名)
+        run: |
+          xcodebuild \
+            -project ZL2iOS.xcodeproj \
+            -scheme ZL2iOS \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          echo "app = $APP"
+          if [ -z "$APP" ]; then echo "::error::没找到 .app，编译失败"; exit 1; fi
+          rm -rf Payload out && mkdir -p Payload out
+          cp -R "$APP" Payload/
+          zip -qry "out/ZL2.ipa" Payload
+          ls -la out
+
+      - name: Build for simulator
+        continue-on-error: true
+        run: |
+          xcodebuild \
+            -project ZL2iOS.xcodeproj \
+            -scheme ZL2iOS \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-sim \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          if [ -n "$APP" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "$APP" out/ZL2-simulator.zip
+          fi
+          ls -la out
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZL2-build
+          path: out/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Build summary
+        run: |
+          echo "### 编译完成 ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ZL2.ipa\`：未签名真机包，TrollStore 可直接安装" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ZL2-simulator.zip\`：模拟器包，仅用于看界面" >> $GITHUB_STEP_SUMMARY
+          ls -la out >> $GITHUB_STEP_SUMMARY
