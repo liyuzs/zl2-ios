@@ -166,9 +166,11 @@ struct SavesManagerScreen: View {
                         Text("刷新").font(.system(size: 12))
                     }
                     .foregroundStyle(ZLTheme.textSecond)
-                    .padding(.horizontal, 10).frame(height: 32)
+                    .padding(.horizontal, 10).frame(height: 34)
                     .background(ZLTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(ZLTheme.cardStroke.opacity(0.22), lineWidth: 0.8))
                 }
                 .buttonStyle(.plain)
 
@@ -183,7 +185,7 @@ struct SavesManagerScreen: View {
             .padding(.bottom, 8)
 
             ScrollView {
-                VStack(spacing: 8) {
+                VStack(spacing: 10) {
                     if filtered.isEmpty {
                         VStack(spacing: 12) {
                             ZLWaveLine()

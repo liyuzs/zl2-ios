@@ -208,7 +208,8 @@ extension ZLControlLayout {
 // MARK: - 布局文件管理（与 ZL2 相同目录结构）
 enum ZLLayoutStore {
     static var dir: URL {
-        let d = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let d = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory())
             .appendingPathComponent("control_layouts", isDirectory: true)
         try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
         return d

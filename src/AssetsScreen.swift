@@ -398,4 +398,39 @@ enum SampleData {
             ]
         }
     }
+    // MARK: 搜索（真实 Modrinth API）
+    private func runSearch() async {
+        loading = true
+        loadError = nil
+        do {
+            let type: ModrinthProjectType? = {
+                switch kind {
+                case .modpack:  return .modpack
+                case .mod:      return .mod
+                case .resource: return .resourcepack
+                case .shader:   return .shader
+                default:        return nil
+                }
+            }()
+            let gv: String? = gameVersion > 0
+                ? mcVersions[min(gameVersion, mcVersions.count - 1)] : nil
+            let ld: String? = modLoader > 0
+                ? loaders[min(modLoader, loaders.count - 1)] : nil
+            let result = try await ModrinthAPI.shared.search(
+                query: query,
+                type: type,
+                gameVersion: gv,
+                loader: ld,
+                limit: 20
+            )
+            hits = result.hits
+            totalHits = result.totalHits
+        } catch {
+            loadError = error.localizedDescription
+            hits = []
+            totalHits = 0
+        }
+        loading = false
+    }
+
 }

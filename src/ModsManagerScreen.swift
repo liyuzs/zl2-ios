@@ -82,7 +82,7 @@ struct ModsManagerScreen: View {
             .padding(.bottom, 8)
 
             ScrollView {
-                VStack(spacing: 8) {
+                VStack(spacing: 10) {
                     if filtered.isEmpty {
                         emptyState
                     }

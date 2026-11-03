@@ -177,5 +177,4 @@ enum CoreBridge {
         }
         return false
     }
-    }
 }
