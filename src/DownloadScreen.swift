@@ -12,6 +12,9 @@ struct DownloadScreen: View {
     @State private var category = 0
     @State private var filter = 0          // 0 正式版 1 快照 2 愚人节 3 远古
     @State private var query = ""
+    @State private var liveVersions: [DLVersion] = []
+    @State private var loading = false
+    @State private var loadError: String?
 
     private let categories = ["游戏", "整合包", "模组", "资源包"]
     private let catIcons = ["gamecontroller.fill", "shippingbox.fill", "puzzlepiece.fill", "paintbrush.fill"]
@@ -43,6 +46,29 @@ struct DownloadScreen: View {
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
+        .task { await loadManifest() }
+    }
+
+    // MARK: 真实版本清单
+    private func loadManifest() async {
+        guard liveVersions.isEmpty else { return }
+        loading = true
+        loadError = nil
+        do {
+            let api = MojangAPI()
+            let manifest = try await api.fetchManifest()
+            let fmt = DateFormatter()
+            fmt.locale = Locale(identifier: "zh_CN")
+            fmt.dateFormat = "yyyy 年 MM 月 dd 日 HH:mm:ss"
+            liveVersions = manifest.versions.map { v in
+                DLVersion(id: v.id,
+                          type: v.isRelease ? "正式版" : (v.isSnapshot ? "快照版" : "远古版"),
+                          date: v.publishDate.map { fmt.string(from: $0) } ?? "—")
+            }
+        } catch {
+            loadError = error.localizedDescription
+        }
+        loading = false
     }
 
     // 左侧竖排分类
@@ -108,13 +134,33 @@ struct DownloadScreen: View {
         .padding(.trailing, 2)
     }
 
+    private var sourceVersions: [DLVersion] {
+        liveVersions.isEmpty ? versions : liveVersions
+    }
+
     private var filtered: [DLVersion] {
-        query.isEmpty ? versions : versions.filter { $0.id.contains(query) }
+        query.isEmpty ? sourceVersions : sourceVersions.filter { $0.id.contains(query) }
     }
 
     private var list: some View {
         ScrollView {
             VStack(spacing: 10) {
+                if loading {
+                    HStack(spacing: 8) {
+                        ProgressView().tint(ZLTheme.primary)
+                        Text("正在获取版本清单…").font(.system(size: 13))
+                            .foregroundStyle(ZLTheme.textSecond)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 20)
+                } else if let e = loadError {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(ZLTheme.warning)
+                        Text("清单获取失败：\(e)（显示内置示例）")
+                            .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 ForEach(filtered) { v in
                     HStack(spacing: 14) {
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
