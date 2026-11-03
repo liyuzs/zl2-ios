@@ -52,17 +52,29 @@ struct Account: Codable, Identifiable, Equatable, Sendable {
     var uuid: String
     /// 离线账号为 nil；微软 / 外置认证为真实 token
     var accessToken: String?
+    /// 微软账号的刷新令牌，用于静默续期
+    var refreshToken: String?
 
     init(id: UUID = UUID(),
          type: AccountType,
          username: String,
          uuid: String,
-         accessToken: String? = nil) {
+         accessToken: String? = nil,
+         refreshToken: String? = nil) {
         self.id = id
         self.type = type
         self.username = username
         self.uuid = AccountUUID.compact(from: uuid)
         self.accessToken = accessToken
+        self.refreshToken = refreshToken
+    }
+
+    /// 由微软登录返回的档案构造账号
+    static func microsoft(profile: MinecraftProfile, accessToken: String) -> Account {
+        Account(type: .microsoft,
+                username: profile.name,
+                uuid: profile.id,
+                accessToken: accessToken)
     }
 
     /// 带横线的标准 UUID 字符串（展示 / 日志用）
