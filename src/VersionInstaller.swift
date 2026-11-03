@@ -166,7 +166,7 @@ actor VersionInstaller {
         if let d = detail.downloads?.client?.url { obj["clientUrl"] = d.absoluteString }
         // 尽量保留原始 JSON 里的关键字段
         obj["mainClass"] = detail.mainClass
-        obj["assetIndex"] = detail.assetIndex.map { ["id": $0.id, "url": $0.url.absoluteString] }
+        obj["assetIndex"] = detail.assetIndex.map { ["id": $0.id, "url": $0.url?.absoluteString ?? ""] }
         obj["libraries"] = detail.libraries?.map { lib -> [String: Any] in
             var o: [String: Any] = ["name": lib.name]
             if let a = lib.downloads?.artifact {
