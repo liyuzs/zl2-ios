@@ -51,6 +51,7 @@ struct RootView: View {
                 onMultiplayer: { path.append(.multiplayer) },
                 onDownload: { path.append(.download) },
                 onSettings: { path.append(.settings) },
+                onFileManager: { path.append(.fileManager) },
                 onVersionSettings: { path.append(.versionList) }
             )
             .zlGuide(.home)

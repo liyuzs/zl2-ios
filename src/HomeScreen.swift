@@ -12,6 +12,7 @@ struct HomeScreen: View {
     var onMultiplayer: () -> Void = {}
     var onDownload: () -> Void = {}
     var onSettings: () -> Void = {}
+    var onFileManager: () -> Void = {}
     var onVersionSettings: () -> Void = {}
 
     var body: some View {
@@ -29,6 +30,7 @@ struct HomeScreen: View {
                     Spacer()
 
                     HStack(spacing: 8) {
+                        topButton("folder.fill", action: onFileManager)
                         topButton("person.2.fill", action: onMultiplayer)
                         topButton("arrow.down.to.line", action: onDownload)
                         topButton("gearshape.fill", action: onSettings)
