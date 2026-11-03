@@ -7,6 +7,7 @@ struct DownloadScreen: View {
     var onHome: () -> Void = {}
     var onSettings: () -> Void = {}
     var onOpenAssets: (AssetKind) -> Void = { _ in }
+    var onOpenSearch: () -> Void = {}
 
     @State private var category = 0
     @State private var filter = 0          // 0 正式版 1 快照 2 愚人节 3 远古
@@ -87,6 +88,7 @@ struct DownloadScreen: View {
                 TextField("搜索", text: $query)
                     .textFieldStyle(.plain)
                     .font(.system(size: 14))
+                    .onTapGesture { onOpenSearch() }
             }
             .padding(.horizontal, 12)
             .frame(width: 190, height: 40)
