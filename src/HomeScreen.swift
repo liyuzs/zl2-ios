@@ -24,22 +24,22 @@ struct HomeScreen: View {
             VStack(spacing: 0) {
                 HStack(alignment: .center) {
                     Text("ZalithLauncher")
-                        .font(.system(size: 22, weight: .heavy, design: .rounded))
-                        .foregroundStyle(ZLTheme.textPrimary)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(ZLTheme.textSecond)
                         .padding(.leading, ZLTheme.screenPadding)
 
                     Spacer()
 
                     HStack(spacing: 8) {
                         ZLTaskRailButton { showTaskMenu = true }
-                        topButton("folder.fill", action: onFileManager)
-                        topButton("person.2.fill", action: onMultiplayer)
+                        topButton("folder", action: onFileManager)
+                        topButton("person.2", action: onMultiplayer)
                         topButton("arrow.down.to.line", action: onDownload)
-                        topButton("gearshape.fill", action: onSettings)
+                        topButton("gearshape", action: onSettings)
                     }
                     .padding(.trailing, ZLTheme.screenPadding)
                 }
-                .frame(height: 60)
+                .frame(height: 46)
                 Spacer()
             }
 
@@ -63,11 +63,10 @@ struct HomeScreen: View {
     private func topButton(_ icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(ZLTheme.textPrimary)
-                .frame(width: 44, height: 36)
-                .background(ZLTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(ZLTheme.textSecond)
+                .frame(width: 38, height: 32)
+                .background(Color.clear)
         }
         .buttonStyle(.plain)
     }
