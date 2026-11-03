@@ -1334,7 +1334,7 @@ struct ControlInspector: View {
 
     private func inspectorCard<Content: View>(_ title: String,
                                               icon: String,
-                                              @ViewBuilder content: () -> Content) -> some View {
+                                              @ViewBuilder content: @escaping () -> Content) -> some View {
         ZLCard(padding: 14) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 6) {
@@ -1972,7 +1972,7 @@ struct ControlStylePanel: View {
     }
 
     private func styleRow<Content: View>(_ style: ControlAppearance,
-                                         @ViewBuilder actions: () -> Content) -> some View {
+                                         @ViewBuilder actions: @escaping () -> Content) -> some View {
         ZLCard(padding: 12) {
             HStack(spacing: 12) {
                 previewSwatch(style)
