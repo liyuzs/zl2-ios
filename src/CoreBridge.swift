@@ -80,8 +80,12 @@ enum CoreBridge {
                               height: Int = 720) async throws {
         try bootstrap()
         #if ZL2_CORE_LINKED
-        let code = await withCheckedContinuation { cont in
-            DispatchQueue.global(qos: .userInitiated).async {
+        guard runtimeCheck() else {
+            throw CoreLaunchError.bootstrapFailed("找不到内置 JRE（java_runtimes/java-17-openjdk/lib/libjli.dylib）")
+        }
+        // Amethyst 的 launchJVM 内部会弹对话框、操作 UI，必须在主线程调用
+        let code: Int32 = await withCheckedContinuation { cont in
+            DispatchQueue.main.async {
                 let r = launchJVM(nil, metadata as NSDictionary, Int32(width), Int32(height), 17)
                 cont.resume(returning: r)
             }
@@ -101,8 +105,11 @@ enum CoreBridge {
             throw CoreLaunchError.bootstrapFailed("jar 不存在：\(jarPath)")
         }
         #if ZL2_CORE_LINKED
-        let code = await withCheckedContinuation { cont in
-            DispatchQueue.global(qos: .userInitiated).async {
+        guard runtimeCheck() else {
+            throw CoreLaunchError.bootstrapFailed("找不到内置 JRE")
+        }
+        let code: Int32 = await withCheckedContinuation { cont in
+            DispatchQueue.main.async {
                 let r = launchJVM(nil, jarPath as NSString, Int32(width), Int32(height), 17)
                 cont.resume(returning: r)
             }
