@@ -83,3 +83,20 @@
 ## 许可提醒
 
 接入 Amethyst（GPL-3.0）后**整个 App 必须 GPL-3.0 开源**，且**不得沿用 "ZalithLauncher" / "ZL"**（其 GPL 附加条款要求改版改名）。建议改成 `Beryl Launcher` 之类。
+
+---
+
+## 🆕 2026-11-03 晚：核心集成完成（run #18）
+
+| 项 | 状态 |
+|---|---|
+| Amethyst 核心静态库 | ✅ 1.0 MB，编译通过 |
+| 动态依赖（AFNetworking/awt/tinygl4angle） | ✅ 已链接并打包 |
+| JRE 17 | ✅ java_runtimes/java-17-openjdk（含 libjli.dylib） |
+| Frameworks（19 个 dylib/framework） | ✅ 已打包 |
+| 启动调用链 | ✅ LaunchScreen → CoreBridge → launchJVM |
+| **最终 IPA** | ✅ **50.92 MB**，解压 158.2 MB |
+
+**仍未验证**：App 能否安装、界面观感、JVM 能否真启动、能否进世界——全部需要真机。
+
+详见 `docs/核心集成进度.md`。
