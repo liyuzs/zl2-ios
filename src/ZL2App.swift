@@ -144,11 +144,11 @@ struct RootView: View {
                                                 detail: "\(p.phase.rawValue) \(p.completed)/\(p.total)")
                                         }
                                     }
-                                    await ZLTaskCenter.shared.update(taskID, state: .done,
-                                                                    detail: "安装完成")
+                                    await ZLTaskCenter.shared.update(taskID,
+                                        detail: "安装完成", state: .done)
                                 } catch {
-                                    await ZLTaskCenter.shared.update(taskID, state: .failed,
-                                                                    detail: error.localizedDescription)
+                                    await ZLTaskCenter.shared.update(taskID,
+                                        detail: error.localizedDescription, state: .failed)
                                 }
                             }
                         })
