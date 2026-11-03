@@ -6,6 +6,7 @@ struct DownloadScreen: View {
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
     var onSettings: () -> Void = {}
+    var onOpenAssets: (AssetKind) -> Void = { _ in }
 
     @State private var category = 0
     @State private var filter = 0          // 0 正式版 1 快照 2 愚人节 3 远古
@@ -47,7 +48,13 @@ struct DownloadScreen: View {
     private var sideRail: some View {
         VStack(spacing: 6) {
             ForEach(categories.indices, id: \.self) { i in
-                Button { category = i } label: {
+                Button {
+                    if i == 0 { category = 0 }
+                    else {
+                        let kinds: [AssetKind] = [.modpack, .mod, .resource]
+                        onOpenAssets(kinds[min(i - 1, kinds.count - 1)])
+                    }
+                } label: {
                     VStack(spacing: 4) {
                         Image(systemName: catIcons[i]).font(.system(size: 19))
                         Text(categories[i]).font(.system(size: 11))

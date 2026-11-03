@@ -40,7 +40,8 @@ struct RootView: View {
                     MultiplayerScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .download:
                     DownloadScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() },
-                                   onSettings: { path.append(.settings) })
+                                   onSettings: { path.append(.settings) },
+                                   onOpenAssets: { kind in path.append(.assets(kind.rawValue)) })
                 case .settings:
                     SettingsScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() },
                                    onDownload: { path.append(.download) })
