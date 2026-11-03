@@ -1,6 +1,7 @@
 // ZL2-iOS · 启动核心桥接
 // 负责：环境初始化（AME_HOME / 偏好 / JRE 映射）→ 调用 Amethyst 的 launchJVM
 import Foundation
+import Darwin
 
 enum CoreLaunchError: LocalizedError {
     case coreNotLinked
@@ -53,6 +54,8 @@ enum CoreBridge {
         }
 
         #if ZL2_CORE_LINKED
+        // 日志重定向（真机调试必需：Amethyst 的 printf/NSLog 输出落到文件）
+        setupLogging(home: home)
         // AME_HOME 是 Amethyst 全局数据根
         setenv("AME_HOME", home, 1)
         // GAME_DIR 用于隔离版本的偏好文件
@@ -72,6 +75,27 @@ enum CoreBridge {
         #endif
 
         bootstrapped = true
+    }
+
+    /// 把 stdout/stderr 重定向到 Documents/ame.log
+    static func setupLogging(home: String) {
+        let logPath = (home as NSString).appendingPathComponent("ame.log")
+        // 保留最近一次：超过 2MB 就清空
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: logPath),
+           let size = attrs[.size] as? Int, size > 2 * 1024 * 1024 {
+            try? FileManager.default.removeItem(atPath: logPath)
+        }
+        if !FileManager.default.fileExists(atPath: logPath) {
+            FileManager.default.createFile(atPath: logPath, contents: nil)
+        }
+        freopen(logPath, "a", stdout)
+        freopen(logPath, "a", stderr)
+        setvbuf(stdout, nil, _IOLBF, 0)
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        print("\n===== ZL2 启动 \(f.string(from: Date())) =====")
+        print("AME_HOME=\(home)")
+        print("bundle=\(Bundle.main.bundlePath)")
     }
 
     /// 用版本元数据启动（需要完整的版本 JSON 与已下载的游戏文件）
