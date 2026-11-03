@@ -32,10 +32,32 @@ enum AssetKind: String, CaseIterable, Identifiable {
         }
     }
 
+    /// ZL2 里每类内容的分类标签（来自 strings.xml）
+    var categories: [String] {
+        switch self {
+        case .mod:
+            return ["世界元素", "生物群系", "维度", "矿物与资源", "天然结构", "科技", "管道与物流",
+                    "自动化", "能源", "红石", "食物与烹饪", "农业", "运输", "仓储", "魔法", "冒险",
+                    "装饰", "生物", "装备", "信息显示", "服务器", "改良", "支持库", "游戏机制",
+                    "性能优化", "多人", "硬核", "战斗", "任务", "探险", "小游戏", "科幻", "空岛", "原版改良"]
+        case .modpack:
+            return ["FTB 团队制作", "基于地图", "轻量", "大型", "大杂烩", "传统", "科技", "魔法",
+                    "冒险", "空岛", "原版改良", "多人", "硬核", "任务"]
+        case .resource:
+            return ["16x16 像素", "32x32 像素", "64x64 像素", "128x128 像素", "256x256 像素",
+                    "512x512 像素及更高", "原版改良", "卡通", "写实", "中世纪", "现代风格"]
+        case .shader:
+            return ["卡通", "邪门", "奇幻", "半写实", "氛围", "泛光", "彩色照明", "植被",
+                    "路径追踪", "PBR", "反射", "阴影", "“土豆”配置", "低等配置", "中等配置", "高等配置"]
+        default:
+            return []
+        }
+    }
+
     var sorts: [String] {
         switch self {
         case .favorite, .saves: return ["最近", "名称"]
-        default: return ["相关性", "下载量", "最新", "评分"]
+        default: return ["相关性", "总下载量", "人气", "最近创建", "最近更新"]
         }
     }
 }
@@ -63,6 +85,15 @@ struct AssetsScreen: View {
     @State private var sort = 0
     @State private var source = 0
     @State private var installedOnly = false
+    // ZL2 的四个筛选维度：目标平台 / 游戏版本 / 类别 / 模组加载器
+    @State private var platform = 0
+    @State private var gameVersion = 0
+    @State private var category = 0
+    @State private var modLoader = 0
+
+    private let platforms = ["未选择", "Windows", "Linux", "macOS", "Android", "iOS"]
+    private let mcVersions = ["未选择", "1.21.4", "1.20.1", "1.19.2", "1.16.5", "1.12.2"]
+    private let loaders = ["未选择", "Fabric", "Forge", "NeoForge", "Quilt"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -107,44 +138,58 @@ struct AssetsScreen: View {
         .frame(width: 92)
     }
 
-    // 顶部：来源 + 排序 + 搜索
+    // 顶部：来源 + 四个筛选维度 + 排序 + 搜索
     private var toolbar: some View {
-        HStack(spacing: 8) {
-            ForEach(kind.sources.indices, id: \.self) { i in
-                ZLChip(title: kind.sources[i], selected: source == i) { source = i }
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                ForEach(kind.sources.indices, id: \.self) { i in
+                    ZLChip(title: kind.sources[i], selected: source == i) { source = i }
+                }
+                Spacer(minLength: 6)
+                filterMenu(title: "平台", options: platforms, selection: $platform)
+                filterMenu(title: "版本", options: mcVersions, selection: $gameVersion)
+                filterMenu(title: "加载器", options: loaders, selection: $modLoader)
+                filterMenu(title: "排序", options: kind.sorts, selection: $sort)
             }
-            Menu {
-                ForEach(kind.sorts.indices, id: \.self) { i in
-                    Button(kind.sorts[i]) { sort = i }
+            HStack(spacing: 8) {
+                if !kind.categories.isEmpty {
+                    filterMenu(title: "类别", options: ["未选择"] + kind.categories, selection: $category)
                 }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "arrow.up.arrow.down").font(.system(size: 12))
-                    Text(kind.sorts[sort]).font(.system(size: 13, weight: .medium))
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 13)).foregroundStyle(ZLTheme.textSecond)
+                    TextField("搜索\(kind.rawValue)", text: $query)
+                        .textFieldStyle(.plain).font(.system(size: 14))
                 }
-                .foregroundStyle(ZLTheme.textSecond)
                 .padding(.horizontal, 12)
-                .frame(height: 40)
+                .frame(height: 38)
                 .background(ZLTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .frame(maxWidth: 260)
+                Spacer()
             }
-
-            Spacer(minLength: 8)
-
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 13))
-                    .foregroundStyle(ZLTheme.textSecond)
-                TextField("搜索\(kind.rawValue)", text: $query)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 14))
-            }
-            .padding(.horizontal, 12)
-            .frame(width: 200, height: 40)
-            .background(ZLTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .padding(.trailing, 2)
+    }
+
+    private func filterMenu(title: String, options: [String], selection: Binding<Int>) -> some View {
+        Menu {
+            ForEach(options.indices, id: \.self) { i in
+                Button(options[i]) { selection.wrappedValue = i }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(selection.wrappedValue > 0 ? options[selection.wrappedValue] : title)
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(1)
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+            }
+            .foregroundStyle(selection.wrappedValue > 0 ? ZLTheme.primaryDeep : ZLTheme.textSecond)
+            .padding(.horizontal, 10)
+            .frame(height: 38)
+            .background(selection.wrappedValue > 0 ? ZLTheme.primarySoft : ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        }
     }
 
     private var samples: [AssetItem] {
