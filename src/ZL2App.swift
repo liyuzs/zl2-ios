@@ -27,6 +27,7 @@ enum AppRoute: Hashable {
     case gameDirs
     case cleanFiles
     case exportPackNew
+    case controlLayout
 }
 
 struct RootView: View {
@@ -84,6 +85,8 @@ struct RootView: View {
                     CleanFilesScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .exportPackNew:
                     ExportPackScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .controlLayout:
+                    ControlEditorScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 }
             }
         }
