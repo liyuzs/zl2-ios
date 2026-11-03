@@ -22,9 +22,14 @@ struct ControlManageScreen: View {
     @State private var newAuthor = ""
     @State private var newVersion = "1.0"
     @State private var nameError = false
+    @State private var nameErrorText = "该项不能为空"
     @State private var showEditor = false
 
     private let storeKey = "zl.control.layouts"
+    // 对齐 ZL2 的 LayoutInfoCheck.kt
+    private let nameLength = 64
+    private let authorLength = 128
+    private let versionLength = 32
 
     var body: some View {
         VStack(spacing: 0) {
@@ -179,14 +184,20 @@ struct ControlManageScreen: View {
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
                                 .stroke(nameError ? ZLTheme.danger : Color.clear, lineWidth: 1.5)
                         )
-                        .onChange(of: newName) { _ in nameError = false }
+                        .onChange(of: newName) { v in
+                            nameError = false
+                            if v.count > nameLength { newName = String(v.prefix(nameLength)) }
+                        }
                     if nameError {
-                        Text("该项不能为空").font(.system(size: 10))
+                        Text(nameErrorText).font(.system(size: 10))
                             .foregroundStyle(ZLTheme.danger)
                     }
                 }
 
                 TextField("布局创作者", text: $newAuthor)
+                    .onChange(of: newAuthor) { v in
+                        if v.count > authorLength { newAuthor = String(v.prefix(authorLength)) }
+                    }
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
                     .padding(.horizontal, 10).frame(height: 38)
@@ -200,6 +211,9 @@ struct ControlManageScreen: View {
                 }
 
                 TextField("布局版本", text: $newVersion)
+                    .onChange(of: newVersion) { v in
+                        if v.count > versionLength { newVersion = String(v.prefix(versionLength)) }
+                    }
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
                     .padding(.horizontal, 10).frame(height: 38)
@@ -240,8 +254,15 @@ struct ControlManageScreen: View {
     }
 
     private func create() {
-        guard !newName.trimmingCharacters(in: .whitespaces).isEmpty else {
+        let trimmed = newName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else {
             nameError = true
+            nameErrorText = "该项不能为空"
+            return
+        }
+        guard trimmed.count <= nameLength else {
+            nameError = true
+            nameErrorText = "内容过长"
             return
         }
         let m = ControlLayoutMeta(name: newName, author: newAuthor, version: newVersion)
