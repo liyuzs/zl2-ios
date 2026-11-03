@@ -39,13 +39,14 @@ struct HomeScreen: View {
                 Spacer()
             }
 
-            // 右侧浮动面板
+            // 右侧浮动面板（下移，避免遮住顶部图标）
             HStack {
                 Spacer()
                 panel
                     .frame(width: 340)
                     .padding(.trailing, ZLTheme.screenPadding)
-                    .padding(.vertical, 14)
+                    .padding(.top, 66)
+                    .padding(.bottom, 14)
             }
         }
         .fullScreenCover(isPresented: $launching) {
