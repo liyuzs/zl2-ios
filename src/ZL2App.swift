@@ -144,6 +144,38 @@ struct RootView: View {
                                                 detail: "\(p.phase.rawValue) \(p.completed)/\(p.total)")
                                         }
                                     }
+                                    // 加载器安装（Fabric / Quilt）
+                                    if sel.loader == .fabric || sel.loader == .quilt {
+                                        let installTask = await ZLTaskCenter.shared.add("\(sel.loader.rawValue) 加载器")
+                                        do {
+                                            let result: ZLLoaderInstallResult
+                                            if sel.loader == .fabric {
+                                                result = try await ZLLoaderInstaller.installFabric(
+                                                    gameVersion: gv,
+                                                    loaderVersion: sel.loaderVersion.isEmpty ? "0.15.11" : sel.loaderVersion
+                                                ) { msg, p in
+                                                    Task { @MainActor in
+                                                        ZLTaskCenter.shared.update(installTask, progress: p, detail: msg)
+                                                    }
+                                                }
+                                            } else {
+                                                result = try await ZLLoaderInstaller.installQuilt(
+                                                    gameVersion: gv,
+                                                    loaderVersion: sel.loaderVersion.isEmpty ? "0.26.0" : sel.loaderVersion
+                                                ) { msg, p in
+                                                    Task { @MainActor in
+                                                        ZLTaskCenter.shared.update(installTask, progress: p, detail: msg)
+                                                    }
+                                                }
+                                            }
+                                            await ZLTaskCenter.shared.update(installTask,
+                                                detail: "已安装 \(result.versionID)（\(result.libraryCount) 个库）",
+                                                state: .done)
+                                        } catch {
+                                            await ZLTaskCenter.shared.update(installTask,
+                                                detail: error.localizedDescription, state: .failed)
+                                        }
+                                    }
                                     await ZLTaskCenter.shared.update(taskID,
                                         detail: "安装完成", state: .done)
                                 } catch {
