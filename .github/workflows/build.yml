@@ -144,7 +144,9 @@ jobs:
             echo "=== 安装 ==="
             xcrun simctl install "$DEVICE" "$APP" 2>&1 | tee out/install.log || true
             echo "=== 启动 ==="
-            xcrun simctl launch "$DEVICE" com.example.zl2ios 2>&1 | tee out/launch.log || true
+            BID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist" 2>/dev/null || echo "com.example.zl2ios")
+            echo "BUNDLE_ID=$BID"
+            xcrun simctl launch "$DEVICE" "$BID" 2>&1 | tee out/launch.log || true
             sleep 8
             echo "=== 进程状态 ==="
             xcrun simctl spawn "$DEVICE" launchctl list 2>/dev/null | grep -i zl2 || echo "进程不在运行"
