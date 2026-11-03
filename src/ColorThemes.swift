@@ -37,6 +37,10 @@ enum ZLColorTheme: String, CaseIterable, Identifiable {
     var outline: Color { ZLPalette.color("outlineLight", index) }
     var surfaceContainer: Color { ZLPalette.color("surfaceContainerLight", index) }
     var surfaceContainerHigh: Color { ZLPalette.color("surfaceContainerHighLight", index) }
+    var onPrimaryContainer: Color { ZLPalette.color("onPrimaryContainerLight", index) }
+    var secondaryContainer: Color { ZLPalette.color("secondaryContainerLight", index) }
+    var onSecondary: Color { ZLPalette.color("onSecondaryLight", index) }
+    var tertiary: Color { ZLPalette.color("tertiaryLight", index) }
     var primaryDark: Color { ZLPalette.color("primaryDark", index) }
     var backgroundDark: Color { ZLPalette.color("backgroundDark", index) }
     var surfaceDark: Color { ZLPalette.color("surfaceDark", index) }
