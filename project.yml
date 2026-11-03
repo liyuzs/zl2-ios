@@ -43,7 +43,7 @@ targets:
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: ZL2_CORE_LINKED
         LIBRARY_SEARCH_PATHS: $(inherited) $(SRCROOT)/core/build
         FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/core/resources/Frameworks
-        OTHER_LDFLAGS: $(inherited) -lZL2Core -framework AltKit -framework CAltKit -framework UnzipKit -framework libEGL -framework libGLESv2 -framework AuthenticationServices -framework AVFoundation -framework CoreMotion -framework GameController -framework IOKit -framework QuartzCore -framework UniformTypeIdentifiers -framework WebKit -weak_framework SafariServices
+        OTHER_LDFLAGS: $(inherited) -lZL2Core -lAFNetworking -lawt_xawt -lawt_headless -ltinygl4angle -lAmethystAccountJNI -framework AltKit -framework CAltKit -framework UnzipKit -framework libEGL -framework libGLESv2 -framework AuthenticationServices -framework AVFoundation -framework CoreMotion -framework GameController -framework IOKit -framework QuartzCore -framework UniformTypeIdentifiers -framework WebKit -weak_framework SafariServices
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_BITCODE: NO
         SWIFT_EMIT_LOC_STRINGS: YES

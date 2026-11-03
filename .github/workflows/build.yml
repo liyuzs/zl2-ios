@@ -84,6 +84,10 @@ jobs:
           mkdir -p "$APP/Frameworks"
           cp -R core/resources/Frameworks/. "$APP/Frameworks/"
 
+          # 1.5) CMake 产出的动态库（AFNetworking / awt_xawt 等）
+          cp -R core/build/*.dylib "$APP/Frameworks/" 2>/dev/null || true
+          ls "$APP/Frameworks" | wc -l
+
           # 2) JRE 17（官方站点：zip 里是 tar.xz，tar.xz 里是 ./ 根结构）
           mkdir -p "$APP/java_runtimes/java-17-openjdk"
           curl -L --fail --retry 3 -o /tmp/jre17.zip \
