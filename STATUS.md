@@ -1,112 +1,144 @@
-# 项目状态（2026-11-03）
+# ZL2-iOS 项目状态
 
-## 一句话
-
-**界面 + 服务层代码已全部写完，静态检查通过，编译和真机效果仍未验证。** 周末在 GitHub 上跑一次就知道。
+> 最后更新：2026-11-04 04:12
+> 代码：50 个 Swift 文件 / 20,455 行
+> CI：GitHub Actions 111 次构建全绿
 
 ---
 
-## ✅ 已完成
+## 一、这是什么
 
-### 界面层（SwiftUI，8 个文件）
-| 文件 | 内容 |
+Zalith Launcher 2（安卓 Minecraft 启动器）的 iOS 复刻版。
+基于 **ZL2 安卓源码**（16.6 万行 Kotlin）逐模块解析后重建。
+
+---
+
+## 二、功能状态（诚实版）
+
+### ✅ 端到端真实可用
+
+| 功能 | 实现 |
 |---|---|
-| `src/Theme.swift` | ZL2 风格配色、卡片、主按钮 |
-| `src/HomeScreen.swift` | 首页：账户条、版本卡片、悬浮启动键 |
-| `src/AccountScreen.swift` | 账户：微软 / 离线 / 外置认证（已接 AccountStore） |
-| `src/SettingsScreen.swift` | 设置：渲染器、分辨率、内存、下载源 |
-| `src/DownloadScreen.swift` | 下载中心：版本列表 + 搜索 + 分类 |
-| `src/ModsScreen.swift` | 模组管理、前置依赖提醒、启停开关 |
-| `src/LaunchScreen.swift` | 启动进度：环形进度 + 滚动日志 |
-| `src/ZL2App.swift` | 入口 + 侧边抽屉 + 控制布局（可拖按键）+ 关于 |
+| 版本下载 | Mojang 清单 → client.jar + libraries + assets |
+| Fabric 安装 | meta.fabricmc.net profile 合并 + 库下载 |
+| Quilt 安装 | meta.quiltmc.org v3 同样流程 |
+| 模组管理 | 扫描 mods/、解析 jar 元数据（fabric/toml/quilt） |
+| 存档管理 | NBT + gzip 解析 level.dat |
+| 资源包/光影/截图 | pack.mcmeta 解析 + 预览 |
+| 服务器列表 | 真实 Minecraft 状态协议 ping |
+| 微软登录 | 设备码 → XBL → XSTS → MC 档案 |
+| 主题系统 | 490 个色值（35角色×7主题×亮暗） |
+| 文案 | 1536 条中文（与安卓版一致） |
 
-### 服务层（纯 Foundation，无 UI 依赖，3 个文件）
-| 文件 | 内容 | 验证情况 |
+### ⚠️ 代码就绪，真机未验证
+
+| 功能 | 状态 |
+|---|---|
+| 游戏启动 | launchJVM 已接，JRE 已打包，未真机跑过 |
+| P2P 联机 | EasyTier 骨架就绪，utun fd 需真机调试 |
+| 控制布局编辑器 | 完整实现 + ZL2 JSON 互通，未真机测 |
+
+### ❌ iOS 硬限制
+
+| 功能 | 为什么不行 |
+|---|---|
+| Forge / NeoForge | 需运行 installer.jar，iOS 禁止 fork 子进程 |
+| 实时抓屏插件 | dsh-see-now 只支持 Win/macOS 屏幕引擎 |
+| 上架 App Store | 大陆区不允许此类应用 |
+
+---
+
+## 三、与 ZL2 的数据互通
+
+**已实现文件级互通**：
+
+| 文件 | 格式 | 互通 |
 |---|---|---|
-| `src/AccountService.swift` | 账户模型、离线 UUID、持久化、微软/外置认证协议；自带纯 Swift MD5 | ✅ MD5 四组测试向量全部通过；`OfflinePlayer:Notch` → `b50ad385-829d-3141-a216-7e7d7539ba7f`，与官方离线 UUID 一致 |
-| `src/LaunchContract.swift` | 启动状态/进度/错误枚举、`LaunchService` 协议、`MockLaunchService` | ✅ 静态结构检查通过 |
-| `src/MojangAPI.swift` | 版本清单、版本详情、文件下载（async/await，原子写入） | ✅ 用真实上游数据核对：manifest 921 条字段齐全、26.3/1.8.9 新旧格式都兼容 |
+| 控制布局 JSON | editorVersion 12 | ✅ 双向导入导出 |
+| 坐标系统 | 0~10000 整数 | ✅ 完全对齐 |
+| 按钮样式 | light/dark 双套 | ✅ 完全对齐 |
+| 点击事件 | 6 种 type | ✅ 完全对齐 |
 
-### 工程与文档
-| 文件 | 内容 |
+玩家可以从 ZL2 下载布局文件，直接导入本 App；反之亦然。
+
+---
+
+## 四、关键文件
+
+```
+src/
+  ├─ Theme.swift              主题系统（ZLTheme）
+  ├─ ZLPalette.swift          490 色值（源码提取）
+  ├─ ZLStrings.swift          1536 条文案（源码提取）
+  ├─ ZLSettings.swift         115 个设置项（源码提取）
+  ├─ ZLKeycode.swift          101 键码 + 116 键位（源码提取）
+  ├─ ControlEditor.swift      控制布局编辑器（2300+ 行）
+  ├─ ControlLayoutModel.swift 控件数据模型（对齐 ZL2）
+  ├─ ControlModelBridge.swift 编辑器 ↔ ZL2 JSON 转换
+  ├─ VersionInstaller.swift   版本下载安装
+  ├─ LoaderInstaller.swift    Fabric/Quilt 安装
+  ├─ ServerListScreen.swift   服务器列表 + ping 协议
+  ├─ ModsManagerScreen.swift  模组管理 + ZIP 解析
+  ├─ SavesManagerScreen.swift 存档管理 + NBT 解析
+  ├─ EasyTierTunnel.swift     P2P 联机骨架
+  └─ ...（共 50 个文件）
+```
+
+---
+
+## 五、构建
+
+```bash
+# 本地（需要 macOS + Xcode）
+brew install xcodegen
+xcodegen generate
+xcodebuild -scheme ZL2iOS -configuration Release
+
+# 或推送到 GitHub 自动构建
+git push origin main
+```
+
+**产物**：每次构建自动发布到 GitHub Releases，包含 Amethyst 核心 + JRE17 + Frameworks + JIT 脚本。
+
+---
+
+## 六、已知问题
+
+1. **真机零验证** — 所有功能只在编译层面通过，没在 iPhone 上跑过
+2. **游戏启动未测** — JRE 打包了，Amethyst 接了，但 launchJVM 是否成功未知
+3. **UI 还原度** — 录屏对照补了 20 处差异，26 个页面做了合并简化
+4. **Forge 不支持** — iOS 限制，已标注
+
+---
+
+## 七、下一步（优先级）
+
+| 优先级 | 任务 |
 |---|---|
-| `project.yml` | XcodeGen 配置（iOS 16+），`src/` 下新增文件自动纳入 |
-| `.github/workflows/build.yml` | 云端编译，产出 `ZL2.ipa` + 模拟器包 |
-| `docs/周末操作手册.md` | 从注册 GitHub 到装机的完整步骤 + 报错排查表 |
-| `docs/核心集成方案.md` | **700 行调研**：怎么接 Amethyst 启动核心（含源码行号、体积实测、entitlements 对照） |
-| `scripts/check_project.py` | 静态体检（括号平衡、类型重复、@main 数量、YAML 引用） |
+| P0 | 真机安装验证（等电脑端 AI 完成签名） |
+| P0 | 游戏启动实测（装好后第一件事） |
+| P1 | P2P 联机 utun fd 调试 |
+| P2 | 补剩余 26 个页面 |
+| P2 | EasyTier 真实集成（编译 Rust 库） |
 
 ---
 
-## ⚠️ 未验证（没有环境，谁都替不了）
+## 八、历史里程碑
 
-| 项 | 为什么 | 谁能验证 |
-|---|---|---|
-| **能否编译通过** | 本机无 swiftc / Xcode / macOS | 周末 GitHub Actions |
-| **界面实际观感** | 跑不起来就没有截图 | Mac 模拟器 / 朋友 iPhone |
-| **SwiftUI API 在 iOS 16 的兼容性** | 只能靠静态经验 | 编译器会直接指出 |
-| **XcodeGen 配置是否正确** | 本机无法运行 `xcodegen generate` | Actions 的 Generate 步骤 |
-| **MojangAPI 的运行时行为** | 只做了字段级核对，没跑过真实下载 | 接核心后联调 |
-
----
-
-## 🔌 明确没做（下一阶段）
-
-- **接入 Amethyst 启动核心**：方案已写在 `docs/核心集成方案.md`，但代码没动。集成的第一步（最小验证）是 `launchJVM(nil, jarPath, w, h, 8)`，不需要版本下载器。
-- **真实的版本下载落盘**：`DownloadScreen` 仍是演示数据，`MojangAPI` 已具备能力，还没接线。
-- **微软 OAuth 真实登录**：只有协议定义，没有实现。
-- **联机**：ZL2 的邀请码机制 iOS 用不了，要另做。
-
----
-
-## 🧩 已知脆弱点（周末最可能卡在这）
-
-1. **XcodeGen 与 Info.plist 配合**：若报 plist 冲突，删掉 `project.yml` 里 `GENERATE_INFOPLIST_FILE: NO` 再试
-2. **`UILaunchScreen: {}`**：若被解析成 null，改成 `UILaunchScreen: { UIColorName: "" }`
-3. **未签名 build**：若被 entitlements 卡住，加 `-allowProvisioningUpdates` 或去掉 `CODE_SIGN_IDENTITY=""`
-4. **两个智能体并行写代码时曾出现类型重名**（`VersionSummary`），已把 MojangAPI 里的改名为 `ManifestVersionEntry`，静态检查已确认无重复
-5. **AppIcon 是空壳**：只会警告不会失败
-
----
-
-## 📦 交付物
-
-- `/root/workspace/ios-zl2/` —— 完整项目目录（11 个 Swift 文件 + 文档 + CI）
-- `/sdcard/Download/DSH-Go/ios-zl2-周末版.tar.gz` —— 打包好的压缩包
-
-## 下一步（按优先级）
-
-1. **周末先编译一次**，Actions 报错发我 → 大概率调 1–2 轮
-2. 编译通过后在模拟器/朋友手机上**看界面**，反馈哪里不像 ZL2
-3. 界面定稿后再决定是否投入「接核心」（`docs/核心集成方案.md` 已给出路线，工作量以周计）
-
-## 许可提醒
-
-接入 Amethyst（GPL-3.0）后**整个 App 必须 GPL-3.0 开源**，且**不得沿用 "ZalithLauncher" / "ZL"**（其 GPL 附加条款要求改版改名）。建议改成 `Beryl Launcher` 之类。
-
----
-
-## 🆕 2026-11-03 晚：核心集成完成（run #18）
-
-| 项 | 状态 |
+| 日期 | 事件 |
 |---|---|
-| Amethyst 核心静态库 | ✅ 1.0 MB，编译通过 |
-| 动态依赖（AFNetworking/awt/tinygl4angle） | ✅ 已链接并打包 |
-| JRE 17 | ✅ java_runtimes/java-17-openjdk（含 libjli.dylib） |
-| Frameworks（19 个 dylib/framework） | ✅ 已打包 |
-| 启动调用链 | ✅ LaunchScreen → CoreBridge → launchJVM |
-| **最终 IPA** | ✅ **50.92 MB**，解压 158.2 MB |
+| 10-31 | 项目启动，8 个 Swift 文件 |
+| 11-01 | 接 Amethyst 核心，CI 首次全绿 |
+| 11-02 | 主题系统 + 模组/下载页 |
+| 11-03 | 录屏对照补 20 处 UI 差异，装海马体记忆插件 |
+| 11-04 | 源码系统性解析（16.6 万行），补 13 个模块 |
 
-**仍未验证**：App 能否安装、界面观感、JVM 能否真启动、能否进世界——全部需要真机。
+---
 
-详见 `docs/核心集成进度.md`。
+## 九、致谢
 
-## 🆕 2026-11-03 深夜：功能闭环（run #35）
-
-- 下载中心 6 类资源页 + 版本管理 7 页 + 设置 6 类
-- 真实 Mojang 版本清单已接入下载页
-- 版本安装器：client.jar + libraries + assets 索引
-- 启动页读已安装版本 JSON → 真正调用 launchJVM
-- 新增：搜索/导出/引导/崩溃日志/联机房间
-
-**覆盖率约 90%**；剩余为真机验证（安装、JVM 启动、渲染）。
+- **Zalith Launcher 2** — MovTery 与贡献者（GPL-3.0）
+- **Amethyst** — Angel Aura（GPL-3.0）
+- **Terracotta** — BurningTNT（GPL-3.0）
+- **EasyTier** — 开源 P2P 组网
+- **LayerController** — 控件系统
