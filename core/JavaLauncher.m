@@ -8,6 +8,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <mach/mach.h>
+#include <mach/task.h>
 
 #include "utils.h"
 
