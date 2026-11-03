@@ -1,0 +1,82 @@
+name: EasyTier iOS 探路
+
+# 目的：验证 EasyTier 的 Rust 核心能否在 CI 里交叉编译成 aarch64-apple-ios 静态库
+# 独立工作流，不影响主构建。失败不影响主分支状态。
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/easytier-probe.yml'
+
+jobs:
+  probe:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: 显示工具链
+        run: |
+          sw_vers
+          rustc --version || echo "无 rust"
+          xcodebuild -version
+
+      - name: 安装 Rust iOS target
+        run: |
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+            source "$HOME/.cargo/env"
+          fi
+          source "$HOME/.cargo/env" 2>/dev/null || true
+          rustup target add aarch64-apple-ios
+          rustc --version
+          rustup target list --installed
+
+      - name: 查找 EasyTier iOS 仓库
+        id: find
+        run: |
+          set +e
+          for repo in \
+            "https://github.com/EasyTier/EasyTier-iOS.git" \
+            "https://github.com/EasyTier/EasyTier.git" ; do
+            echo "=== 尝试 $repo ==="
+            rm -rf /tmp/et
+            if git clone --depth 1 "$repo" /tmp/et 2>/dev/null; then
+              echo "克隆成功: $repo"
+              echo "repo=$repo" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          done
+          echo "=== 目录结构 ==="
+          ls -la /tmp/et 2>/dev/null || echo "克隆失败"
+          find /tmp/et -name "Cargo.toml" -maxdepth 3 2>/dev/null | head -10
+
+      - name: 编译 iOS 静态库
+        if: steps.find.outputs.repo != ''
+        run: |
+          source "$HOME/.cargo/env" 2>/dev/null || true
+          set +e
+          # 优先 Core/ 目录（EasyTier-iOS 的形态），否则根目录
+          if [ -f /tmp/et/Core/Cargo.toml ]; then
+            cd /tmp/et/Core
+          elif [ -f /tmp/et/Cargo.toml ]; then
+            cd /tmp/et
+          else
+            echo "未找到 Cargo.toml"
+            exit 1
+          fi
+          echo "工作目录: $(pwd)"
+          cat Cargo.toml | head -30
+          echo "=== 开始编译（可能耗时长）==="
+          cargo build --release --target aarch64-apple-ios 2>&1 | tail -60
+          echo "=== 产物 ==="
+          find target/aarch64-apple-ios -name "*.a" 2>/dev/null | head -10
+          ls -lh target/aarch64-apple-ios/release/*.a 2>/dev/null || echo "无静态库产出"
+
+      - name: 上传产物
+        if: steps.find.outputs.repo != '' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: easytier-ios-lib
+          path: |
+            /tmp/et/Core/target/aarch64-apple-ios/release/*.a
+            /tmp/et/target/aarch64-apple-ios/release/*.a
+          if-no-files-found: warn
