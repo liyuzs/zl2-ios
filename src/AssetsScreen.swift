@@ -356,6 +356,21 @@ struct AssetsScreen: View {
         }
     }
 }
+    }
+    // MARK: 搜索（真实 Modrinth API）
+    private func runSearch() async {
+        loading = true
+        loadError = nil
+        do {
+            let type: ModrinthProjectType? = {
+                switch kind {
+                case .modpack:  return .modpack
+                case .mod:      return .mod
+                case .resource: return .resourcepack
+                case .shader:   return .shader
+                default:        return nil
+                }
+
 
 // MARK: - 演示数据（真实实现接 Modrinth/CurseForge API）
 enum SampleData {
@@ -397,20 +412,6 @@ enum SampleData {
                 .init(title: "BSL Shaders", subtitle: "已收藏 · 光影", author: "capttatsu", downloads: "1.2亿", tags: ["收藏"], version: "v10.11"),
             ]
         }
-    }
-    // MARK: 搜索（真实 Modrinth API）
-    private func runSearch() async {
-        loading = true
-        loadError = nil
-        do {
-            let type: ModrinthProjectType? = {
-                switch kind {
-                case .modpack:  return .modpack
-                case .mod:      return .mod
-                case .resource: return .resourcepack
-                case .shader:   return .shader
-                default:        return nil
-                }
             }()
             let gv: String? = gameVersion > 0
                 ? mcVersions[min(gameVersion, mcVersions.count - 1)] : nil
