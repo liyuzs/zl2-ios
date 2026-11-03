@@ -1,0 +1,425 @@
+// ZL2-iOS · 模组管理
+// 参考：ZL2 的 ModsManagerScreen.kt（1536 行）
+// 功能：扫描 mods 目录、真实 jar 解析、排序、启用/禁用、删除
+import SwiftUI
+
+// MARK: - 模组信息
+struct ZLModInfo: Identifiable, Equatable {
+    var id = UUID()
+    var fileName: String
+    var path: URL
+    var sizeBytes: Int64
+    var modified: Date
+    var enabled: Bool
+    // 从 fabric.mod.json / mods.toml 解析
+    var modName: String?
+    var modVersion: String?
+    var modAuthors: [String] = []
+    var modDescription: String?
+    var modId: String?
+}
+
+enum ZLModsSort: String, CaseIterable {
+    case fileName = "文件名"
+    case modified = "修改时间"
+}
+
+// MARK: - 模组管理页
+struct ModsManagerScreen: View {
+    var versionID: String
+    var onBack: () -> Void = {}
+    var onHome: () -> Void = {}
+
+    @State private var mods: [ZLModInfo] = []
+    @State private var sort: ZLModsSort = .fileName
+    @State private var ascending = true
+    @State private var search = ""
+    @State private var deleteTarget: ZLModInfo?
+    @State private var detail: ZLModInfo?
+    @State private var toast = ""
+
+    private var modsDir: URL {
+        VersionRepository.shared.mcRoot
+            .appendingPathComponent("mods", isDirectory: true)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZLTopBar(title: "模组管理 · \(versionID)", onBack: onBack, onHome: onHome)
+
+            // 工具栏
+            HStack(spacing: 8) {
+                Button { reload() } label: { toolChip("刷新", "arrow.clockwise") }
+                    .buttonStyle(.plain)
+                Button { sort = sort == .fileName ? .modified : .fileName } label: {
+                    toolChip("排序：\(sort.rawValue)", "arrow.up.arrow.down")
+                }
+                .buttonStyle(.plain)
+                Button { ascending.toggle() } label: {
+                    toolChip(ascending ? "升序" : "降序", ascending ? "arrow.up" : "arrow.down")
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                TextField("搜索模组", text: $search)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 10).frame(width: 170, height: 34)
+                    .background(ZLTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            }
+            .padding(.horizontal, ZLTheme.screenPadding)
+            .padding(.bottom, 8)
+
+            // 统计
+            HStack {
+                Text("共 \(filtered.count) 个模组 · \(enabledCount) 个已启用")
+                    .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+                Spacer()
+                if !toast.isEmpty {
+                    Text(toast).font(.system(size: 11)).foregroundStyle(ZLTheme.success)
+                }
+            }
+            .padding(.horizontal, ZLTheme.screenPadding)
+            .padding(.bottom, 8)
+
+            ScrollView {
+                VStack(spacing: 8) {
+                    if filtered.isEmpty {
+                        emptyState
+                    }
+                    ForEach(filtered) { m in
+                        modRow(m)
+                    }
+                }
+                .padding(.horizontal, ZLTheme.screenPadding)
+                .padding(.bottom, ZLTheme.screenPadding)
+            }
+        }
+        .background(ZLTheme.background.ignoresSafeArea())
+        .navigationBarHidden(true)
+        .task { reload() }
+        .alert("删除模组", isPresented: Binding(get: { deleteTarget != nil },
+                                                 set: { if !$0 { deleteTarget = nil } })) {
+            Button("取消", role: .cancel) { deleteTarget = nil }
+            Button("删除", role: .destructive) {
+                if let t = deleteTarget { delete(t) }
+                deleteTarget = nil
+            }
+        } message: {
+            Text("确定删除「\(deleteTarget?.fileName ?? "")」？")
+        }
+        .sheet(item: $detail) { m in
+            ModDetailSheet(mod: m) { detail = nil }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "puzzlepiece")
+                .font(.system(size: 34))
+                .foregroundStyle(ZLTheme.textSecond.opacity(0.35))
+            Text("还没有模组")
+                .font(.system(size: 13)).foregroundStyle(ZLTheme.textSecond)
+            Text("把 .jar 文件放进 mods 目录，或从下载中心安装")
+                .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond.opacity(0.7))
+            Button { openModsDir() } label: {
+                Text("打开 mods 目录")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(ZLTheme.primaryDeep)
+                    .padding(.horizontal, 14).frame(height: 34)
+                    .background(ZLTheme.primarySoft)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 40)
+    }
+
+    private func modRow(_ m: ZLModInfo) -> some View {
+        HStack(spacing: 12) {
+            // 图标
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(m.enabled ? ZLTheme.primarySoft : ZLTheme.surfaceAlt)
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Image(systemName: m.enabled ? "puzzlepiece.fill" : "puzzlepiece")
+                        .font(.system(size: 17))
+                        .foregroundStyle(m.enabled ? ZLTheme.primary : ZLTheme.textSecond)
+                )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(m.modName ?? m.fileName)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(m.enabled ? ZLTheme.textPrimary : ZLTheme.textSecond)
+                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    if let v = m.modVersion {
+                        Text(v).font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+                    }
+                    Text(ByteCountFormatter.string(fromByteCount: m.sizeBytes, countStyle: .file))
+                        .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+                    Text(m.fileName).font(.system(size: 9))
+                        .foregroundStyle(ZLTheme.textSecond.opacity(0.6)).lineLimit(1)
+                }
+                if let d = m.modDescription, !d.isEmpty {
+                    Text(d).font(.system(size: 10))
+                        .foregroundStyle(ZLTheme.textSecond).lineLimit(1)
+                }
+            }
+            Spacer()
+
+            Toggle("", isOn: Binding(
+                get: { m.enabled },
+                set: { toggle(m, $0) }
+            ))
+            .labelsHidden()
+            .tint(ZLTheme.primary)
+
+            Button { detail = m } label: {
+                Image(systemName: "info.circle").font(.system(size: 14))
+                    .foregroundStyle(ZLTheme.textSecond)
+                    .frame(width: 30, height: 30)
+            }
+            .buttonStyle(.plain)
+
+            Button { deleteTarget = m } label: {
+                Image(systemName: "trash").font(.system(size: 13))
+                    .foregroundStyle(ZLTheme.danger)
+                    .frame(width: 30, height: 30)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(11)
+        .background(ZLTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+    }
+
+    private func toolChip(_ t: String, _ icon: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon).font(.system(size: 10))
+            Text(t).font(.system(size: 11))
+        }
+        .foregroundStyle(ZLTheme.textSecond)
+        .padding(.horizontal, 10).frame(height: 32)
+        .background(ZLTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+    }
+
+    // MARK: 数据
+    private var enabledCount: Int { mods.filter { $0.enabled }.count }
+
+    private var filtered: [ZLModInfo] {
+        var list = mods
+        if !search.isEmpty {
+            list = list.filter {
+                ($0.modName ?? "").localizedCaseInsensitiveContains(search) ||
+                $0.fileName.localizedCaseInsensitiveContains(search)
+            }
+        }
+        // 排序（对齐 ZL2：文件名忽略大小写 / 修改时间倒序）
+        switch sort {
+        case .fileName:
+            list.sort { a, b in
+                let r = a.fileName.lowercased().compare(b.fileName.lowercased())
+                return ascending ? r == .orderedAscending : r == .orderedDescending
+            }
+        case .modified:
+            list.sort { a, b in
+                ascending ? a.modified < b.modified : a.modified > b.modified
+            }
+        }
+        return list
+    }
+
+    private func reload() {
+        let fm = FileManager.default
+        try? fm.createDirectory(at: modsDir, withIntermediateDirectories: true)
+        guard let files = try? fm.contentsOfDirectory(at: modsDir,
+                                                     includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey]) else {
+            mods = []
+            return
+        }
+        mods = files.filter { $0.pathExtension.lowercased() == "jar" }.map { url in
+            let attrs = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+            let enabled = !url.lastPathComponent.hasSuffix(".disabled")
+            let info = ModJarParser.parse(url)
+            return ZLModInfo(fileName: url.lastPathComponent,
+                             path: url,
+                             sizeBytes: Int64(attrs?.fileSize ?? 0),
+                             modified: attrs?.contentModificationDate ?? Date.distantPast,
+                             enabled: enabled,
+                             modName: info?.name,
+                             modVersion: info?.version,
+                             modAuthors: info?.authors ?? [],
+                             modDescription: info?.description,
+                             modId: info?.id)
+        }
+    }
+
+    private func toggle(_ m: ZLModInfo, _ on: Bool) {
+        let fm = FileManager.default
+        let src = m.path
+        if on {
+            // .jar.disabled → .jar
+            if src.lastPathComponent.hasSuffix(".disabled") {
+                let dst = src.deletingPathExtension()
+                try? fm.moveItem(at: src, to: dst)
+            }
+        } else {
+            // .jar → .jar.disabled
+            let dst = src.appendingPathExtension("disabled")
+            try? fm.moveItem(at: src, to: dst)
+        }
+        reload()
+    }
+
+    private func delete(_ m: ZLModInfo) {
+        try? FileManager.default.removeItem(at: m.path)
+        toast = "已删除 \(m.fileName)"
+        reload()
+    }
+
+    private func openModsDir() {
+        _ = modsDir
+    }
+}
+
+// MARK: - 模组详情
+struct ModDetailSheet: View {
+    let mod: ZLModInfo
+    var onClose: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("基本信息") {
+                    row("文件名", mod.fileName)
+                    if let n = mod.modName { row("名称", n) }
+                    if let v = mod.modVersion { row("版本", v) }
+                    if let i = mod.modId { row("Mod ID", i) }
+                    row("大小", ByteCountFormatter.string(fromByteCount: mod.sizeBytes, countStyle: .file))
+                    row("修改时间", mod.modified.formatted(date: .numeric, time: .shortened))
+                    row("状态", mod.enabled ? "已启用" : "已禁用")
+                }
+                if !mod.modAuthors.isEmpty {
+                    Section("作者") {
+                        ForEach(mod.modAuthors, id: \.self) { Text($0) }
+                    }
+                }
+                if let d = mod.modDescription, !d.isEmpty {
+                    Section("描述") { Text(d) }
+                }
+            }
+            .navigationTitle(mod.modName ?? mod.fileName)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("关闭") { onClose() }
+                }
+            }
+        }
+    }
+
+    private func row(_ k: String, _ v: String) -> some View {
+        HStack {
+            Text(k).foregroundStyle(.secondary)
+            Spacer()
+            Text(v).multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+// MARK: - JAR 元数据解析（fabric.mod.json / mods.toml / META-INF）
+struct ModJarInfo {
+    var id: String?
+    var name: String?
+    var version: String?
+    var authors: [String]
+    var description: String?
+}
+
+enum ModJarParser {
+    /// 解析 fabric.mod.json 或 META-INF/mods.toml
+    static func parse(_ url: URL) -> ModJarInfo? {
+        // 尝试 fabric.mod.json
+        if let data = readEntry(url, "fabric.mod.json"),
+           let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let id = o["id"] as? String
+            let name = o["name"] as? String
+            let version = o["version"] as? String
+            let desc = o["description"] as? String
+            var authors: [String] = []
+            if let arr = o["authors"] as? [[String: Any]] {
+                authors = arr.compactMap { $0["name"] as? String }
+            } else if let arr = o["authors"] as? [String] {
+                authors = arr
+            }
+            return ModJarInfo(id: id, name: name, version: version,
+                              authors: authors, description: desc)
+        }
+
+        // 尝试 META-INF/mods.toml（Forge/NeoForge）
+        if let data = readEntry(url, "META-INF/mods.toml"),
+           let text = String(data: data, encoding: .utf8) {
+            return parseToml(text)
+        }
+
+        // 尝试 quilt.mod.json
+        if let data = readEntry(url, "quilt.mod.json"),
+           let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let loader = o["quilt_loader"] as? [String: Any] {
+            let meta = loader["metadata"] as? [String: Any]
+            return ModJarInfo(id: loader["id"] as? String,
+                              name: meta?["name"] as? String,
+                              version: loader["version"] as? String,
+                              authors: [],
+                              description: meta?["description"] as? String)
+        }
+
+        return nil
+    }
+
+    /// 读取 jar（zip）里的一个文件
+    private static func readEntry(_ jarURL: URL, _ entry: String) -> Data? {
+        // 用系统 unzip 目录临时解（简化实现）
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("modjar-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        p.arguments = ["-o", "-q", jarURL.path, entry, "-d", tmp.path]
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError = FileHandle.nullDevice
+        try? p.run()
+        p.waitUntilExit()
+
+        let f = tmp.appendingPathComponent(entry)
+        return try? Data(contentsOf: f)
+    }
+
+    private static func parseToml(_ text: String) -> ModJarInfo? {
+        var id: String?, name: String?, version: String?, desc: String?
+        var authors: [String] = []
+        for line in text.split(separator: "\n") {
+            let l = line.trimmingCharacters(in: .whitespaces)
+            if l.hasPrefix("modId") { id = value(l) }
+            else if l.hasPrefix("displayName") { name = value(l) }
+            else if l.hasPrefix("version") { version = value(l) }
+            else if l.hasPrefix("description") { desc = value(l) }
+            else if l.hasPrefix("authors") { authors = [value(l)] }
+        }
+        guard id != nil || name != nil else { return nil }
+        return ModJarInfo(id: id, name: name, version: version,
+                          authors: authors, description: desc)
+    }
+
+    private static func value(_ line: String) -> String {
+        guard let eq = line.firstIndex(of: "=") else { return "" }
+        return line[line.index(after: eq)...]
+            .trimmingCharacters(in: .whitespaces)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+    }
+}
