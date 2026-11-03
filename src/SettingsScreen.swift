@@ -76,17 +76,17 @@ struct SettingsScreen: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(ZLTheme.textPrimary)
                     if let desc {
                         Text(desc)
-                            .font(.system(size: 12))
+                            .font(.system(size: 11))
                             .foregroundStyle(ZLTheme.textSecond)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     if let current {
                         Text("当前选择项：\(current)")
-                            .font(.system(size: 12))
+                            .font(.system(size: 11))
                             .foregroundStyle(ZLTheme.textSecond)
                     }
                 }
@@ -94,6 +94,54 @@ struct SettingsScreen: View {
                 trailing
             }
         }
+    }
+
+    // 真机样式的滑块：轨道 + 数值 + 左右箭头
+    private func arrowSlider(_ value: Binding<Double>, _ range: ClosedRange<Double>,
+                             _ unit: String) -> some View {
+        HStack(spacing: 8) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(ZLTheme.surfaceAlt)
+                        .frame(height: 6)
+                    Capsule().fill(ZLTheme.primary)
+                        .frame(width: geo.size.width * progressOf(value.wrappedValue, range), height: 6)
+                    Circle()
+                        .fill(ZLTheme.primary)
+                        .frame(width: 14, height: 14)
+                        .offset(x: geo.size.width * progressOf(value.wrappedValue, range) - 7)
+                }
+                .frame(maxHeight: .infinity, alignment: .center)
+            }
+            .frame(height: 18)
+
+            Text("\(Int(value.wrappedValue))\(unit)")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(ZLTheme.primaryDeep)
+                .frame(minWidth: 38)
+
+            HStack(spacing: 2) {
+                Button { if value.wrappedValue > range.lowerBound { value.wrappedValue -= 1 } } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .frame(width: 20, height: 18)
+                }
+                .buttonStyle(.plain)
+                Button { if value.wrappedValue < range.upperBound { value.wrappedValue += 1 } } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .frame(width: 20, height: 18)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func progressOf(_ v: Double, _ r: ClosedRange<Double>) -> Double {
+        guard r.upperBound > r.lowerBound else { return 0 }
+        return min(max((v - r.lowerBound) / (r.upperBound - r.lowerBound), 0), 1)
     }
 
     private func actionButtons() -> AnyView {
