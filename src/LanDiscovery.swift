@@ -48,7 +48,7 @@ final class LanDiscovery: ObservableObject {
         do {
             let l = try NWListener(using: params, on: port)
             l.newConnectionHandler = { [weak self] conn in
-                self?.handle(conn)
+                Task { @MainActor in self?.handle(conn) }
             }
             l.stateUpdateHandler = { [weak self] state in
                 Task { @MainActor in
@@ -104,7 +104,7 @@ final class LanDiscovery: ObservableObject {
                 }
             }
             if error == nil {
-                self?.receive(conn)
+                Task { @MainActor in self?.receive(conn) }
             } else {
                 conn.cancel()
             }
