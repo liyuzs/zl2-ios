@@ -174,12 +174,11 @@ add_library(ZL2Core STATIC
 )
 
 if("${CMAKE_HOST_SYSTEM_NAME}" MATCHES "Linux|^GNU$|Android")
-target_sources(AngelAuraAmethyst PUBLIC non_darwin_utils.m)
+target_sources(ZL2Core PUBLIC non_darwin_utils.m)
 endif()
 
-target_link_libraries(AngelAuraAmethyst
+target_link_libraries(ZL2Core
   PUBLIC AFNetworking
-  lzma
   "-F'${CMAKE_CURRENT_LIST_DIR}/build'"
   "-F'${CMAKE_CURRENT_LIST_DIR}/resources/Frameworks'"
   "-framework AltKit"
@@ -199,7 +198,6 @@ target_link_libraries(AngelAuraAmethyst
   "-framework WebKit"
   "-weak_framework SafariServices"
 )
-set_target_properties(AngelAuraAmethyst PROPERTIES
-  MACOSX_BUNDLE TRUE
-  MACOSX_FRAMEWORK_IDENTIFIER org.cmake.ExecutableTarget
-  MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/Info.plist")
+set_target_properties(ZL2Core PROPERTIES
+  STATIC_LIBRARY_ONLY TRUE
+  POSITION_INDEPENDENT_CODE ON)
