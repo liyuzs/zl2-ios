@@ -32,6 +32,25 @@ jobs:
           brew install xcodegen
           xcodegen --version
 
+      - name: Build Amethyst core (静态库)
+        run: |
+          set -x
+          SYSROOT=$(xcrun --sdk iphoneos --show-sdk-path)
+          CLANG=$(xcrun --sdk iphoneos -f clang)
+          CLANGXX=$(xcrun --sdk iphoneos -f clang++)
+          cd core
+          cmake -B build \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT="$SYSROOT" \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
+            -DCMAKE_C_COMPILER="$CLANG" \
+            -DCMAKE_CXX_COMPILER="$CLANGXX" \
+            -DCONFIG_RELEASE=1 \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target ZL2Core -j 4
+          ls -lh build/*.a || true
+
       - name: Generate Xcode project
         run: |
           xcodegen generate
