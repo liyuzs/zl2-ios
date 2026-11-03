@@ -76,8 +76,7 @@ struct VersionListScreen: View {
     // 左侧：游戏目录 + 底部两个按钮
     private var leftPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ZLCard(padding: 12) {
-                VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Image(systemName: "folder.fill")
                             .font(.system(size: 12))
@@ -93,10 +92,14 @@ struct VersionListScreen: View {
                     Text(VersionRepository.shared.mcRoot.path
                         .replacingOccurrences(of: NSHomeDirectory(), with: ""))
                         .font(.system(size: 9, design: .monospaced))
-                        .foregroundStyle(ZLTheme.textSecond)
+                        .foregroundStyle(ZLTheme.primaryDeep.opacity(0.7))
                         .lineLimit(2)
                 }
             }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(ZLTheme.primarySoft)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             Spacer()
 
@@ -156,8 +159,15 @@ struct VersionListScreen: View {
                 Spacer(minLength: 6)
 
                 ForEach(filters.indices, id: \.self) { i in
-                    ZLChip(title: "\(filters[i]) · (\(count(for: i)))",
-                           selected: filter == i) { filter = i }
+                    Button { filter = i } label: {
+                        Text("\(filters[i]) · (\(count(for: i)))")
+                            .font(.system(size: 11, weight: filter == i ? .semibold : .regular))
+                            .foregroundStyle(filter == i ? ZLTheme.textOnGold : ZLTheme.textSecond)
+                            .padding(.horizontal, 12).frame(height: 30)
+                            .background(filter == i ? ZLTheme.primary : ZLTheme.surfaceAlt)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
             }
 
@@ -176,8 +186,10 @@ struct VersionListScreen: View {
                         row(v)
                     }
                 }
-                .padding(.bottom, 6)
+                .padding(10)
             }
+            .background(ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
     }
 
@@ -244,9 +256,8 @@ struct VersionListScreen: View {
             .buttonStyle(.plain)
         }
         .padding(12)
-        .background(ZLTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+        .background(ZLTheme.primarySoft.opacity(0.55))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     // MARK: 数据
