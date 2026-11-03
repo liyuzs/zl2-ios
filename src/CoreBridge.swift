@@ -52,6 +52,7 @@ enum CoreBridge {
             }
         }
 
+        #if ZL2_CORE_LINKED
         // AME_HOME 是 Amethyst 全局数据根
         setenv("AME_HOME", home, 1)
         // GAME_DIR 用于隔离版本的偏好文件
@@ -68,6 +69,7 @@ enum CoreBridge {
             "8": "internal",
         ]
         setPrefObject("java.java_homes", homes)
+        #endif
 
         bootstrapped = true
     }
@@ -77,6 +79,7 @@ enum CoreBridge {
                               width: Int = 1280,
                               height: Int = 720) async throws {
         try bootstrap()
+        #if ZL2_CORE_LINKED
         let code = await withCheckedContinuation { cont in
             DispatchQueue.global(qos: .userInitiated).async {
                 let r = launchJVM(nil, metadata as NSDictionary, Int32(width), Int32(height), 17)
@@ -84,6 +87,9 @@ enum CoreBridge {
             }
         }
         if code != 0 { throw CoreLaunchError.launchReturned(code) }
+        #else
+        throw CoreLaunchError.coreNotLinked
+        #endif
     }
 
     /// 用 jar 路径直接启动（Amethyst 的最小验证路径）
@@ -94,6 +100,7 @@ enum CoreBridge {
         guard FileManager.default.fileExists(atPath: jarPath) else {
             throw CoreLaunchError.bootstrapFailed("jar 不存在：\(jarPath)")
         }
+        #if ZL2_CORE_LINKED
         let code = await withCheckedContinuation { cont in
             DispatchQueue.global(qos: .userInitiated).async {
                 let r = launchJVM(nil, jarPath as NSString, Int32(width), Int32(height), 17)
@@ -101,6 +108,9 @@ enum CoreBridge {
             }
         }
         if code != 0 { throw CoreLaunchError.launchReturned(code) }
+        #else
+        throw CoreLaunchError.coreNotLinked
+        #endif
     }
 
     /// 运行时自检：JRE 是否就位
