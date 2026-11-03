@@ -102,6 +102,13 @@ struct DownloadScreen: View {
     private var sideRail: some View {
         VStack(spacing: 6) {
             ForEach(categories.indices, id: \.self) { i in
+                // 真机：整合包 与 模组 之间有分隔线
+                if i == 2 {
+                    Rectangle()
+                        .fill(ZLTheme.textSecond.opacity(0.15))
+                        .frame(width: 40, height: 1)
+                        .padding(.vertical, 2)
+                }
                 Button {
                     if i == 0 { category = 0 }
                     else {
@@ -114,9 +121,9 @@ struct DownloadScreen: View {
                         Text(categories[i]).font(.system(size: 11))
                     }
                     .foregroundStyle(category == i ? ZLTheme.primaryDeep : ZLTheme.textSecond)
-                    .frame(width: 76, height: 62)
+                    .frame(width: 72, height: 58)
                     .background(category == i ? ZLTheme.primarySoft : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
