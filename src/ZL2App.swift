@@ -24,6 +24,9 @@ enum AppRoute: Hashable {
     case exportPack
     case crashLog
     case room
+    case gameDirs
+    case cleanFiles
+    case exportPackNew
 }
 
 struct RootView: View {
@@ -75,6 +78,12 @@ struct RootView: View {
                     CrashLogScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .room:
                     MultiplayerRoomScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .gameDirs:
+                    GameDirsScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .cleanFiles:
+                    CleanFilesScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .exportPackNew:
+                    ExportPackScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 }
             }
         }
