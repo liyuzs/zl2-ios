@@ -154,7 +154,7 @@ jobs:
             xcrun simctl spawn "$DEVICE" launchctl list 2>/dev/null | grep -i zl2 || echo "进程不在运行"
             xcrun simctl io "$DEVICE" screenshot /tmp/raw-shot.png || true
             # 设备按住竖屏，但 App 是横屏布局，旋转 90° 才是真实观感
-            sips -r 90 /tmp/raw-shot.png --out out/screenshot-home.png >/dev/null 2>&1 || cp /tmp/raw-shot.png out/screenshot-home.png
+            sips -r 270 /tmp/raw-shot.png --out out/screenshot-home.png >/dev/null 2>&1 || cp /tmp/raw-shot.png out/screenshot-home.png
             # 崩溃日志
             CRASH_DIR="$HOME/Library/Logs/DiagnosticReports"
             ls -lt "$CRASH_DIR" 2>/dev/null | head -5 || true
