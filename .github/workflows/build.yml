@@ -122,6 +122,8 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build-sim \
             CODE_SIGNING_ALLOWED=NO \
+            OTHER_LDFLAGS="" \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS="" \
             build
           APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
           if [ -n "$APP" ]; then
