@@ -144,9 +144,6 @@ add_library(ZL2Core STATIC
   PLPickerView.m
   PLPreferences.m
   PLProfiles.m
-  SurfaceViewController+ExternalDisplay.m
-  SurfaceViewController+LogView.m
-  SurfaceViewController+Navigation.m
   TrackedTextField.m
   egl_bridge.m
   input_bridge_v3.m
