@@ -90,6 +90,11 @@ struct AssetsScreen: View {
     @State private var gameVersion = 0
     @State private var category = 0
     @State private var modLoader = 0
+    // 真实搜索结果
+    @State private var hits: [ModrinthHit] = []
+    @State private var loading = false
+    @State private var loadError: String?
+    @State private var totalHits = 0
 
     private let platforms = ["未选择", "Windows", "Linux", "macOS", "Android", "iOS"]
     private let mcVersions = ["未选择", "1.21.4", "1.20.1", "1.19.2", "1.16.5", "1.12.2"]
@@ -113,6 +118,11 @@ struct AssetsScreen: View {
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
+        .task(id: "\(kind.rawValue)|\(query)|\(sort)|\(gameVersion)|\(modLoader)|\(category)") {
+            // 收藏与存档走本地，不打网络
+            if kind == .favorite || kind == .saves { return }
+            await runSearch()
+        }
     }
 
     // 左侧类型栏
@@ -192,73 +202,155 @@ struct AssetsScreen: View {
         }
     }
 
-    private var samples: [AssetItem] {
-        SampleData.items(for: kind)
+    /// 真实搜索（Modrinth）；本地收藏走 SampleData
+    private func runSearch() async {
+        guard let type = ModrinthProjectType.from(kind) else { hits = []; return }
+        loading = true
+        loadError = nil
+        do {
+            let gv = gameVersion > 0 ? mcVersions[gameVersion] : nil
+            let ld = modLoader > 0 ? loaders[modLoader] : nil
+            let cats = category > 0 && category - 1 < kind.categories.count ? [kind.categories[category - 1]] : []
+            let r = try await ModrinthAPI.shared.search(
+                query: query,
+                type: type,
+                gameVersion: gv,
+                loader: ld,
+                categories: cats,
+                sortIndex: sortIndex,
+                limit: 20)
+            hits = r.hits
+            totalHits = r.totalHits
+        } catch {
+            loadError = error.localizedDescription
+            hits = []
+        }
+        loading = false
     }
 
-    private var filtered: [AssetItem] {
-        query.isEmpty ? samples : samples.filter {
-            $0.title.localizedCaseInsensitiveContains(query) ||
-            $0.author.localizedCaseInsensitiveContains(query)
+    private var sortIndex: String {
+        switch sort {
+        case 1: return "downloads"
+        case 2: return "follows"
+        case 3: return "newest"
+        case 4: return "updated"
+        default: return "relevance"
         }
     }
 
     private var resultList: some View {
         ScrollView {
             VStack(spacing: 10) {
-                ForEach(filtered) { item in
-                    HStack(spacing: 14) {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(ZLTheme.primarySoft)
-                            .frame(width: 52, height: 52)
-                            .overlay(Image(systemName: kind.icon)
-                                .font(.system(size: 22))
-                                .foregroundStyle(ZLTheme.primary))
-
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(item.title)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(ZLTheme.textPrimary)
-                                .lineLimit(1)
-                            Text(item.subtitle)
-                                .font(.system(size: 12))
-                                .foregroundStyle(ZLTheme.textSecond)
-                                .lineLimit(1)
-                            HStack(spacing: 6) {
-                                ForEach(item.tags.prefix(3), id: \.self) { t in
-                                    Text(t)
-                                        .font(.system(size: 10))
-                                        .foregroundStyle(ZLTheme.primaryDeep)
-                                        .padding(.horizontal, 7)
-                                        .padding(.vertical, 2)
-                                        .background(ZLTheme.primarySoft)
-                                        .clipShape(Capsule())
-                                }
-                                Text("\(item.downloads) 次下载")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(ZLTheme.textSecond)
-                            }
-                        }
-                        Spacer()
-                        VStack(spacing: 4) {
-                            Text(item.version)
-                                .font(.system(size: 11))
-                                .foregroundStyle(ZLTheme.textSecond)
-                            Button { } label: {
-                                Image(systemName: "arrow.down.circle.fill")
-                                    .font(.system(size: 22))
-                                    .foregroundStyle(ZLTheme.primary)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                if loading {
+                    HStack(spacing: 8) {
+                        ProgressView().tint(ZLTheme.primary)
+                        Text("正在从 Modrinth 搜索…").font(.system(size: 13))
+                            .foregroundStyle(ZLTheme.textSecond)
                     }
-                    .padding(14)
-                    .background(ZLTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+                    .frame(maxWidth: .infinity).padding(.vertical, 24)
+                } else if let e = loadError {
+                    VStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(ZLTheme.warning)
+                        Text(e).font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+                        Button("重试") { Task { await runSearch() } }
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(ZLTheme.primaryDeep)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 24)
+                } else if hits.isEmpty {
+                    VStack(spacing: 6) {
+                        Image(systemName: "magnifyingglass").font(.system(size: 28))
+                            .foregroundStyle(ZLTheme.textSecond.opacity(0.5))
+                        Text("没有找到结果").font(.system(size: 13))
+                            .foregroundStyle(ZLTheme.textSecond)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 24)
+                } else {
+                    HStack {
+                        Text("共 \(totalHits) 个结果").font(.system(size: 11))
+                            .foregroundStyle(ZLTheme.textSecond)
+                        Spacer()
+                    }
+                    ForEach(hits) { h in
+                        hitRow(h)
+                    }
                 }
             }
             .padding(.trailing, 2)
+        }
+    }
+
+    private func hitRow(_ h: ModrinthHit) -> some View {
+        HStack(spacing: 14) {
+            Group {
+                if let url = h.iconURL {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let img): img.resizable().scaledToFill()
+                        default: ZLTheme.primarySoft
+                        }
+                    }
+                } else {
+                    ZLTheme.primarySoft
+                }
+            }
+            .frame(width: 52, height: 52)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(h.title).font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary).lineLimit(1)
+                Text(h.description).font(.system(size: 12))
+                    .foregroundStyle(ZLTheme.textSecond).lineLimit(2)
+                HStack(spacing: 6) {
+                    ForEach(h.categories.prefix(2), id: \.self) { c in
+                        Text(c).font(.system(size: 10))
+                            .foregroundStyle(ZLTheme.primaryDeep)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(ZLTheme.primarySoft).clipShape(Capsule())
+                    }
+                    Text("\(h.downloads) 次下载").font(.system(size: 10))
+                        .foregroundStyle(ZLTheme.textSecond)
+                }
+            }
+            Spacer(minLength: 6)
+            Button {
+                Task { await installProject(h) }
+            } label: {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.system(size: 24)).foregroundStyle(ZLTheme.primary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .background(ZLTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+    }
+
+    /// 下载并放入对应目录
+    private func installProject(_ h: ModrinthHit) async {
+        do {
+            let vs = try await ModrinthAPI.shared.versions(
+                projectID: h.id,
+                gameVersion: gameVersion > 0 ? mcVersions[gameVersion] : "1.20.1",
+                loader: modLoader > 0 ? loaders[modLoader] : nil)
+            guard let v = vs.first, let f = v.files.first(where: \.primary) ?? v.files.first else {
+                loadError = "该项目没有可用文件"; return
+            }
+            let root = VersionRepository.shared.mcRoot
+            let dir: URL
+            switch kind {
+            case .mod:      dir = root.appendingPathComponent("mods")
+            case .resource: dir = root.appendingPathComponent("resourcepacks")
+            case .shader:   dir = root.appendingPathComponent("shaderpacks")
+            case .modpack:  dir = root.appendingPathComponent("modpacks")
+            default:        dir = root.appendingPathComponent("downloads")
+            }
+            _ = try await ModrinthAPI.shared.download(f, to: dir)
+        } catch {
+            loadError = error.localizedDescription
         }
     }
 }
