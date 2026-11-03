@@ -130,9 +130,27 @@ struct RootView: View {
                         onBack: { path.removeLast() },
                         onHome: { path.removeAll() },
                         onStart: { sel in
-                            // TODO: 接入 VersionInstaller 真实下载
-                            _ = sel
                             path.removeAll()
+                            Task {
+                                let taskID = await ZLTaskCenter.shared.add("安装 \(sel.customName)")
+                                let installer = VersionInstaller()
+                                do {
+                                    try await installer.install(versionID: gv) { p in
+                                        let total = max(p.total, 1)
+                                        let frac = Double(p.completed) / Double(total)
+                                        Task { @MainActor in
+                                            ZLTaskCenter.shared.update(taskID,
+                                                progress: frac,
+                                                detail: "\(p.phase.rawValue) \(p.completed)/\(p.total)")
+                                        }
+                                    }
+                                    await ZLTaskCenter.shared.update(taskID, state: .done,
+                                                                    detail: "安装完成")
+                                } catch {
+                                    await ZLTaskCenter.shared.update(taskID, state: .failed,
+                                                                    detail: error.localizedDescription)
+                                }
+                            }
                         })
                 case .logView:
                     LogViewScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
