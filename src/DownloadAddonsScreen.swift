@@ -169,6 +169,25 @@ struct DownloadAddonsScreen: View {
                         }
                     }
 
+                    // Forge/NeoForge 限制说明
+                    if selection.loader == .forge || selection.loader == .neoforge {
+                        ZLCard {
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(ZLTheme.warning)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("\(selection.loader.rawValue) 需要运行 installer")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundStyle(ZLTheme.textPrimary)
+                                    Text("iOS 不允许启动子进程，无法执行 installer.jar。\n建议先用 Fabric/Quilt，或手动在电脑上安装后将版本目录导入。")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(ZLTheme.textSecond)
+                                }
+                            }
+                        }
+                    }
+
                     // 加载器版本
                     if selection.loader != .vanilla {
                         ZLCard {
@@ -234,14 +253,15 @@ struct DownloadAddonsScreen: View {
 
                     // 开始
                     Button { onStart(finalSelection) } label: {
-                        Text("开始下载")
+                        Text(isLoaderUnsupported ? "该加载器需电脑端安装" : "开始下载")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(ZLTheme.textOnGold)
                             .frame(maxWidth: .infinity).frame(height: 48)
-                            .background(ZLTheme.primary)
+                            .background(isLoaderUnsupported ? ZLTheme.textSecond.opacity(0.3) : ZLTheme.primary)
                             .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .disabled(isLoaderUnsupported)
                     .padding(.top, 4)
                 }
                 .padding(ZLTheme.screenPadding)
@@ -250,6 +270,10 @@ struct DownloadAddonsScreen: View {
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
         .task { await reloadVersions() }
+    }
+
+    private var isLoaderUnsupported: Bool {
+        selection.loader == .forge || selection.loader == .neoforge
     }
 
     private var autoName: String {
