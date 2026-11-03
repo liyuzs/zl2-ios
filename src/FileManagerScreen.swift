@@ -98,7 +98,7 @@ struct FileManagerScreen: View {
                 Divider()
                 Button("清空回收站", role: .destructive) { emptyTrash() }
             } label: {
-                Image(systemName: "ellipsis.circle").foregroundStyle(ZLTheme.textSecondary)
+                Image(systemName: "ellipsis.circle").foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 36, height: 34)
                     .background(ZLTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
