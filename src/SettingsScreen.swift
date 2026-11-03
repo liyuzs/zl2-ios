@@ -155,8 +155,46 @@ struct SettingsScreen: View {
         }
     }
 
+    @AppStorage("jvmArgs") private var jvmArgs = ""
+    @AppStorage("showLogAuto") private var showLogAuto = true
+
     @ViewBuilder
     private var gameSettings: some View {
+        // JVM 参数（真机：输入框 + 内存提示）
+        ZLCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("JVM 参数").font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                TextField("-Dfile.encoding=UTF-8", text: $jvmArgs)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11, design: .monospaced))
+                    .padding(.horizontal, 10).frame(height: 38)
+                    .background(ZLTheme.surfaceAlt)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                HStack {
+                    Text("留白则忽略此设置")
+                        .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+                    Spacer()
+                    Text("\(memoryMB)MB")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(ZLTheme.primaryDeep)
+                }
+            }
+        }
+
+        ZLCard {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("自动显示日志").font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Text("游戏启动后自动显示运行日志").font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                }
+                Spacer()
+                Toggle("", isOn: $showLogAuto).labelsHidden().tint(ZLTheme.primary)
+            }
+        }
+
         ZLCard {
             VStack(alignment: .leading, spacing: 10) {
                 Text("内存分配")
@@ -184,11 +222,58 @@ struct SettingsScreen: View {
 
 
     // MARK: 控制设置
+    @AppStorage("longPressDelay") private var longPressDelay = 256.0
+    @AppStorage("physicalMouse") private var physicalMouse = false
+    @AppStorage("matrixMouse") private var matrixMouse = false
+
     @ViewBuilder
     private var controlSettings: some View {
+        // 长按触发的延迟（真机：滑块 256ms）
+        ZLCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("手感长按触发的延迟").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Text("按下后需要按住多久才判定为长按").font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+                HStack {
+                    Slider(value: $longPressDelay, in: 100...600, step: 16)
+                        .tint(ZLTheme.primary)
+                    Text("\(Int(longPressDelay))ms")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 56)
+                }
+            }
+        }
+
+        settingCard(title: "长按触发的操作类型", desc: "设置长按控件时触发的动作", current: "长按持续触发")
+
+        ZLCard {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("实物鼠标控制").font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Text("连接实体鼠标时禁用虚拟指针，直接用系统鼠标").font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                }
+                Spacer()
+                Toggle("", isOn: $physicalMouse).labelsHidden().tint(ZLTheme.primary)
+            }
+        }
+
+        ZLCard {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("矩阵鼠标控制").font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Text("在虚拟按键上滑动时，让指针持续移动").font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                }
+                Spacer()
+                Toggle("", isOn: $matrixMouse).labelsHidden().tint(ZLTheme.primary)
+            }
+        }
+
         settingCard(title: "控制布局", desc: "编辑屏幕按键的位置、大小与触发事件", current: "默认布局", trailing: actionButtons())
-        settingCard(title: "按键透明度", desc: "控制布局在游戏内的可见度", current: "100%", trailing: actionButtons())
-        settingCard(title: "滑动手势", desc: "启用两指滑动模拟鼠标滚轮", current: "已开启")
         settingCard(title: "输入法模式", desc: "游戏内文字输入方式", current: "直接输入", trailing: actionButtons())
     }
 

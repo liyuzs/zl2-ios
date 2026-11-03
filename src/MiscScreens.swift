@@ -326,3 +326,133 @@ struct MultiplayerRoomScreen: View {
         .navigationBarHidden(true)
     }
 }
+
+// MARK: - 按项目 ID 搜索（真机：下载-搜索ID）
+struct SearchIDScreen: View {
+    var onBack: () -> Void = {}
+    var onHome: () -> Void = {}
+
+    @State private var projectID = ""
+    @State private var loading = false
+    @State private var errorText: String?
+    @State private var result: ModrinthHit?
+    @State private var platform = 0
+    private let platforms = ["全部", "Modrinth", "CurseForge"]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZLTopBar(title: "搜索 ID", active: .download, onBack: onBack, onHome: onHome)
+
+            VStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    Text("项目 ID").font(.system(size: 13))
+                        .foregroundStyle(ZLTheme.textSecond)
+                    TextField("输入项目 ID", text: $projectID)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 14))
+                        .padding(.horizontal, 12).frame(height: 40)
+                        .background(ZLTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .onSubmit { Task { await search() } }
+                    Button {
+                        Task { await search() }
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(ZLTheme.textOnGold)
+                            .frame(width: 44, height: 40)
+                            .background(ZLTheme.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(projectID.isEmpty || loading)
+
+                    Menu {
+                        ForEach(platforms.indices, id: \.self) { i in
+                            Button(platforms[i]) { platform = i }
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Text(platforms[platform]).font(.system(size: 12))
+                            Image(systemName: "chevron.down").font(.system(size: 9))
+                        }
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .padding(.horizontal, 12).frame(height: 40)
+                        .background(ZLTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                }
+
+                if loading {
+                    ProgressView().tint(ZLTheme.primary).padding(.top, 30)
+                } else if let e = errorText {
+                    Text(e).font(.system(size: 12)).foregroundStyle(ZLTheme.danger)
+                        .padding(.top, 20)
+                } else if let r = result {
+                    hitCard(r)
+                } else {
+                    VStack(spacing: 8) {
+                        Image(systemName: "number.circle")
+                            .font(.system(size: 34))
+                            .foregroundStyle(ZLTheme.textSecond.opacity(0.35))
+                        Text("根据项目 ID 快速获取对应项目")
+                            .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+                    }
+                    .frame(maxWidth: .infinity).padding(.top, 60)
+                }
+                Spacer()
+            }
+            .padding(ZLTheme.screenPadding)
+        }
+        .background(ZLTheme.background.ignoresSafeArea())
+        .navigationBarHidden(true)
+    }
+
+    private func hitCard(_ h: ModrinthHit) -> some View {
+        HStack(spacing: 14) {
+            Group {
+                if let u = h.iconURL {
+                    AsyncImage(url: u) { p in
+                        if case .success(let img) = p { img.resizable().scaledToFill() }
+                        else { ZLTheme.primarySoft }
+                    }
+                } else { ZLTheme.primarySoft }
+            }
+            .frame(width: 56, height: 56)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(h.title).font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Text(h.description).font(.system(size: 12))
+                    .foregroundStyle(ZLTheme.textSecond).lineLimit(2)
+                Text("\(h.downloads) 次下载 · \(h.projectType)")
+                    .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+            }
+            Spacer()
+        }
+        .padding(14)
+        .background(ZLTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func search() async {
+        guard !projectID.isEmpty else { return }
+        loading = true
+        errorText = nil
+        result = nil
+        do {
+            // 复用 Modrinth 搜索：用 ID 当关键词，命中第一条即目标
+            let r = try await ModrinthAPI.shared.search(query: projectID, type: nil, limit: 1)
+            if let first = r.hits.first, first.id == projectID || first.slug == projectID {
+                result = first
+            } else if let first = r.hits.first {
+                result = first
+            } else {
+                errorText = "未找到该项目"
+            }
+        } catch {
+            errorText = error.localizedDescription
+        }
+        loading = false
+    }
+}

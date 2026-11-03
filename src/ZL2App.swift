@@ -32,6 +32,7 @@ enum AppRoute: Hashable {
     case fileManager
     case versionList
     case javaManage
+    case searchID
 }
 
 struct RootView: View {
@@ -97,6 +98,8 @@ struct RootView: View {
                     SkinCapeScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .fileManager:
                     FileManagerScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .searchID:
+                    SearchIDScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .javaManage:
                     JavaManageScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .versionList:
@@ -369,27 +372,82 @@ struct ControlKey: Identifiable {
     ]
 }
 
-// MARK: - 关于
+// MARK: - 关于（真机：致谢列表 + 已加载插件）
 struct AboutScreen: View {
+    private let credits: [(String, String)] = [
+        ("bangbang93", "BMCLAPI 镜像源"),
+        ("Fold Craft Launcher", "2.7.2 更新了 HMCL API 服务器的支持"),
+        ("Hello Minecraft! Launcher", "2.9.7.2 更新了 HMCL API 服务器，添加新的稳定平台"),
+        ("MC 百科 (mcmod.cn)", "同步了部分图标，移除旧误用图"),
+        ("Terracotta", "Copyright © 2023-2025 BurningTNT，遵循 AGPL-3.0"),
+        ("XZ for Java", "Copyright © 2011 Tukaani，遵循 public domain"),
+    ]
+
     var body: some View {
-        List {
-            Section("关于") {
-                row("应用", "ZL2-iOS（非官方）")
-                row("界面", "SwiftUI 复刻 Zalith Launcher 2")
-                row("启动核心", CoreBridge.isCoreLinked ? "Amethyst 已链接" : "未接入")
-            }
-            Section("致谢与许可") {
-                Text("Zalith Launcher 2 —— Jetpack Compose 界面（GPL-3.0）\nAmethyst-iOS —— Java 启动核心（GPL-3.0）\n本项目遵循 GPL-3.0")
-                    .font(.system(size: 12))
+        ScrollView {
+            VStack(spacing: 14) {
+                ZLCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("关于").font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(ZLTheme.textPrimary)
+                        row("应用", "ZL2-iOS（非官方复刻）")
+                        row("界面", "SwiftUI 复刻 Zalith Launcher 2")
+                        row("启动核心", CoreBridge.isCoreLinked ? "Amethyst 已链接" : "未接入")
+                    }
+                }
+
+                ZLCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("致谢").font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(ZLTheme.textPrimary)
+                        ForEach(credits, id: \.0) { name, desc in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(name).font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(ZLTheme.textPrimary)
+                                Text(desc).font(.system(size: 10))
+                                    .foregroundStyle(ZLTheme.textSecond)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+
+                ZLCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("已加载的插件").font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(ZLTheme.textPrimary)
+                        HStack(spacing: 10) {
+                            Image(systemName: "puzzlepiece.extension.fill")
+                                .foregroundStyle(ZLTheme.primary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("MobileGlues").font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(ZLTheme.textPrimary)
+                                Text("com.pi.phux.mobileglues · 1.3.4")
+                                    .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+                            }
+                        }
+                    }
+                }
+
+                Text("本项目遵循 GPL-3.0\nZalith Launcher 2 由 MovTery 开发")
+                    .font(.system(size: 10))
                     .foregroundStyle(ZLTheme.textSecond)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 6)
             }
+            .padding(ZLTheme.screenPadding)
         }
-        .scrollContentBackground(.hidden)
-        .background(ZLTheme.background)
+        .background(ZLTheme.background.ignoresSafeArea())
+        .navigationBarHidden(true)
     }
 
     private func row(_ k: String, _ v: String) -> some View {
-        HStack { Text(k); Spacer(); Text(v).foregroundStyle(ZLTheme.textSecond) }
-            .font(.system(size: 14))
+        HStack {
+            Text(k).font(.system(size: 13)).foregroundStyle(ZLTheme.textSecond)
+            Spacer()
+            Text(v).font(.system(size: 13, weight: .medium))
+                .foregroundStyle(ZLTheme.textPrimary)
+        }
     }
+
 }

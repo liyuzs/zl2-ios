@@ -259,18 +259,42 @@ struct AssetsScreen: View {
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 24)
                 } else if hits.isEmpty {
-                    VStack(spacing: 6) {
-                        Image(systemName: "magnifyingglass").font(.system(size: 28))
-                            .foregroundStyle(ZLTheme.textSecond.opacity(0.5))
-                        Text("没有找到结果").font(.system(size: 13))
+                    VStack(spacing: 10) {
+                        // 真机的"空"视觉：一条波浪线
+                        Path { path in
+                            let w: CGFloat = 120
+                            let h: CGFloat = 16
+                            path.move(to: CGPoint(x: 0, y: h / 2))
+                            var x: CGFloat = 0
+                            while x < w {
+                                path.addQuadCurve(to: CGPoint(x: x + 15, y: h / 2),
+                                                  control: CGPoint(x: x + 7.5, y: 0))
+                                path.addQuadCurve(to: CGPoint(x: x + 30, y: h / 2),
+                                                  control: CGPoint(x: x + 22.5, y: h))
+                                x += 30
+                            }
+                        }
+                        .stroke(ZLTheme.textSecond.opacity(0.35), lineWidth: 2)
+                        .frame(width: 120, height: 16)
+
+                        Text("没有找到相关\(kind.rawValue)")
+                            .font(.system(size: 13))
                             .foregroundStyle(ZLTheme.textSecond)
+                        if gameVersion == 0 {
+                            Text("试试换个游戏版本或类别").font(.system(size: 11))
+                                .foregroundStyle(ZLTheme.textSecond.opacity(0.7))
+                        }
                     }
-                    .frame(maxWidth: .infinity).padding(.vertical, 24)
+                    .frame(maxWidth: .infinity).padding(.vertical, 40)
                 } else {
-                    HStack {
-                        Text("共 \(totalHits) 个结果").font(.system(size: 11))
+                    HStack(spacing: 6) {
+                        Text("1/\(totalHits)")
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(ZLTheme.textSecond)
                         Spacer()
+                        Text("\(hits.count) 条/页")
+                            .font(.system(size: 10))
+                            .foregroundStyle(ZLTheme.textSecond.opacity(0.8))
                     }
                     ForEach(hits) { h in
                         hitRow(h)
