@@ -164,6 +164,20 @@ jobs:
           fi
           ls -la out || true
 
+      - name: Publish to GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: ZL2 构建 #${{ github.run_number }}
+          body: |
+            自动构建产物（未签名 IPA）
+            - 提交：${{ github.sha }}
+            - 包含：Amethyst 核心 + JRE17 + Frameworks
+            - 提示：需要自行签名（SideStore / Sideloadly）
+          files: ZL2.ipa
+          generate_release_notes: false
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
