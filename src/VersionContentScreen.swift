@@ -34,6 +34,11 @@ struct VersionContentScreen: View {
 
     @State private var kind: VersionContentKind = .overview
     @State private var enabledMods: Set<String> = ["JEI", "JourneyMap", "Waystones"]
+    @State private var installed: [VersionRepository.InstalledVersion] = []
+    @State private var actionVersion = ""
+    @State private var showActions = false
+    @State private var alertText = ""
+    @State private var showAlert = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,7 +58,35 @@ struct VersionContentScreen: View {
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
-        .onAppear { kind = initial }
+        .onAppear {
+            kind = initial
+            installed = VersionRepository.shared.listVersions()
+        }
+        .alert(alertText, isPresented: $showAlert) { Button("好", role: .cancel) { } }
+        .sheet(isPresented: $showActions) {
+            VersionActionSheet(versionName: actionVersion,
+                               isPresented: $showActions,
+                               onCopy: {
+                                   let n = "\(actionVersion)-副本"
+                                   do {
+                                       try VersionRepository.shared.copyVersion(actionVersion, to: n)
+                                       alertText = "已复制为 \(n)"
+                                   } catch { alertText = error.localizedDescription }
+                                   showAlert = true
+                                   installed = VersionRepository.shared.listVersions()
+                               },
+                               onRename: {
+                                   installed = VersionRepository.shared.listVersions()
+                               },
+                               onDelete: {
+                                   do {
+                                       try VersionRepository.shared.deleteVersion(actionVersion)
+                                       alertText = "已删除 \(actionVersion)"
+                                   } catch { alertText = error.localizedDescription }
+                                   showAlert = true
+                                   installed = VersionRepository.shared.listVersions()
+                               })
+        }
     }
 
     private var rail: some View {
@@ -96,6 +129,31 @@ struct VersionContentScreen: View {
         VStack(spacing: ZLTheme.cardGap) {
             ZLCard {
                 VStack(alignment: .leading, spacing: 8) {
+                    Text("已安装版本（\(installed.count)）").font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    ForEach(installed.prefix(6), id: \.id) { v in
+                        HStack {
+                            Text(v.id).font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(ZLTheme.textPrimary)
+                            Spacer()
+                            Text(ByteCountFormatter.string(fromByteCount: v.sizeBytes, countStyle: .file))
+                                .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+                            Button {
+                                actionVersion = v.id
+                                showActions = true
+                            } label: {
+                                Image(systemName: "ellipsis.circle")
+                                    .foregroundStyle(ZLTheme.primary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    if installed.isEmpty {
+                        Text("还没有安装任何版本")
+                            .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+                    }
+                    Divider()
                     Text("版本信息").font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(ZLTheme.textPrimary)
                     infoRow("游戏版本", "1.20.1")

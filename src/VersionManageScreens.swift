@@ -110,14 +110,17 @@ struct CleanFilesScreen: View {
                         }
                     }
 
-                    ZLGoldButton(title: phase == 1 ? "扫描中…" : (phase == 2 ? "再次扫描" : "开始扫描"),
-                                 icon: phase == 1 ? "clock" : "magnifyingglass",
+                    ZLGoldButton(title: phase == 1 ? "扫描中…" : (phase == 2 ? "再次清理" : "开始扫描并清理"),
+                                 icon: phase == 1 ? "clock" : "trash",
                                  enabled: phase != 1) {
                         Task {
                             phase = 1
-                            try? await Task.sleep(nanoseconds: 900_000_000)
-                            removed = Int.random(in: 12...86)
-                            freed = "\(removed * 2) MB"
+                            let repo = VersionRepository.shared
+                            let r = await Task.detached(priority: .userInitiated) {
+                                repo.cleanUnusedFiles(dryRun: false)
+                            }.value
+                            removed = r.removedFiles
+                            freed = ByteCountFormatter.string(fromByteCount: r.freedBytes, countStyle: .file)
                             phase = 2
                         }
                     }
