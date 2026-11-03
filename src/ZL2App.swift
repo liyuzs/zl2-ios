@@ -35,6 +35,8 @@ enum AppRoute: Hashable {
     case searchID
     case controlManage
     case serverList
+    case logView
+    case license
     case terracotta
     case modsManager(String)
     case savesManager(String)
@@ -115,6 +117,10 @@ struct RootView: View {
                     SavesManagerScreen(versionID: vid,
                                        onBack: { path.removeLast() },
                                        onHome: { path.removeAll() })
+                case .logView:
+                    LogViewScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .license:
+                    LicenseScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .terracotta:
                     TerracottaScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .modsManager(let vid):
