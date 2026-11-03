@@ -106,13 +106,13 @@ struct AssetsScreen: View {
                      active: .download,
                      onBack: onBack, onHome: onHome, onSettings: onSettings)
 
-            HStack(spacing: 0) {
+            HStack(alignment: .top, spacing: ZLTheme.cardGap) {
                 kindRail
-                VStack(spacing: 12) {
-                    toolbar
-                    resultList
-                }
-                .padding(.trailing, ZLTheme.screenPadding)
+                resultList
+                    .frame(maxWidth: .infinity)
+                filterPanel
+                    .frame(width: 210)
+                    .padding(.trailing, ZLTheme.screenPadding)
             }
             .padding(.bottom, ZLTheme.screenPadding)
         }
@@ -146,6 +146,74 @@ struct AssetsScreen: View {
         .padding(.leading, 8)
         .padding(.vertical, 8)
         .frame(width: 92)
+    }
+
+    // 右侧：筛选面板（真机：竖排卡片）
+    private var filterPanel: some View {
+        VStack(spacing: 8) {
+            // 搜索
+            HStack(spacing: 5) {
+                Image(systemName: "magnifyingglass").font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+                TextField("搜索名称", text: $query)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11))
+                    .onSubmit { Task { await runSearch() } }
+            }
+            .padding(.horizontal, 10).frame(height: 34)
+            .background(ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            filterCard("目标平台", current: kind.sources[min(source, kind.sources.count-1)]) {
+                ForEach(kind.sources.indices, id: \.self) { i in
+                    Button(kind.sources[i]) { source = i }
+                }
+            }
+            filterCard("排序方式", current: kind.sorts[min(sort, kind.sorts.count-1)]) {
+                ForEach(kind.sorts.indices, id: \.self) { i in
+                    Button(kind.sorts[i]) { sort = i }
+                }
+            }
+            if !kind.categories.isEmpty {
+                filterCard("类别",
+                           current: category == 0 ? "未选择" : kind.categories[min(category-1, kind.categories.count-1)]) {
+                    Button("未选择") { category = 0 }
+                    ForEach(kind.categories.indices, id: \.self) { i in
+                        Button(kind.categories[i]) { category = i + 1 }
+                    }
+                }
+            }
+            filterCard("模组加载器", current: loaders[min(modLoader, loaders.count-1)]) {
+                ForEach(loaders.indices, id: \.self) { i in
+                    Button(loaders[i]) { modLoader = i }
+                }
+            }
+            Spacer()
+        }
+    }
+
+    private func filterCard<C: View>(_ title: String, current: String,
+                                     @ViewBuilder options: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.system(size: 10))
+                .foregroundStyle(ZLTheme.textSecond)
+            Menu {
+                options()
+            } label: {
+                HStack {
+                    Text(current)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                        .lineLimit(1)
+                    Spacer()
+                    Image(systemName: "chevron.down").font(.system(size: 9))
+                        .foregroundStyle(ZLTheme.textSecond)
+                }
+                .padding(.horizontal, 10).frame(height: 34)
+                .background(ZLTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+        }
     }
 
     // 顶部：来源 + 四个筛选维度 + 排序 + 搜索
