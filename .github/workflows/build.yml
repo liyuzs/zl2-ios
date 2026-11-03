@@ -84,6 +84,10 @@ jobs:
           # 1) 渲染/认证 dylib 与 framework
           mkdir -p "$APP/Frameworks"
           cp -R core/resources/Frameworks/. "$APP/Frameworks/"
+          # JIT 脚本：iOS 26 启动必需（Amethyst 会从 bundle 读）
+          for f in core/resources/*.js; do
+            [ -f "$f" ] && cp "$f" "$APP/" && echo "copied $(basename "$f")"
+          done
 
           # 1.5) CMake 产出的动态库（AFNetworking / awt_xawt 等）
           cp -R core/build/*.dylib "$APP/Frameworks/" 2>/dev/null || true
