@@ -85,42 +85,157 @@ struct TerracottaScreen: View {
     @State private var logs: [String] = []
     @State private var ticker: Timer?
 
-    private let tabs = ["联机", "用户须知", "房主教程", "房客教程"]
+    private let tabs = ["用户须知", "房主教程", "房客教程"]
 
     var body: some View {
         VStack(spacing: 0) {
             ZLTopBar(title: "Terracotta | 陶瓦联机", active: .multiplayer,
                      onBack: onBack, onHome: onHome)
 
-            // 标签
-            HStack(spacing: 0) {
-                ForEach(tabs.indices, id: \.self) { i in
-                    Button { tab = i } label: {
-                        Text(tabs[i])
-                            .font(.system(size: 13, weight: tab == i ? .semibold : .regular))
-                            .foregroundStyle(tab == i ? ZLTheme.primaryDeep : ZLTheme.textSecond)
-                            .frame(maxWidth: .infinity).frame(height: 40)
-                            .background(tab == i ? ZLTheme.primarySoft : Color.clear)
+            // 左右分栏（真机：左教程 / 右操作）
+            HStack(alignment: .top, spacing: ZLTheme.cardGap) {
+                // 左栏：教程
+                VStack(spacing: 0) {
+                    // 标签栏（下划线选中）
+                    HStack(spacing: 0) {
+                        ForEach(tabs.indices, id: \.self) { i in
+                            Button { tab = i } label: {
+                                VStack(spacing: 4) {
+                                    Text(tabs[i])
+                                        .font(.system(size: 12, weight: tab == i ? .semibold : .regular))
+                                        .foregroundStyle(tab == i ? ZLTheme.textPrimary : ZLTheme.textSecond)
+                                    Rectangle()
+                                        .fill(tab == i ? ZLTheme.primary : Color.clear)
+                                        .frame(height: 2)
+                                }
+                                .frame(maxWidth: .infinity).frame(height: 40)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    Divider().background(ZLTheme.cardStroke)
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(tabs[tab])
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(ZLTheme.textPrimary)
+                            Text(tutorialText)
+                                .font(.system(size: 11))
+                                .foregroundStyle(ZLTheme.textSecond)
+                                .lineSpacing(3)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                    }
+                }
+                .background(ZLTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                // 右栏：操作
+                VStack(spacing: 0) {
+                    // 启用开关
+                    HStack {
+                        Text("启用多人联机").font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(ZLTheme.textPrimary)
+                        Spacer()
+                        Toggle("", isOn: $enabled).labelsHidden().tint(ZLTheme.primary)
+                    }
+                    .padding(14)
+
+                    Divider().background(ZLTheme.cardStroke)
+
+                    // 分享日志
+                    Button { showLog = true } label: {
+                        HStack {
+                            Text("分享联机核心日志").font(.system(size: 13))
+                                .foregroundStyle(ZLTheme.textPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.system(size: 10))
+                                .foregroundStyle(ZLTheme.textSecond)
+                        }
+                        .padding(14)
                     }
                     .buttonStyle(.plain)
-                }
-            }
-            .background(ZLTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .padding(.horizontal, ZLTheme.screenPadding)
-            .padding(.bottom, 10)
 
-            ScrollView {
-                VStack(spacing: 12) {
-                    switch tab {
-                    case 0: connectTab
-                    case 1: noticeTab
-                    case 2: hostTutorialTab
-                    default: guestTutorialTab
+                    Divider().background(ZLTheme.cardStroke)
+
+                    // 关于
+                    Button {
+                        UIApplication.shared.open(URL(string: "https://easytier.cn/")!)
+                    } label: {
+                        HStack {
+                            Text("关于 EasyTier").font(.system(size: 13))
+                                .foregroundStyle(ZLTheme.textPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.system(size: 10))
+                                .foregroundStyle(ZLTheme.textSecond)
+                        }
+                        .padding(14)
+                    }
+                    .buttonStyle(.plain)
+
+                    // 启用后显示连接区
+                    if enabled {
+                        Divider().background(ZLTheme.cardStroke)
+                        VStack(spacing: 10) {
+                            HStack(spacing: 6) {
+                                Circle().fill(stateColor).frame(width: 7, height: 7)
+                                Text(state.rawValue).font(.system(size: 11))
+                                    .foregroundStyle(ZLTheme.textSecond)
+                                Spacer()
+                            }
+                            TextField("房间码（留空创建）", text: $roomInput)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 11, design: .monospaced))
+                                .autocapitalization(.allCharacters)
+                                .padding(.horizontal, 10).frame(height: 32)
+                                .background(ZLTheme.surfaceAlt)
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .onChange(of: roomInput) { v in
+                                    roomType = ZLRoomCode.parse(v)
+                                }
+                            HStack(spacing: 8) {
+                                Button { createRoom() } label: {
+                                    Text("创建").font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(ZLTheme.textOnGold)
+                                        .frame(maxWidth: .infinity).frame(height: 32)
+                                        .background(ZLTheme.primary)
+                                        .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                                Button { joinRoom() } label: {
+                                    Text("加入").font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(ZLTheme.primaryDeep)
+                                        .frame(maxWidth: .infinity).frame(height: 32)
+                                        .background(ZLTheme.primarySoft)
+                                        .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(roomInput.isEmpty || roomType == nil)
+                            }
+                            if !myRoomCode.isEmpty {
+                                HStack(spacing: 4) {
+                                    Text(myRoomCode).font(.system(size: 10, design: .monospaced))
+                                        .foregroundStyle(ZLTheme.primaryDeep)
+                                    Button { UIPasteboard.general.string = myRoomCode } label: {
+                                        Image(systemName: "doc.on.doc").font(.system(size: 9))
+                                            .foregroundStyle(ZLTheme.primaryDeep)
+                                    }
+                                    .buttonStyle(.plain)
+                                    Spacer()
+                                }
+                            }
+                        }
+                        .padding(14)
                     }
                 }
-                .padding(ZLTheme.screenPadding)
+                .background(ZLTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .frame(width: 300)
             }
+            .padding(.horizontal, ZLTheme.screenPadding)
+            .padding(.bottom, ZLTheme.screenPadding)
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
@@ -262,6 +377,35 @@ struct TerracottaScreen: View {
                     .buttonStyle(.plain)
                 }
             }
+        }
+    }
+
+    private var tutorialText: String {
+        switch tab {
+        case 0:
+            return """
+            陶瓦联机是第三方开源自由软件，您在使用过程中所遇到的问题请通过相关渠道进行反馈。
+            陶瓦联机使用 P2P 技术，联机成功后房间内用户之间将直接连接，不会使用第三方服务器对您的流量进行转发。最终联机体验和参与联机者的网络情况有较大关系。
+            在多人联机全过程中，您必须严格遵守您所在国家 / 地区的全部法律法规。
+            """
+        case 1:
+            return """
+            房主使用说明：
+            1. 开启「启用多人联机」开关
+            2. 点击「创建」按钮，等待生成房间码
+            3. 把房间码发给朋友
+            4. 进入游戏 → 对局域网开放
+            5. 朋友输入房间码加入后即可在局域网列表看到你的世界
+            """
+        default:
+            return """
+            房客使用说明：
+            1. 开启「启用多人联机」开关
+            2. 在房间码输入框填入房主给你的码
+            3. 点击「加入」按钮
+            4. 等待连接成功后打开游戏
+            5. 在多人游戏的局域网列表里找到房主的房间
+            """
         }
     }
 
