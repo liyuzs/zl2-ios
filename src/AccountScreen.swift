@@ -10,6 +10,7 @@ struct AccountScreen: View {
     @State private var draftName = ""
     @State private var draftServer = ""
     @State private var showAlert = false
+    @State private var showMSLogin = false
     @State private var alertText = ""
 
     var body: some View {
@@ -21,6 +22,7 @@ struct AccountScreen: View {
                     methodRow("离线账号", "person.fill", "offline")
                     methodRow("外置认证", "server.rack", "authlib")
                 }
+                if accountType == "microsoft" { microsoftForm }
                 if accountType == "offline" { offlineForm }
                 if accountType == "authlib" { authForm }
                 hint("离线 ID 只支持大小写字母、数字和下划线；含其他字符时高版本 MC 无法进入游戏。")
@@ -31,6 +33,34 @@ struct AccountScreen: View {
         .background(ZLTheme.surface)
         .alert(alertText, isPresented: $showAlert) {
             Button("好", role: .cancel) { }
+        }
+        .sheet(isPresented: $showMSLogin) {
+            MicrosoftLoginView { acc in
+                accountName = acc.username
+                accountType = "microsoft"
+                AccountStore.shared.save(acc)
+                AccountStore.shared.select(acc)
+                alertText = "已登录微软账号：\(acc.username)"
+                showAlert = true
+            }
+        }
+    }
+
+    // MARK: 微软账号
+    private var microsoftForm: some View {
+        VStack(spacing: 12) {
+            ZLCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("微软正版账号").font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Text("登录后可联机、使用正版皮肤与披风。不支持没有购买 Minecraft 的账号。")
+                        .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            ZLGoldButton(title: "微软登录", icon: "person.badge.key") {
+                showMSLogin = true
+            }
         }
     }
 
