@@ -9,6 +9,10 @@ enum ZLTheme {
     static let surfaceAlt   = Color(hex: 0xFAF7F1)   // 次级卡片
     static let stroke       = Color(hex: 0xE5DED0)   // 细边框
 
+    // 兼容旧命名（AccountScreen / LaunchScreen / ModsScreen 仍在用）
+    static let cardStroke   = stroke
+    static let cardBg       = surface
+
     // 主色：橄榄金（真机按钮/开关/高亮同色系）
     static let primary      = Color(hex: 0x8B7D3A)
     static let primaryDeep  = Color(hex: 0x6E622D)
