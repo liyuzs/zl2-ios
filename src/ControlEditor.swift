@@ -723,6 +723,7 @@ struct ControlEditorScreen: View {
     @State private var showLayerList = false
     @State private var previewMode = 0   // 0 游戏内 1 游戏外
     @State private var snap = true
+    @State private var showLayoutInfo = false
     @State private var toast: String? = nil
     @State private var sheet: ControlEditorSheet? = nil
 
@@ -786,6 +787,10 @@ struct ControlEditorScreen: View {
                 .lineLimit(1)
 
             Spacer(minLength: 8)
+
+            chipButton("布局信息", icon: "info.circle", highlighted: showLayoutInfo) {
+                showLayoutInfo = true
+            }
 
             chipButton("控件层", icon: "square.stack.3d.up.fill", highlighted: showLayerList) {
                 showLayerList.toggle()
@@ -2301,6 +2306,105 @@ struct ControlLayoutTransferSheet: View {
         } catch {
             message = "导入失败：\(error.localizedDescription)"
             isError = true
+        }
+    }
+}
+
+// MARK: - 布局信息（真机：名称/创作者/版本/描述 + 分享）
+struct LayoutInfoSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var doc: ControlLayoutDoc
+    @State private var exportText = ""
+    @State private var showExport = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 14) {
+                    ZLCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("布局信息").font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(ZLTheme.textPrimary)
+                            field("布局名称", $doc.name)
+                            field("布局创作者", $doc.author)
+                            field("布局版本", $doc.version)
+                            field("布局描述", $doc.desc)
+                        }
+                    }
+
+                    HStack(spacing: 10) {
+                        Button {
+                            exportText = doc.exportJSONText()
+                            showExport = true
+                        } label: {
+                            Label("分享", systemImage: "square.and.arrow.up")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(ZLTheme.textOnGold)
+                                .frame(maxWidth: .infinity).frame(height: 46)
+                                .background(ZLTheme.primary)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+
+                        Button { dismiss() } label: {
+                            Text("编辑控制布局")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(ZLTheme.primaryDeep)
+                                .frame(maxWidth: .infinity).frame(height: 46)
+                                .background(ZLTheme.primarySoft)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(ZLTheme.screenPadding)
+            }
+            .background(ZLTheme.background)
+            .navigationTitle("布局信息")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("关闭") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $showExport) {
+                VStack(spacing: 12) {
+                    Text("布局 JSON").font(.system(size: 15, weight: .semibold))
+                    ScrollView {
+                        Text(exportText)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(ZLTheme.textSecond)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                    }
+                    .frame(maxHeight: 300)
+                    .background(ZLTheme.surfaceAlt)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    Button("复制") {
+                        UIPasteboard.general.string = exportText
+                        showExport = false
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textOnGold)
+                    .frame(maxWidth: .infinity).frame(height: 44)
+                    .background(ZLTheme.primary)
+                    .clipShape(Capsule())
+                }
+                .padding(ZLTheme.screenPadding)
+                .background(ZLTheme.background)
+                .presentationDetents([.medium])
+            }
+        }
+    }
+
+    private func field(_ title: String, _ binding: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+            TextField(title == "布局描述" ? "没有描述" : "", text: binding)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .padding(.horizontal, 10).frame(height: 36)
+                .background(ZLTheme.surfaceAlt)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
     }
 }

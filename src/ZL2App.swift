@@ -31,6 +31,7 @@ enum AppRoute: Hashable {
     case skinCape
     case fileManager
     case versionList
+    case javaManage
 }
 
 struct RootView: View {
@@ -96,6 +97,8 @@ struct RootView: View {
                     SkinCapeScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .fileManager:
                     FileManagerScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .javaManage:
+                    JavaManageScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .versionList:
                     VersionListScreen(
                         onBack: { path.removeLast() },

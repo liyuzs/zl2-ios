@@ -14,8 +14,8 @@ struct SettingsScreen: View {
     @AppStorage("resolution")  private var resolution = 50.0
     @AppStorage("memoryMB")    private var memoryMB = 2048
 
-    private let sections = ["渲染设置", "游戏设置", "控制设置", "手柄设置", "Java 管理", "启动器设置"]
-    private let icons = ["paintbrush.pointed.fill", "gamecontroller.fill", "dpad.fill", "gamecontroller", "cup.and.saucer.fill", "shippingbox.fill"]
+    private let sections = ["渲染设置", "游戏设置", "控制设置", "手柄设置", "启动器设置", "其它"]
+    private let icons = ["paintbrush.pointed.fill", "gamecontroller.fill", "dpad.fill", "gamepad.fill", "shippingbox.fill", "ellipsis.circle"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,8 +32,8 @@ struct SettingsScreen: View {
                         case 1: gameSettings
                         case 2: controlSettings
                         case 3: gamepadSettings
-                        case 4: javaSettings
-                        default: launcherSettings
+                        case 4: launcherSettings
+                        default: otherSettings
                         }
                     }
                     .padding(.trailing, ZLTheme.screenPadding)
@@ -211,6 +211,56 @@ struct SettingsScreen: View {
     }
 
     @ViewBuilder
+    // MARK: 其它（Java 管理 + 关于）
+    @ViewBuilder
+    private var otherSettings: some View {
+        NavigationLink(value: AppRoute.javaManage) {
+            HStack(spacing: 12) {
+                Image(systemName: "cup.and.saucer.fill")
+                    .foregroundStyle(ZLTheme.primary)
+                    .frame(width: 36, height: 36)
+                    .background(ZLTheme.primarySoft)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Java 管理").font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Text("管理已安装的 Java 运行时").font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+            }
+            .padding(14)
+            .background(ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+
+        NavigationLink(value: AppRoute.about) {
+            HStack(spacing: 12) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(ZLTheme.primary)
+                    .frame(width: 36, height: 36)
+                    .background(ZLTheme.primarySoft)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("关于").font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Text("致谢与开源许可").font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+            }
+            .padding(14)
+            .background(ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
     private var launcherSettings: some View {
         themeCard
         settingCard(title: "下载源", desc: "国内网络下官方源可能很慢，下载失败时可切镜像", current: "优先使用官方源", trailing: actionButtons())
