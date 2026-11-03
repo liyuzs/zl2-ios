@@ -37,6 +37,7 @@ enum AppRoute: Hashable {
     case serverList
     case modsManager(String)
     case savesManager(String)
+    case resourceManager(String, Int)   // versionID, kind raw index
 }
 
 struct RootView: View {
@@ -102,6 +103,12 @@ struct RootView: View {
                     SkinCapeScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .fileManager:
                     FileManagerScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .resourceManager(let vid, let kindIdx):
+                    ResourceManagerScreen(
+                        kind: [ZLResourceKind.resourcePack, .shaderPack, .screenshot][min(max(kindIdx,0),2)],
+                        versionID: vid,
+                        onBack: { path.removeLast() },
+                        onHome: { path.removeAll() })
                 case .savesManager(let vid):
                     SavesManagerScreen(versionID: vid,
                                        onBack: { path.removeLast() },
