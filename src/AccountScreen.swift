@@ -23,6 +23,23 @@ struct AccountScreen: View {
                     methodRow("外置认证", "server.rack", "authlib")
                 }
                 if accountType == "microsoft" { microsoftForm }
+                if accountType == "microsoft" {
+                    NavigationLink(value: AppRoute.skinCape) {
+                        HStack {
+                            Image(systemName: "person.crop.rectangle")
+                                .foregroundStyle(ZLTheme.primary)
+                            Text("皮肤与披风").font(.system(size: 14))
+                                .foregroundStyle(ZLTheme.textPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+                        }
+                        .padding(14)
+                        .background(ZLTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
                 if accountType == "offline" { offlineForm }
                 if accountType == "authlib" { authForm }
                 hint("离线 ID 只支持大小写字母、数字和下划线；含其他字符时高版本 MC 无法进入游戏。")
