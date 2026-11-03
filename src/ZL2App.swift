@@ -34,6 +34,7 @@ enum AppRoute: Hashable {
     case javaManage
     case searchID
     case controlManage
+    case serverList
 }
 
 struct RootView: View {
@@ -99,6 +100,8 @@ struct RootView: View {
                     SkinCapeScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .fileManager:
                     FileManagerScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .serverList:
+                    ServerListScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .controlManage:
                     ControlManageScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .searchID:
