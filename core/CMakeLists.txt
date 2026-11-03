@@ -122,9 +122,6 @@ add_library(ZL2Core STATIC
   external/ballpa1n/wrapped/HostManagerBridge.m
   external/mach/mach_excServer.c
 
-  installer/FabricInstallViewController.m
-  installer/ForgeInstallViewController.m
-  installer/ModpackInstallViewController.m
   installer/FabricUtils.m
   installer/modpack/ModpackUtils.m
   installer/modpack/ModpackAPI.m
@@ -135,24 +132,10 @@ add_library(ZL2Core STATIC
   input/GyroInput.m
   input/KeyboardInput.m
 
-  AccountListViewController.m
-  CustomControlsViewController.m
   CustomControlsViewController+UndoManager.m
-  DownloadProgressViewController.m
-  FileListViewController.m
   GameSurfaceView.m
-  JavaGUIViewController.m
-  LauncherMenuViewController.m
   LauncherNavigationController.m
-  LauncherNewsViewController.m
   LauncherPreferences.m
-  LauncherPreferencesViewController.m
-  LauncherPrefContCfgViewController.m
-  LauncherPrefGameDirViewController.m
-  LauncherPrefManageJREViewController.m
-  LauncherProfileEditorViewController.m
-  LauncherProfilesViewController.m
-  LauncherSplitViewController.m
   MinecraftOptionUtils.m
   MinecraftResourceDownloadTask.m
   MinecraftResourceUtils.m
@@ -160,9 +143,7 @@ add_library(ZL2Core STATIC
   PLLogOutputView.m
   PLPickerView.m
   PLPreferences.m
-  PLPrefTableViewController.m
   PLProfiles.m
-  SurfaceViewController.m
   SurfaceViewController+ExternalDisplay.m
   SurfaceViewController+LogView.m
   SurfaceViewController+Navigation.m
