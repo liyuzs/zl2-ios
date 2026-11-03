@@ -210,7 +210,6 @@ struct SettingsScreen: View {
         settingCard(title: "内存分配", desc: nil, current: "\(memoryMB) MB", trailing: actionButtons())
     }
 
-    @ViewBuilder
     // MARK: 其它（Java 管理 + 关于）
     @ViewBuilder
     private var otherSettings: some View {
@@ -261,6 +260,7 @@ struct SettingsScreen: View {
         .buttonStyle(.plain)
     }
 
+    @ViewBuilder
     private var launcherSettings: some View {
         themeCard
         settingCard(title: "下载源", desc: "国内网络下官方源可能很慢，下载失败时可切镜像", current: "优先使用官方源", trailing: actionButtons())
