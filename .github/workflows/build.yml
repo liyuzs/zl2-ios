@@ -73,6 +73,29 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             build
 
+      - name: Bundle runtime & frameworks
+        run: |
+          set -x
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          echo "APP=$APP"
+          test -n "$APP"
+
+          # 1) 渲染/认证 dylib 与 framework
+          mkdir -p "$APP/Frameworks"
+          cp -R core/resources/Frameworks/. "$APP/Frameworks/"
+
+          # 2) JRE 17（官方站点：zip 里是 tar.xz，tar.xz 里是 ./ 根结构）
+          mkdir -p "$APP/java_runtimes/java-17-openjdk"
+          curl -L --fail --retry 3 -o /tmp/jre17.zip \
+            https://assets.angelauramc.dev/openjdk/ios-arm64/jre17-ios-aarch64.zip
+          unzip -q -o /tmp/jre17.zip -d /tmp/jre17
+          tar xf /tmp/jre17/*.tar.xz -C "$APP/java_runtimes/java-17-openjdk"
+
+          # 3) 校验关键文件
+          ls "$APP/java_runtimes/java-17-openjdk/lib/libjli.dylib"
+          ls "$APP/Frameworks" | head -20
+          du -sh "$APP"
+
       - name: Package unsigned IPA
         run: |
           APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)

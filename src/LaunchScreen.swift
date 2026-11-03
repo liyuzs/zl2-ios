@@ -1,84 +1,87 @@
 // ZL2-iOS · 启动进度页
-// 对照 ZL2 启动游戏时的加载界面：阶段指示 + 滚动日志 + 失败提示
+// 真实调用 Amethyst 核心：环境自检 → bootstrap → launchJVM
 import SwiftUI
 
 struct LaunchScreen: View {
     let versionName: String
     @Binding var isPresented: Bool
 
-    @State private var stage: LaunchStage = .prepare
+    @State private var stage: Stage = .check
     @State private var progress: Double = 0
-    @State private var logs: [String] = ["初始化启动环境…"]
+    @State private var logs: [String] = []
     @State private var failed = false
+    @State private var coreLinked = false
+    @State private var runtimeReady = false
 
-    enum LaunchStage: String, CaseIterable {
-        case prepare = "准备环境"
-        case jvm     = "启动 Java 虚拟机"
-        case game    = "加载游戏"
-        case done    = "完成"
+    enum Stage: String, CaseIterable {
+        case check  = "环境自检"
+        case boot   = "初始化核心"
+        case launch = "启动 JVM"
+        case done   = "已交给核心"
     }
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            Divider().overlay(ZLTheme.stroke)
             content
             footer
         }
-        .background(ZLTheme.surface)
-        .onAppear { simulate() }
+        .background(ZLTheme.background)
+        .onAppear(perform: runCheck)
     }
 
     private var header: some View {
         HStack(spacing: 12) {
             Image(systemName: "cube.fill")
-                .font(.system(size: 22))
+                .font(.system(size: 20))
                 .foregroundStyle(ZLTheme.primary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(versionName).font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
                 Text(failed ? "启动失败" : stage.rawValue)
                     .font(.system(size: 12))
                     .foregroundStyle(failed ? ZLTheme.danger : ZLTheme.textSecond)
             }
             Spacer()
             Button { isPresented = false } label: {
-                Image(systemName: "xmark").foregroundStyle(ZLTheme.textSecond)
+                Image(systemName: "xmark")
+                    .foregroundStyle(ZLTheme.textSecond)
+                    .frame(width: 36, height: 36)
+                    .background(ZLTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
+            .buttonStyle(.plain)
         }
         .padding(ZLTheme.screenPadding)
     }
 
     private var content: some View {
         VStack(spacing: 16) {
-            ZStack {
-                Circle().stroke(ZLTheme.cardStroke, lineWidth: 8)
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(ZLTheme.primary, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                Text("\(Int(progress * 100))%")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(ZLTheme.textPrimary)
+            // 自检结果
+            ZLCard {
+                VStack(alignment: .leading, spacing: 10) {
+                    checkRow("启动核心", coreLinked, true)
+                    checkRow("Java 运行时", runtimeReady, true)
+                }
             }
-            .frame(width: 110, height: 110)
-            .padding(.top, 24)
 
-            stageRow
             logView
             Spacer()
         }
         .padding(.horizontal, ZLTheme.screenPadding)
+        .padding(.top, 12)
     }
 
-    private var stageRow: some View {
-        HStack(spacing: 6) {
-            ForEach(LaunchStage.allCases, id: \.self) { s in
-                let idx = LaunchStage.allCases.firstIndex(of: s)!
-                let cur = LaunchStage.allCases.firstIndex(of: stage)!
-                Capsule()
-                    .fill(idx <= cur ? ZLTheme.primary : ZLTheme.cardStroke)
-                    .frame(height: 4)
-            }
+    private func checkRow(_ title: String, _ ok: Bool, _ required: Bool) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: ok ? "checkmark.circle.fill" : (required ? "xmark.circle.fill" : "exclamationmark.circle.fill"))
+                .foregroundStyle(ok ? ZLTheme.success : ZLTheme.danger)
+            Text(title).font(.system(size: 14)).foregroundStyle(ZLTheme.textPrimary)
+            Spacer()
+            Text(ok ? "就绪" : "缺失")
+                .font(.system(size: 12))
+                .foregroundStyle(ok ? ZLTheme.success : ZLTheme.danger)
         }
     }
 
@@ -94,13 +97,11 @@ struct LaunchScreen: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
+                .padding(12)
             }
-            .frame(height: 180)
-            .background(ZLTheme.cardBg)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(ZLTheme.cardStroke, lineWidth: 1))
+            .frame(height: 200)
+            .background(ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .onChange(of: logs.count) { _ in
                 withAnimation { proxy.scrollTo(logs.count - 1, anchor: .bottom) }
             }
@@ -110,33 +111,57 @@ struct LaunchScreen: View {
     private var footer: some View {
         HStack(spacing: 10) {
             if failed {
-                ZLPrimaryButton(title: "查看日志", icon: "doc.text") { }
-                ZLPrimaryButton(title: "关闭", icon: "xmark") { isPresented = false }
-            } else {
-                ZLPrimaryButton(title: stage == .done ? "关闭" : "取消", icon: stage == .done ? "checkmark" : "xmark") {
-                    isPresented = false
+                ZLGoldButton(title: "查看自检", icon: "doc.text") { isPresented = false }
+            } else if coreLinked && runtimeReady {
+                ZLGoldButton(title: "尝试启动", icon: "play.fill", enabled: progress >= 1) {
+                    Task { await attemptLaunch() }
                 }
+            } else {
+                ZLGoldButton(title: "关闭", icon: "xmark") { isPresented = false }
             }
         }
         .padding(ZLTheme.screenPadding)
     }
 
-    // 演示用：真实实现由 Amethyst 的 JavaLauncher 回调驱动
-    private func simulate() {
-        let steps: [(LaunchStage, Double, String)] = [
-            (.prepare, 0.15, "检查游戏文件完整性…"),
-            (.jvm,     0.40, "分配内存 2048 MB"),
-            (.jvm,     0.55, "加载 OpenJDK 17…"),
-            (.game,    0.75, "加载 Forge 47.4.18…"),
-            (.game,    0.90, "初始化渲染器 MobileGlues…"),
-            (.done,    1.00, "启动完成"),
-        ]
-        for (i, s) in steps.enumerated() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.8) {
-                stage = s.0
-                progress = s.1
-                logs.append(s.2)
+    // MARK: 自检
+    private func runCheck() {
+        logs.append("开始环境自检…")
+        coreLinked = CoreBridge.isCoreLinked
+        runtimeReady = CoreBridge.runtimeCheck()
+        logs.append(coreLinked ? "✓ Amethyst 核心已链接" : "✗ 未链接核心（仅界面构建）")
+        logs.append(runtimeReady ? "✓ 找到 java_runtimes" : "✗ 未找到 java_runtimes")
+        progress = 1
+        stage = .check
+    }
+
+    // MARK: 真正调用核心
+    private func attemptLaunch() async {
+        stage = .boot
+        progress = 0.3
+        logs.append("初始化 AME_HOME 与偏好…")
+        do {
+            try CoreBridge.bootstrap()
+            logs.append("✓ 环境初始化完成")
+            progress = 0.6
+            stage = .launch
+            logs.append("调用 launchJVM（minVersion 17）…")
+            progress = 0.9
+            // 说明：真正启动需要完整版本 JSON 与游戏文件；
+            // 这里先验证核心可调用性，缺游戏文件会由核心返回错误码
+            let docs = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).last ?? NSTemporaryDirectory()
+            let probeJar = (docs as NSString).appendingPathComponent("probe.jar")
+            if FileManager.default.fileExists(atPath: probeJar) {
+                try await CoreBridge.launchJar(probeJar)
+            } else {
+                logs.append("⚠ 未放置 probe.jar，跳过真实启动")
+                logs.append("提示：真机测试时可放入一个最小 jar 验证 JVM 能否拉起")
             }
+            progress = 1
+            stage = .done
+            logs.append("✓ 自检流程结束")
+        } catch {
+            failed = true
+            logs.append("✗ \(error.localizedDescription)")
         }
     }
 }
