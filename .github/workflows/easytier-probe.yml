@@ -57,6 +57,11 @@ jobs:
           ls -la /tmp/et 2>/dev/null || echo "克隆失败"
           find /tmp/et -name "Cargo.toml" -maxdepth 3 2>/dev/null | head -10
 
+      - name: 安装 protobuf 编译器
+        run: |
+          brew install protobuf || brew upgrade protobuf || true
+          protoc --version
+
       - name: 编译 iOS 静态库
         if: steps.find.outputs.repo != ''
         run: |
