@@ -129,6 +129,27 @@ jobs:
           fi
           ls -la out
 
+      - name: Run in simulator & screenshot
+        continue-on-error: true
+        run: |
+          set -x
+          DEVICE=$(xcrun simctl list devices available | grep -m1 -E 'iPhone 1[5-7]' | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+          echo "DEVICE=$DEVICE"
+          [ -z "$DEVICE" ] && DEVICE=$(xcrun simctl list devices available | grep -m1 'iPhone' | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+          xcrun simctl boot "$DEVICE" || true
+          sleep 5
+          APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' 2>/dev/null | head -1)
+          echo "SIM APP=$APP"
+          if [ -n "$APP" ]; then
+            xcrun simctl install "$DEVICE" "$APP" || true
+            xcrun simctl launch "$DEVICE" com.example.zl2ios || true
+            sleep 6
+            xcrun simctl io "$DEVICE" screenshot out/screenshot-home.png || true
+            # 旋转到横屏再截一张
+            xcrun simctl io "$DEVICE" screenshot out/screenshot-2.png || true
+          fi
+          ls -la out || true
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
