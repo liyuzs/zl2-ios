@@ -35,6 +35,8 @@ enum AppRoute: Hashable {
     case searchID
     case controlManage
     case serverList
+    case selectGameVersion
+    case downloadAddons(String)
     case logView
     case license
     case terracotta
@@ -117,6 +119,21 @@ struct RootView: View {
                     SavesManagerScreen(versionID: vid,
                                        onBack: { path.removeLast() },
                                        onHome: { path.removeAll() })
+                case .selectGameVersion:
+                    SelectGameVersionScreen(
+                        onBack: { path.removeLast() },
+                        onHome: { path.removeAll() },
+                        onPick: { v in path.append(.downloadAddons(v.versionID)) })
+                case .downloadAddons(let gv):
+                    DownloadAddonsScreen(
+                        gameVersion: gv,
+                        onBack: { path.removeLast() },
+                        onHome: { path.removeAll() },
+                        onStart: { sel in
+                            // TODO: 接入 VersionInstaller 真实下载
+                            _ = sel
+                            path.removeAll()
+                        })
                 case .logView:
                     LogViewScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .license:
