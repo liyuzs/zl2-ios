@@ -58,8 +58,14 @@ enum CoreBridge {
         setupLogging(home: home)
         // AME_HOME 是 Amethyst 全局数据根
         setenv("AME_HOME", home, 1)
-        // GAME_DIR 用于隔离版本的偏好文件
-        setenv("GAME_DIR", home, 1)
+        // GAME_DIR 必须指向实例的 .minecraft 目录：
+        // 核心约定 <GAME_DIR>/versions/<id>/<id>.json，
+        // VersionInstaller / LaunchScreen / VersionRepository 都用
+        // <Documents>/instances/<name>/.minecraft，这里必须对齐，否则装好的版本找不到
+        let gameDir = (home as NSString)
+            .appendingPathComponent("instances/default/.minecraft")
+        try? fm.createDirectory(atPath: gameDir, withIntermediateDirectories: true)
+        setenv("GAME_DIR", gameDir, 1)
 
         // 加载/创建偏好
         loadPreferences(false)
@@ -71,7 +77,10 @@ enum CoreBridge {
             "17": "internal",
             "8": "internal",
         ]
-        setPrefObject("java.java_homes", homes)
+        // 只在没有配置时写默认（避免抹掉用户在 JRE 管理界面里的选择）
+        if getPrefObject("java.java_homes") == nil {
+            setPrefObject("java.java_homes", homes)
+        }
         #endif
 
         bootstrapped = true
@@ -110,7 +119,7 @@ enum CoreBridge {
         // Amethyst 的 launchJVM 内部会弹对话框、操作 UI，必须在主线程调用
         let code: Int32 = await withCheckedContinuation { cont in
             DispatchQueue.main.async {
-                let r = launchJVM(nil, metadata as NSDictionary, Int32(width), Int32(height), 17)
+                let r = launchJVM(Self.currentUsername(), metadata as NSDictionary, Int32(width), Int32(height), 17)
                 cont.resume(returning: r)
             }
         }
@@ -134,7 +143,7 @@ enum CoreBridge {
         }
         let code: Int32 = await withCheckedContinuation { cont in
             DispatchQueue.main.async {
-                let r = launchJVM(nil, jarPath as NSString, Int32(width), Int32(height), 17)
+                let r = launchJVM(Self.currentUsername(), jarPath as NSString, Int32(width), Int32(height), 17)
                 cont.resume(returning: r)
             }
         }
@@ -144,14 +153,29 @@ enum CoreBridge {
         #endif
     }
 
+    /// 当前账户名（核心要把它写进 argv，传 nil 会崩）
+    static func currentUsername() -> String {
+        if let name = UserDefaults.standard.string(forKey: "zl.currentUsername"), !name.isEmpty {
+            return name
+        }
+        // 兜底：离线账户名
+        return "Player"
+    }
+
     /// 运行时自检：JRE 是否就位
     static func runtimeCheck() -> Bool {
         let bundle = Bundle.main.bundlePath
-        for v in ["17", "8"] {
-            let p = "\(bundle)/java_runtimes/java-\(v)-openjdk/lib/libjli.dylib"
+        // Java 17+: lib/libjli.dylib；Java 8: lib/jli/libjli.dylib
+        let candidates: [(String, String)] = [
+            ("17", "lib/libjli.dylib"),
+            ("8",  "lib/jli/libjli.dylib"),
+            ("8",  "lib/libjli.dylib"),
+        ]
+        for (v, rel) in candidates {
+            let p = "\(bundle)/java_runtimes/java-\(v)-openjdk/\(rel)"
             if FileManager.default.fileExists(atPath: p) { return true }
         }
-        let alt = "\(bundle)/java_runtimes/java-17-openjdk/lib/jli/libjli.dylib"
-        return FileManager.default.fileExists(atPath: alt)
+        return false
+    }
     }
 }

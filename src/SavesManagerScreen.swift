@@ -4,6 +4,129 @@
 import SwiftUI
 import Compression
 
+// MARK: - 管理页共用卡片小件（对齐真机下载卡片的视觉语言）
+// 模组 / 存档 / 资源包三个管理页共用，避免三处样式漂移
+
+/// 空状态波浪线（真机：两端波浪 + 中间直线）
+struct ZLWaveLine: View {
+    var width: CGFloat = 132
+
+    var body: some View {
+        ZLWaveShape()
+            .stroke(ZLTheme.primary.opacity(0.5),
+                    style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+            .frame(width: width, height: 14)
+    }
+}
+
+private struct ZLWaveShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let midY = rect.midY
+        let amp = rect.height / 2
+        let waveW: CGFloat = 26
+        let gap = max(0, rect.width - waveW * 2)
+        path.move(to: CGPoint(x: 0, y: midY))
+        path.addQuadCurve(to: CGPoint(x: waveW / 2, y: midY),
+                          control: CGPoint(x: waveW / 4, y: midY - amp))
+        path.addQuadCurve(to: CGPoint(x: waveW, y: midY),
+                          control: CGPoint(x: waveW * 0.75, y: midY + amp))
+        path.addLine(to: CGPoint(x: waveW + gap, y: midY))
+        path.addQuadCurve(to: CGPoint(x: waveW + gap + waveW / 2, y: midY),
+                          control: CGPoint(x: waveW + gap + waveW / 4, y: midY - amp))
+        path.addQuadCurve(to: CGPoint(x: waveW + gap + waveW, y: midY),
+                          control: CGPoint(x: waveW + gap + waveW * 0.75, y: midY + amp))
+        return path
+    }
+}
+
+/// 小胶囊标签（浅色底 + 深主色字）
+struct ZLCardTag: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 9.5, weight: .medium))
+            .foregroundStyle(ZLTheme.primaryDeep)
+            .lineLimit(1)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(ZLTheme.primarySoft.opacity(0.55))
+            .clipShape(Capsule())
+    }
+}
+
+/// 图标 + 数字的次要元信息（替代真机的 ↓下载量 / ♡点赞位）
+struct ZLCardMeta: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: icon).font(.system(size: 9))
+            Text(text).font(.system(size: 9.5))
+        }
+        .foregroundStyle(ZLTheme.textSecond.opacity(0.9))
+        .lineLimit(1)
+    }
+}
+
+/// 右上角状态徽标（真机来源徽标的位置）
+struct ZLCardStatusBadge: View {
+    let enabled: Bool
+
+    var body: some View {
+        Text(enabled ? "已启用" : "已禁用")
+            .font(.system(size: 9.5, weight: .semibold))
+            .foregroundStyle(enabled ? ZLTheme.textOnGold : ZLTheme.textSecond)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(enabled ? ZLTheme.primaryDeep : ZLTheme.surfaceAlt)
+            .clipShape(Capsule())
+    }
+}
+
+/// 搜索框（放大镜 + 圆角 10）
+struct ZLSearchField: View {
+    let placeholder: String
+    @Binding var text: String
+    var width: CGFloat = 190
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11))
+                .foregroundStyle(ZLTheme.textSecond)
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+        }
+        .padding(.horizontal, 10)
+        .frame(width: width, height: 34)
+        .background(ZLTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .stroke(ZLTheme.cardStroke.opacity(0.25), lineWidth: 0.8))
+    }
+}
+
+/// 列表卡片外观：浅色底、圆角 14、极浅描边与阴影
+struct ZLCardSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(ZLTheme.cardStroke.opacity(0.25), lineWidth: 0.8))
+            .shadow(color: Color.black.opacity(0.035), radius: 6, x: 0, y: 2)
+    }
+}
+
+extension View {
+    func zlCardSurface() -> some View { modifier(ZLCardSurface()) }
+}
+
+
 // MARK: - 存档信息
 struct ZLWorldInfo: Identifiable, Equatable {
     var id = UUID()
@@ -54,12 +177,7 @@ struct SavesManagerScreen: View {
 
                 Spacer()
 
-                TextField("搜索世界", text: $search)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                    .padding(.horizontal, 10).frame(width: 160, height: 32)
-                    .background(ZLTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                ZLSearchField(placeholder: "搜索世界", text: $search, width: 190)
             }
             .padding(.horizontal, ZLTheme.screenPadding)
             .padding(.bottom, 8)
@@ -67,17 +185,17 @@ struct SavesManagerScreen: View {
             ScrollView {
                 VStack(spacing: 8) {
                     if filtered.isEmpty {
-                        VStack(spacing: 10) {
-                            Image(systemName: "map")
-                                .font(.system(size: 34))
-                                .foregroundStyle(ZLTheme.textSecond.opacity(0.35))
-                            Text("还没有存档").font(.system(size: 13))
+                        VStack(spacing: 12) {
+                            ZLWaveLine()
+                            Text(search.isEmpty ? "还没有存档" : "没有找到相关存档")
+                                .font(.system(size: 12))
                                 .foregroundStyle(ZLTheme.textSecond)
-                            Text("在游戏里创建世界后，这里会自动出现")
-                                .font(.system(size: 11))
+                            Text(search.isEmpty ? "在游戏里创建世界后，这里会自动出现"
+                                                : "换个关键词试试")
+                                .font(.system(size: 10.5))
                                 .foregroundStyle(ZLTheme.textSecond.opacity(0.7))
                         }
-                        .frame(maxWidth: .infinity).padding(.vertical, 40)
+                        .frame(maxWidth: .infinity).padding(.vertical, 48)
                     }
                     ForEach(filtered) { w in
                         worldRow(w)
@@ -107,55 +225,74 @@ struct SavesManagerScreen: View {
     }
 
     private func worldRow(_ w: ZLWorldInfo) -> some View {
-        HStack(spacing: 12) {
-            // 世界图标（level.dat 里的 icon）
+        HStack(alignment: .top, spacing: 12) {
+            // 世界图标（level.dat 里的 icon，44×44 圆角 10）
             Group {
                 if let d = w.iconData, let img = UIImage(data: d) {
                     Image(uiImage: img).resizable().scaledToFill()
                 } else {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(ZLTheme.primarySoft)
-                        .overlay(Image(systemName: "map.fill")
-                            .foregroundStyle(ZLTheme.primary))
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(ZLTheme.primarySoft)
+                        Image(systemName: "map.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(ZLTheme.primaryDeep)
+                    }
                 }
             }
-            .frame(width: 48, height: 48)
-            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .frame(width: 44, height: 44)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(w.levelName ?? w.folderName)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(ZLTheme.textPrimary).lineLimit(1)
-                HStack(spacing: 8) {
-                    if let g = w.gameMode { Text(g).font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond) }
-                    if let v = w.versionName { Text(v).font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond) }
-                    Text(ByteCountFormatter.string(fromByteCount: w.sizeBytes, countStyle: .file))
-                        .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(w.levelName ?? w.folderName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                        .lineLimit(1)
+                    Text(w.folderName)
+                        .font(.system(size: 10))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .lineLimit(1)
+                    Spacer(minLength: 6)
                 }
-                if let t = w.lastPlayed {
-                    Text("最后游玩：\(t.formatted(date: .abbreviated, time: .shortened))")
-                        .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond.opacity(0.8))
+
+                // 游戏模式 / 版本 / 大小 小胶囊 + 最后游玩时间
+                HStack(spacing: 5) {
+                    if let g = w.gameMode { ZLCardTag(text: g) }
+                    if let v = w.versionName { ZLCardTag(text: v) }
+                    ZLCardTag(text: ByteCountFormatter.string(fromByteCount: w.sizeBytes,
+                                                             countStyle: .file))
+                    Spacer(minLength: 8)
+                    ZLCardMeta(icon: "clock", text: lastPlayedText(w))
                 }
+                .padding(.top, 1)
             }
-            Spacer()
 
-            Button { detail = w } label: {
-                Image(systemName: "info.circle").font(.system(size: 14))
-                    .foregroundStyle(ZLTheme.textSecond)
-                    .frame(width: 30, height: 30)
-            }
-            .buttonStyle(.plain)
+            HStack(spacing: 2) {
+                Button { detail = w } label: {
+                    Image(systemName: "info.circle").font(.system(size: 13))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(.plain)
 
-            Button { deleteTarget = w } label: {
-                Image(systemName: "trash").font(.system(size: 13))
-                    .foregroundStyle(ZLTheme.danger)
-                    .frame(width: 30, height: 30)
+                Button { deleteTarget = w } label: {
+                    Image(systemName: "trash").font(.system(size: 12))
+                        .foregroundStyle(ZLTheme.danger)
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(.top, 1)
         }
-        .padding(11)
-        .background(ZLTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .zlCardSurface()
+    }
+
+    private func lastPlayedText(_ w: ZLWorldInfo) -> String {
+        guard let t = w.lastPlayed else { return "从未游玩" }
+        return "最后游玩 \(t.formatted(date: .abbreviated, time: .shortened))"
     }
 
     private var filtered: [ZLWorldInfo] {

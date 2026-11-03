@@ -24,8 +24,12 @@ extension ControlItem {
         b.isToggleable = false
         b.isSwipple = true
         b.isPenetrable = false
-        // 动作 → 事件
-        b.clickEvents = [action.toZL2Event(text: textToSend)]
+        // 优先用真实的按键事件（导入的 ZL2 布局），否则按动作映射
+        if !keyEvent.isEmpty {
+            b.clickEvents = [.key(keyEvent)]
+        } else {
+            b.clickEvents = [action.toZL2Event(text: textToSend)]
+        }
         return b
     }
 
@@ -35,10 +39,20 @@ extension ControlItem {
                                x: b.position.xPercent, y: b.position.yPercent)
         item.width = b.buttonSize.widthPercentOfScreen
         item.height = b.buttonSize.heightPercentOfScreen
-        // 取第一个事件
-        if let e = b.clickEvents.first {
-            item.action = ControlAction.fromZL2(e)
-            if case .sendText(let t) = e { item.textToSend = t }
+        // 取第一个事件（保留按键，不要退化成 sendText）
+        for e in b.clickEvents {
+            switch e {
+            case .key(let k):
+                item.keyEvent = k
+                break
+            case .sendText(let t):
+                item.action = .sendText
+                item.textToSend = t
+                break
+            default:
+                item.action = ControlAction.fromZL2(e)
+                break
+            }
         }
         return item
     }
@@ -88,8 +102,8 @@ extension ControlAction {
     /// ZL2 事件 → 动作
     static func fromZL2(_ e: ZLClickEvent) -> ControlAction {
         switch e {
-        case .key(let k):
-            return .sendText   // 按键映射暂存为发送文本
+        case .key:
+            return .none       // 按键由 keyEvent 字段承载，不走动作
         case .launcherEvent(let v):
             switch v {
             case "toggle_menu":  return .toggleMenu

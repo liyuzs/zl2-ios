@@ -365,6 +365,8 @@ struct ControlItem: Identifiable, Codable, Equatable {
     var height: Double = 0.05         // 相对屏幕高
     var action: ControlAction = .toggleMenu
     var textToSend: String = ""
+    /// ZL2 的按键事件（如 GLFW_KEY_ESCAPE 的数值字符串）
+    var keyEvent: String = ""
     var visibleScene: VisibleScene = .always
     var lockable: Bool = false
     /// 外观样式

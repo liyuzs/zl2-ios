@@ -73,12 +73,7 @@ struct ResourceManagerScreen: View {
                 Text("共 \(filtered.count) 个").font(.system(size: 11))
                     .foregroundStyle(ZLTheme.textSecond)
                 Spacer()
-                TextField("搜索", text: $search)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                    .padding(.horizontal, 10).frame(width: 150, height: 32)
-                    .background(ZLTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                ZLSearchField(placeholder: "搜索\(kind.rawValue)", text: $search, width: 180)
             }
             .padding(.horizontal, ZLTheme.screenPadding)
             .padding(.bottom, 8)
@@ -86,17 +81,15 @@ struct ResourceManagerScreen: View {
             ScrollView {
                 VStack(spacing: 8) {
                     if filtered.isEmpty {
-                        VStack(spacing: 10) {
-                            Image(systemName: kind.icon)
-                                .font(.system(size: 34))
-                                .foregroundStyle(ZLTheme.textSecond.opacity(0.35))
-                            Text("还没有\(kind.rawValue)")
-                                .font(.system(size: 13)).foregroundStyle(ZLTheme.textSecond)
+                        VStack(spacing: 12) {
+                            ZLWaveLine()
+                            Text(search.isEmpty ? "还没有\(kind.rawValue)" : "没有找到相关\(kind.rawValue)")
+                                .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
                             Text("把文件放进 \(kind.folder) 目录")
-                                .font(.system(size: 11))
+                                .font(.system(size: 10.5))
                                 .foregroundStyle(ZLTheme.textSecond.opacity(0.7))
                         }
-                        .frame(maxWidth: .infinity).padding(.vertical, 40)
+                        .frame(maxWidth: .infinity).padding(.vertical, 48)
                     }
                     ForEach(filtered) { item in
                         row(item)
@@ -126,60 +119,90 @@ struct ResourceManagerScreen: View {
     }
 
     private func row(_ item: ZLResourceItem) -> some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
+            // 左侧图标：真实预览图或类型图标，44×44
             Group {
                 if let d = item.iconData, let img = UIImage(data: d) {
                     Image(uiImage: img).resizable().scaledToFill()
                 } else {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(ZLTheme.primarySoft)
-                        .overlay(Image(systemName: kind.icon)
-                            .foregroundStyle(ZLTheme.primary))
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(item.enabled ? ZLTheme.primarySoft : ZLTheme.surfaceAlt)
+                        Image(systemName: kind.icon)
+                            .font(.system(size: 18))
+                            .foregroundStyle(item.enabled ? ZLTheme.primaryDeep : ZLTheme.textSecond)
+                    }
                 }
             }
             .frame(width: 44, height: 44)
-            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(item.packName ?? item.fileName)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(item.enabled ? ZLTheme.textPrimary : ZLTheme.textSecond)
-                    .lineLimit(1)
-                HStack(spacing: 8) {
-                    if let v = item.packVersion {
-                        Text(v).font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(item.packName ?? item.fileName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(item.enabled ? ZLTheme.textPrimary : ZLTheme.textSecond)
+                        .lineLimit(1)
+                    Spacer(minLength: 6)
+                    if kind != .screenshot {
+                        ZLCardStatusBadge(enabled: item.enabled)
                     }
-                    Text(ByteCountFormatter.string(fromByteCount: item.sizeBytes, countStyle: .file))
-                        .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
                 }
+
                 if let d = item.packDescription, !d.isEmpty {
-                    Text(d).font(.system(size: 10))
-                        .foregroundStyle(ZLTheme.textSecond).lineLimit(1)
+                    Text(d)
+                        .font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // 底部小胶囊标签 + 右侧文件大小
+                HStack(spacing: 5) {
+                    ZLCardTag(text: kind.rawValue)
+                    if let v = item.packVersion { ZLCardTag(text: v) }
+                    if kind == .screenshot {
+                        ZLCardTag(text: item.path.pathExtension.uppercased())
+                    } else if !item.enabled {
+                        ZLCardTag(text: "已禁用")
+                    }
+                    Spacer(minLength: 8)
+                    ZLCardMeta(icon: "internaldrive",
+                               text: ByteCountFormatter.string(fromByteCount: item.sizeBytes,
+                                                              countStyle: .file))
+                }
+                .padding(.top, 1)
+            }
+
+            VStack(alignment: .trailing, spacing: 4) {
+                if kind != .screenshot {
+                    Toggle("", isOn: Binding(get: { item.enabled }, set: { toggle(item, $0) }))
+                        .labelsHidden()
+                        .tint(ZLTheme.primary)
+                        .scaleEffect(0.78)
+                        .frame(width: 44, height: 24)
+                }
+
+                HStack(spacing: 2) {
+                    Button { preview = item } label: {
+                        Image(systemName: kind == .screenshot ? "eye" : "info.circle")
+                            .font(.system(size: 13)).foregroundStyle(ZLTheme.textSecond)
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button { deleteTarget = item } label: {
+                        Image(systemName: "trash").font(.system(size: 12))
+                            .foregroundStyle(ZLTheme.danger).frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            Spacer()
-
-            if kind != .screenshot {
-                Toggle("", isOn: Binding(get: { item.enabled }, set: { toggle(item, $0) }))
-                    .labelsHidden().tint(ZLTheme.primary)
-            }
-
-            Button { preview = item } label: {
-                Image(systemName: kind == .screenshot ? "eye" : "info.circle")
-                    .font(.system(size: 14)).foregroundStyle(ZLTheme.textSecond)
-                    .frame(width: 30, height: 30)
-            }
-            .buttonStyle(.plain)
-
-            Button { deleteTarget = item } label: {
-                Image(systemName: "trash").font(.system(size: 13))
-                    .foregroundStyle(ZLTheme.danger).frame(width: 30, height: 30)
-            }
-            .buttonStyle(.plain)
+            .padding(.top, 2)
         }
-        .padding(11)
-        .background(ZLTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .zlCardSurface()
     }
 
     private var filtered: [ZLResourceItem] {

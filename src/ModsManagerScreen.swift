@@ -18,6 +18,7 @@ struct ZLModInfo: Identifiable, Equatable {
     var modAuthors: [String] = []
     var modDescription: String?
     var modId: String?
+    var loader: String? = nil
 }
 
 enum ZLModsSort: String, CaseIterable {
@@ -63,12 +64,7 @@ struct ModsManagerScreen: View {
 
                 Spacer()
 
-                TextField("搜索模组", text: $search)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                    .padding(.horizontal, 10).frame(width: 170, height: 34)
-                    .background(ZLTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                ZLSearchField(placeholder: "搜索模组", text: $search, width: 190)
             }
             .padding(.horizontal, ZLTheme.screenPadding)
             .padding(.bottom, 8)
@@ -117,14 +113,12 @@ struct ModsManagerScreen: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "puzzlepiece")
-                .font(.system(size: 34))
-                .foregroundStyle(ZLTheme.textSecond.opacity(0.35))
-            Text("还没有模组")
-                .font(.system(size: 13)).foregroundStyle(ZLTheme.textSecond)
+        VStack(spacing: 12) {
+            ZLWaveLine()
+            Text(search.isEmpty ? "还没有模组" : "没有找到相关模组")
+                .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
             Text("把 .jar 文件放进 mods 目录，或从下载中心安装")
-                .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond.opacity(0.7))
+                .font(.system(size: 10.5)).foregroundStyle(ZLTheme.textSecond.opacity(0.7))
             Button { openModsDir() } label: {
                 Text("打开 mods 目录")
                     .font(.system(size: 12, weight: .medium))
@@ -139,62 +133,94 @@ struct ModsManagerScreen: View {
     }
 
     private func modRow(_ m: ZLModInfo) -> some View {
-        HStack(spacing: 12) {
-            // 图标
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(m.enabled ? ZLTheme.primarySoft : ZLTheme.surfaceAlt)
-                .frame(width: 40, height: 40)
-                .overlay(
-                    Image(systemName: m.enabled ? "puzzlepiece.fill" : "puzzlepiece")
-                        .font(.system(size: 17))
-                        .foregroundStyle(m.enabled ? ZLTheme.primary : ZLTheme.textSecond)
-                )
+        HStack(alignment: .top, spacing: 12) {
+            // 左侧方形图标（对齐真机 44×44）
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(m.enabled ? ZLTheme.primarySoft : ZLTheme.surfaceAlt)
+                Image(systemName: m.enabled ? "puzzlepiece.fill" : "puzzlepiece")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(m.enabled ? ZLTheme.primaryDeep : ZLTheme.textSecond)
+            }
+            .frame(width: 44, height: 44)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(m.modName ?? m.fileName)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(m.enabled ? ZLTheme.textPrimary : ZLTheme.textSecond)
-                    .lineLimit(1)
-                HStack(spacing: 8) {
-                    if let v = m.modVersion {
-                        Text(v).font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(m.modName ?? m.fileName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(m.enabled ? ZLTheme.textPrimary : ZLTheme.textSecond)
+                        .lineLimit(1)
+                    if !m.modAuthors.isEmpty {
+                        Text("作者: \(m.modAuthors.prefix(2).joined(separator: "、"))")
+                            .font(.system(size: 10))
+                            .foregroundStyle(ZLTheme.textSecond)
+                            .lineLimit(1)
                     }
-                    Text(ByteCountFormatter.string(fromByteCount: m.sizeBytes, countStyle: .file))
-                        .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
-                    Text(m.fileName).font(.system(size: 9))
-                        .foregroundStyle(ZLTheme.textSecond.opacity(0.6)).lineLimit(1)
+                    Spacer(minLength: 6)
+                    ZLCardStatusBadge(enabled: m.enabled)
                 }
+
                 if let d = m.modDescription, !d.isEmpty {
-                    Text(d).font(.system(size: 10))
-                        .foregroundStyle(ZLTheme.textSecond).lineLimit(1)
+                    Text(d)
+                        .font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // 底部标签 + 右侧真实元数据（大小 / 修改时间）
+                HStack(spacing: 5) {
+                    ForEach(modTags(m), id: \.self) { ZLCardTag(text: $0) }
+                    Spacer(minLength: 8)
+                    ZLCardMeta(icon: "internaldrive",
+                               text: ByteCountFormatter.string(fromByteCount: m.sizeBytes,
+                                                              countStyle: .file))
+                    ZLCardMeta(icon: "clock",
+                               text: m.modified.formatted(date: .abbreviated, time: .omitted))
+                }
+                .padding(.top, 1)
+            }
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Toggle("", isOn: Binding(
+                    get: { m.enabled },
+                    set: { toggle(m, $0) }
+                ))
+                .labelsHidden()
+                .tint(ZLTheme.primary)
+                .scaleEffect(0.78)
+                .frame(width: 44, height: 24)
+
+                HStack(spacing: 2) {
+                    Button { detail = m } label: {
+                        Image(systemName: "info.circle").font(.system(size: 13))
+                            .foregroundStyle(ZLTheme.textSecond)
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button { deleteTarget = m } label: {
+                        Image(systemName: "trash").font(.system(size: 12))
+                            .foregroundStyle(ZLTheme.danger)
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            Spacer()
-
-            Toggle("", isOn: Binding(
-                get: { m.enabled },
-                set: { toggle(m, $0) }
-            ))
-            .labelsHidden()
-            .tint(ZLTheme.primary)
-
-            Button { detail = m } label: {
-                Image(systemName: "info.circle").font(.system(size: 14))
-                    .foregroundStyle(ZLTheme.textSecond)
-                    .frame(width: 30, height: 30)
-            }
-            .buttonStyle(.plain)
-
-            Button { deleteTarget = m } label: {
-                Image(systemName: "trash").font(.system(size: 13))
-                    .foregroundStyle(ZLTheme.danger)
-                    .frame(width: 30, height: 30)
-            }
-            .buttonStyle(.plain)
+            .padding(.top, 2)
         }
-        .padding(11)
-        .background(ZLTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .zlCardSurface()
+    }
+
+    private func modTags(_ m: ZLModInfo) -> [String] {
+        var tags: [String] = []
+        if let l = m.loader, !l.isEmpty { tags.append(l) }
+        if let v = m.modVersion, !v.isEmpty { tags.append("v\(v)") }
+        if !m.enabled { tags.append("已禁用") }
+        if tags.isEmpty { tags.append("JAR") }
+        return Array(tags.prefix(3))
     }
 
     private func toolChip(_ t: String, _ icon: String) -> some View {
@@ -205,7 +231,9 @@ struct ModsManagerScreen: View {
         .foregroundStyle(ZLTheme.textSecond)
         .padding(.horizontal, 10).frame(height: 32)
         .background(ZLTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .stroke(ZLTheme.cardStroke.opacity(0.22), lineWidth: 0.8))
     }
 
     // MARK: 数据
@@ -255,7 +283,8 @@ struct ModsManagerScreen: View {
                              modVersion: info?.version,
                              modAuthors: info?.authors ?? [],
                              modDescription: info?.description,
-                             modId: info?.id)
+                             modId: info?.id,
+                             loader: info?.loader)
         }
     }
 
@@ -338,6 +367,7 @@ struct ModJarInfo {
     var version: String?
     var authors: [String]
     var description: String?
+    var loader: String? = nil
 }
 
 enum ModJarParser {
@@ -357,13 +387,15 @@ enum ModJarParser {
                 authors = arr
             }
             return ModJarInfo(id: id, name: name, version: version,
-                              authors: authors, description: desc)
+                              authors: authors, description: desc, loader: "Fabric")
         }
 
         // 尝试 META-INF/mods.toml（Forge/NeoForge）
         if let data = readEntry(url, "META-INF/mods.toml"),
-           let text = String(data: data, encoding: .utf8) {
-            return parseToml(text)
+           let text = String(data: data, encoding: .utf8),
+           var info = parseToml(text) {
+            info.loader = "Forge"
+            return info
         }
 
         // 尝试 quilt.mod.json
@@ -375,7 +407,8 @@ enum ModJarParser {
                               name: meta?["name"] as? String,
                               version: loader["version"] as? String,
                               authors: [],
-                              description: meta?["description"] as? String)
+                              description: meta?["description"] as? String,
+                              loader: "Quilt")
         }
 
         return nil
