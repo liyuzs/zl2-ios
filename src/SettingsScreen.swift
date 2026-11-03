@@ -262,8 +262,55 @@ struct SettingsScreen: View {
     @AppStorage("physicalMouse") private var physicalMouse = false
     @AppStorage("matrixMouse") private var matrixMouse = false
 
+    @AppStorage("inputMethodKey") private var inputMethodKey = ""
+    @AppStorage("cursorStyle") private var cursorStyle = 0
+
     @ViewBuilder
     private var controlSettings: some View {
+        // 控制管理入口（真机：进布局列表）
+        NavigationLink(value: AppRoute.controlManage) {
+            HStack(spacing: 12) {
+                Image(systemName: "dpad.fill")
+                    .foregroundStyle(ZLTheme.primary)
+                    .frame(width: 36, height: 36)
+                    .background(ZLTheme.primarySoft)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("控制管理").font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Text("管理控制布局与外观").font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+            }
+            .padding(14)
+            .background(ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+
+        // 实体键盘呼出输入法（真机：绑定按键）
+        ZLCard {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("实体键盘呼出输入法").font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Text("点击绑定一个按键，用于在游戏内呼出输入法").font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                }
+                Spacer()
+                Text(inputMethodKey.isEmpty ? "未绑定" : inputMethodKey)
+                    .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+            }
+        }
+
+        // 虚拟鼠标指针三态（真机：默认 / 手形 / 输入光标）
+        cursorCard("虚拟鼠标指针（默认）", "自定义默认虚拟指针图片以匹配个人需求", 0)
+        cursorCard("虚拟鼠标指针（手形）", "MC 1.21.9+ 在可交互组件上切换到手形", 1)
+        cursorCard("虚拟鼠标指针（输入光标）", "MC 1.21.9+ 输入框显示输入光标", 2)
+
         // 长按触发的延迟（真机：滑块 256ms）
         ZLCard {
             VStack(alignment: .leading, spacing: 10) {
@@ -505,6 +552,32 @@ struct SettingsScreen: View {
                     }
                     Spacer()
                 }
+            }
+        }
+    }
+
+    private func cursorCard(_ title: String, _ desc: String, _ idx: Int) -> some View {
+        ZLCard {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Text(desc).font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                }
+                Spacer()
+                Button { cursorStyle = idx } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: cursorStyle == idx ? "cursorarrow.click.2" : "cursorarrow")
+                            .font(.system(size: 11))
+                        Text("设置热点").font(.system(size: 11))
+                    }
+                    .foregroundStyle(ZLTheme.primaryDeep)
+                    .padding(.horizontal, 10).frame(height: 30)
+                    .background(ZLTheme.primarySoft)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
         }
     }
