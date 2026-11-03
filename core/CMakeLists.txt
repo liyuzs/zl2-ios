@@ -146,6 +146,7 @@ add_library(ZL2Core STATIC
   PLProfiles.m
   TrackedTextField.m
   egl_bridge.m
+  LauncherSplitViewController_stub.m
   input_bridge_v3.m
   ios_uikit_bridge.m
   utils.m
