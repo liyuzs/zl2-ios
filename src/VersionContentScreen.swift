@@ -124,58 +124,98 @@ struct VersionContentScreen: View {
         }
     }
 
-    // MARK: 概览
+    // MARK: 概览（真机结构：图标 + 版本管理 + 快捷操作）
     private var overview: some View {
         VStack(spacing: ZLTheme.cardGap) {
+            // 自定义图标 + 版本名
             ZLCard {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("已安装版本（\(installed.count)）").font(.system(size: 15, weight: .semibold))
+                HStack(spacing: 14) {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(ZLTheme.primarySoft)
+                        .frame(width: 64, height: 64)
+                        .overlay(Image(systemName: "cube.fill")
+                            .font(.system(size: 28)).foregroundStyle(ZLTheme.primary))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(versionName).font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(ZLTheme.textPrimary)
+                        Button { } label: {
+                            Text("自定义图标").font(.system(size: 12))
+                                .foregroundStyle(ZLTheme.primaryDeep)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Spacer()
+                }
+            }
+
+            // 版本管理
+            ZLCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("版本管理").font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(ZLTheme.textPrimary)
-                    ForEach(installed.prefix(6), id: \.id) { v in
-                        HStack {
-                            Text(v.id).font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(ZLTheme.textPrimary)
-                            Spacer()
-                            Text(ByteCountFormatter.string(fromByteCount: v.sizeBytes, countStyle: .file))
-                                .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
-                            Button {
-                                actionVersion = v.id
-                                showActions = true
-                            } label: {
-                                Image(systemName: "ellipsis.circle")
-                                    .foregroundStyle(ZLTheme.primary)
+                    manageRow("编辑描述", "text.alignleft") { }
+                    manageRow("重命名版本", "pencil") { }
+                    manageRow("导出整合包", "square.and.arrow.up") { }
+                    manageRow("运行日志", "doc.text") { }
+                    manageRow("删除版本", "trash", danger: true) { }
+                }
+            }
+
+            // 快捷操作：8 个文件夹
+            ZLCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("快捷操作").font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    let cols = [GridItem(.adaptive(minimum: 92), spacing: 8)]
+                    LazyVGrid(columns: cols, spacing: 8) {
+                        ForEach(folderItems, id: \.0) { name, icon in
+                            Button { openFolder(name) } label: {
+                                VStack(spacing: 5) {
+                                    Image(systemName: icon).font(.system(size: 17))
+                                        .foregroundStyle(ZLTheme.primary)
+                                    Text(name).font(.system(size: 10))
+                                        .foregroundStyle(ZLTheme.textSecond)
+                                }
+                                .frame(maxWidth: .infinity).frame(height: 62)
+                                .background(ZLTheme.surfaceAlt)
+                                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                             }
                             .buttonStyle(.plain)
                         }
-                        .padding(.vertical, 2)
-                    }
-                    if installed.isEmpty {
-                        Text("还没有安装任何版本")
-                            .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
-                    }
-                    Divider()
-                    Text("版本信息").font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    infoRow("游戏版本", "1.20.1")
-                    infoRow("加载器", "Fabric 0.19.2")
-                    infoRow("渲染器", "MobileGlues")
-                    infoRow("内存分配", "2048 MB")
-                }
-            }
-            ZLCard {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("快捷入口").font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    HStack(spacing: 10) {
-                        quickButton("模组", .mods)
-                        quickButton("资源包", .resources)
-                        quickButton("存档", .saves)
-                        quickButton("截图", .screens)
-                        quickButton("服务器", .servers)
-                        quickButton("光影", .shaders)
                     }
                 }
             }
+        }
+    }
+
+    private var folderItems: [(String, String)] {
+        [("版本文件夹", "cube.box"), ("存档文件夹", "folder"),
+         ("资源包文件夹", "paintbrush"), ("光影包文件夹", "sun.max"),
+         ("模组文件夹", "puzzlepiece"), ("屏幕截图文件夹", "photo"),
+         ("日志文件夹", "doc.text"), ("崩溃报告文件夹", "exclamationmark.triangle")]
+    }
+
+    private func manageRow(_ title: String, _ icon: String, danger: Bool = false,
+                           action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon).font(.system(size: 14))
+                    .foregroundStyle(danger ? ZLTheme.danger : ZLTheme.primary)
+                    .frame(width: 26)
+                Text(title).font(.system(size: 13))
+                    .foregroundStyle(danger ? ZLTheme.danger : ZLTheme.textPrimary)
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 10))
+                    .foregroundStyle(ZLTheme.textSecond)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func openFolder(_ kind: String) {
+        if let url = VersionRepository.shared.folder(for: kind.replacingOccurrences(of: "文件夹", with: ""),
+                                                     versionID: versionName) {
+            _ = url
         }
     }
 
