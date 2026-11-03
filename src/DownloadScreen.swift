@@ -1,108 +1,155 @@
-// ZL2-iOS · 下载中心
-// 对照 ZL2 安卓版：版本列表 + 加载器选择 + 安装状态
+// ZL2-iOS · 下载中心（依据真机截图还原）
+// 真机布局：顶部栏 · 左侧竖排分类 · 筛选芯片 + 搜索 · 版本卡片列表
 import SwiftUI
 
 struct DownloadScreen: View {
+    var onBack: () -> Void = {}
+    var onHome: () -> Void = {}
+    var onSettings: () -> Void = {}
+
+    @State private var category = 0
+    @State private var filter = 0          // 0 正式版 1 快照 2 愚人节 3 远古
     @State private var query = ""
-    @State private var category = 0   // 0 游戏 / 1 整合包 / 2 模组
 
-    private let categories = ["游戏", "整合包", "模组"]
+    private let categories = ["游戏", "整合包", "模组", "资源包"]
+    private let catIcons = ["gamecontroller.fill", "shippingbox.fill", "puzzlepiece.fill", "paintbrush.fill"]
+    private let filters = ["正式版", "快照版", "愚人节版", "远古版"]
 
-    // 演示数据；真实实现走 Mojang 版本清单接口
-    private let versions: [DownloadableVersion] = [
-        .init(id: "1.21.4", type: "正式版", date: "2025-03-25", loaders: ["Fabric", "NeoForge"]),
-        .init(id: "1.20.1", type: "正式版", date: "2023-06-12", loaders: ["Forge", "Fabric", "Quilt"]),
-        .init(id: "1.12.2", type: "正式版", date: "2017-09-18", loaders: ["Forge"]),
-        .init(id: "1.8.9", type: "正式版", date: "2015-12-09", loaders: ["Forge"]),
-        .init(id: "26.1.2", type: "快照", date: "2026-01-15", loaders: []),
+    private let versions: [DLVersion] = [
+        .init(id: "26.3",    type: "正式版", date: "2026 年 09 月 15 日 19:23:02"),
+        .init(id: "26.2",    type: "正式版", date: "2026 年 06 月 16 日 20:03:33"),
+        .init(id: "26.1.2",  type: "正式版", date: "2026 年 04 月 09 日 18:12:23"),
+        .init(id: "1.20.1",  type: "正式版", date: "2023 年 06 月 12 日 15:20:00"),
+        .init(id: "1.12.2",  type: "正式版", date: "2017 年 09 月 18 日 12:00:00"),
     ]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                searchBar
-                categoryBar
-                ForEach(filtered) { v in
-                    versionRow(v)
+        VStack(spacing: 0) {
+            ZLTopBar(title: "下载 - \(categories[category])",
+                     active: .download,
+                     onBack: onBack, onHome: onHome, onSettings: onSettings)
+
+            HStack(spacing: 0) {
+                sideRail
+                VStack(spacing: 12) {
+                    toolbar
+                    list
                 }
+                .padding(.trailing, ZLTheme.screenPadding)
             }
-            .padding(.horizontal, ZLTheme.screenPadding)
-            .padding(.vertical, 12)
+            .padding(.bottom, ZLTheme.screenPadding)
         }
-        .background(ZLTheme.surface)
+        .background(ZLTheme.background.ignoresSafeArea())
+        .navigationBarHidden(true)
     }
 
-    private var filtered: [DownloadableVersion] {
-        query.isEmpty ? versions : versions.filter { $0.id.contains(query) }
-    }
-
-    private var searchBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(ZLTheme.textSecond)
-            TextField("搜索版本号", text: $query)
-                .font(.system(size: 14))
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 42)
-        .background(ZLTheme.cardBg)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .stroke(ZLTheme.cardStroke, lineWidth: 1))
-    }
-
-    private var categoryBar: some View {
-        HStack(spacing: 8) {
+    // 左侧竖排分类
+    private var sideRail: some View {
+        VStack(spacing: 6) {
             ForEach(categories.indices, id: \.self) { i in
                 Button { category = i } label: {
-                    Text(categories[i])
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(category == i ? .white : ZLTheme.textSecond)
-                        .padding(.horizontal, 14)
-                        .frame(height: 32)
-                        .background(category == i ? ZLTheme.primary : ZLTheme.cardBg)
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(ZLTheme.cardStroke, lineWidth: category == i ? 0 : 1))
+                    VStack(spacing: 4) {
+                        Image(systemName: catIcons[i]).font(.system(size: 19))
+                        Text(categories[i]).font(.system(size: 11))
+                    }
+                    .foregroundStyle(category == i ? ZLTheme.primaryDeep : ZLTheme.textSecond)
+                    .frame(width: 76, height: 62)
+                    .background(category == i ? ZLTheme.primarySoft : Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
+                .buttonStyle(.plain)
             }
             Spacer()
         }
+        .padding(.leading, 8)
+        .padding(.vertical, 8)
+        .frame(width: 92)
     }
 
-    private func versionRow(_ v: DownloadableVersion) -> some View {
-        ZLCard {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        Text(v.id).font(.system(size: 15, weight: .semibold))
-                        Text(v.type)
-                            .font(.system(size: 10))
-                            .foregroundStyle(v.type == "正式版" ? ZLTheme.success : ZLTheme.warning)
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background((v.type == "正式版" ? ZLTheme.success : ZLTheme.warning).opacity(0.12))
-                            .clipShape(Capsule())
+    // 筛选芯片 + 搜索
+    private var toolbar: some View {
+        HStack(spacing: 8) {
+            ForEach(filters.indices, id: \.self) { i in
+                ZLChip(title: filters[i], selected: filter == i, checkmark: true) { filter = i }
+            }
+            Spacer(minLength: 8)
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 13))
+                    .foregroundStyle(ZLTheme.textSecond)
+                TextField("搜索", text: $query)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 14))
+            }
+            .padding(.horizontal, 12)
+            .frame(width: 190, height: 40)
+            .background(ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            Button { } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                    .frame(width: 44, height: 40)
+                    .background(ZLTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.trailing, 2)
+    }
+
+    private var filtered: [DLVersion] {
+        query.isEmpty ? versions : versions.filter { $0.id.contains(query) }
+    }
+
+    private var list: some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                ForEach(filtered) { v in
+                    HStack(spacing: 14) {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color(hex: 0x6DA34D))
+                            .frame(width: 42, height: 42)
+                            .overlay(Image(systemName: "cube.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(.white.opacity(0.85)))
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Text(v.id)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(ZLTheme.textPrimary)
+                                ZLTag(text: v.type)
+                            }
+                            Text(v.date)
+                                .font(.system(size: 12))
+                                .foregroundStyle(ZLTheme.textSecond)
+                        }
+                        Spacer()
+                        Button { } label: {
+                            Image(systemName: "link")
+                                .font(.system(size: 15))
+                                .foregroundStyle(ZLTheme.textSecond)
+                                .frame(width: 40, height: 40)
+                                .background(ZLTheme.surfaceAlt)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    Text(v.date).font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
-                    if !v.loaders.isEmpty {
-                        Text(v.loaders.joined(separator: " · "))
-                            .font(.system(size: 11))
-                            .foregroundStyle(ZLTheme.primary)
-                    }
-                }
-                Spacer()
-                Button { } label: {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundStyle(ZLTheme.primary)
+                    .padding(14)
+                    .background(ZLTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
                 }
             }
+            .padding(.trailing, 2)
         }
     }
 }
 
-struct DownloadableVersion: Identifiable {
+struct DLVersion: Identifiable {
     let id: String
     let type: String
     let date: String
-    let loaders: [String]
 }

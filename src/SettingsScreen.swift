@@ -1,112 +1,192 @@
-// ZL2-iOS · 设置页
-// 对照 ZL2 安卓版的「设置」：渲染器 / 分辨率 / 内存 / Java 环境 / 下载源
+// ZL2-iOS · 设置（依据真机截图还原）
+// 真机布局：顶部栏 · 左侧竖排分类 · 右侧「标题+说明+当前项+操作」卡片
 import SwiftUI
 
 struct SettingsScreen: View {
-    @AppStorage("renderer")     private var renderer = "MobileGlues"
-    @AppStorage("resolution")   private var resolution = 100.0
-    @AppStorage("memoryMB")     private var memoryMB = 2048
-    @AppStorage("mirrorSource") private var mirrorSource = false
+    var onBack: () -> Void = {}
+    var onHome: () -> Void = {}
+    var onDownload: () -> Void = {}
 
-    private let renderers = ["MobileGlues", "Krypton Wrapper", "GL4ES", "Vulkan Zink", "VirGLRenderer"]
+    @State private var section = 0
+    @AppStorage("renderer")    private var renderer = "MobileGlues (OpenGL 4.0, 1.17+)"
+    @AppStorage("vulkanDriver") private var vulkanDriver = "Turnip"
+    @AppStorage("graphicsApi") private var graphicsApi = "仅首次启动时设置为 OpenGL"
+    @AppStorage("resolution")  private var resolution = 50.0
+    @AppStorage("memoryMB")    private var memoryMB = 2048
+
+    private let sections = ["渲染设置", "游戏设置", "控制设置", "手柄设置", "启动器设置"]
+    private let icons = ["paintbrush.pointed.fill", "gamecontroller.fill", "dpad.fill", "gamecontroller", "shippingbox.fill"]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                section("渲染设置") {
-                    pickerRow("渲染器", selection: $renderer, options: renderers)
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("分辨率").font(.system(size: 14))
-                            Spacer()
-                            Text("\(Int(resolution))%")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(ZLTheme.primary)
+        VStack(spacing: 0) {
+            ZLTopBar(title: "设置 - \(sections[section])",
+                     active: .settings,
+                     onBack: onBack, onHome: onHome, onDownload: onDownload)
+
+            HStack(alignment: .top, spacing: 0) {
+                sideRail
+                ScrollView {
+                    VStack(spacing: ZLTheme.cardGap) {
+                        switch section {
+                        case 0: renderSettings
+                        case 1: gameSettings
+                        default: launcherSettings
                         }
-                        Slider(value: $resolution, in: 30...100, step: 10)
                     }
-                    hint("分辨率越低，渲染压力越小、帧率越稳。2K 屏建议 50%。")
-                }
-
-                section("游戏设置") {
-                    stepperRow("内存分配", value: $memoryMB, range: 1024...8192, step: 512, unit: "MB")
-                    hint("并非越大越好，分配过高会让系统资源紧张，反而卡顿闪退。")
-                    toggleRow("自动选择 Java 环境", isOn: .constant(true))
-                    hint("少数客户端需要特定版本时才需手动指定。")
-                }
-
-                section("启动器设置") {
-                    toggleRow("优先使用镜像源", isOn: $mirrorSource)
-                    hint("国内网络下官方源可能很慢，下载失败时切开。")
-                }
-            }
-            .padding(.horizontal, ZLTheme.screenPadding)
-            .padding(.vertical, 12)
-        }
-        .background(ZLTheme.surface)
-    }
-
-    // MARK: 组件
-    private func section<Content: View>(_ title: String, @ViewBuilder content: @escaping () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(ZLTheme.textSecond)
-                .padding(.leading, 4)
-            ZLCard { VStack(alignment: .leading, spacing: 12) { content() } }
-        }
-    }
-
-    private func pickerRow(_ title: String, selection: Binding<String>, options: [String]) -> some View {
-        HStack {
-            Text(title).font(.system(size: 14))
-            Spacer()
-            Menu {
-                ForEach(options, id: \.self) { o in
-                    Button(o) { selection.wrappedValue = o }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(selection.wrappedValue)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(ZLTheme.primary)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10))
-                        .foregroundStyle(ZLTheme.primary)
+                    .padding(.trailing, ZLTheme.screenPadding)
+                    .padding(.bottom, ZLTheme.screenPadding)
                 }
             }
         }
+        .background(ZLTheme.background.ignoresSafeArea())
+        .navigationBarHidden(true)
     }
 
-    private func stepperRow(_ title: String, value: Binding<Int>, range: ClosedRange<Int>, step: Int, unit: String) -> some View {
-        HStack {
-            Text(title).font(.system(size: 14))
-            Spacer()
-            Stepper(value: value, in: range, step: step) {
-                Text("\(value.wrappedValue) \(unit)")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(ZLTheme.primary)
+    private var sideRail: some View {
+        VStack(spacing: 6) {
+            ForEach(sections.indices, id: \.self) { i in
+                Button { section = i } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: icons[i]).font(.system(size: 19))
+                        Text(sections[i]).font(.system(size: 11))
+                    }
+                    .foregroundStyle(section == i ? ZLTheme.primaryDeep : ZLTheme.textSecond)
+                    .frame(width: 76, height: 62)
+                    .background(section == i ? ZLTheme.primarySoft : Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
             }
-            .labelsHidden()
-            Text("\(value.wrappedValue) \(unit)")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(ZLTheme.primary)
-                .frame(minWidth: 70, alignment: .trailing)
-        }
-    }
-
-    private func toggleRow(_ title: String, isOn: Binding<Bool>) -> some View {
-        HStack {
-            Text(title).font(.system(size: 14))
             Spacer()
-            Toggle("", isOn: isOn).labelsHidden()
+        }
+        .padding(.leading, 8)
+        .padding(.vertical, 8)
+        .frame(width: 92)
+    }
+
+    // MARK: 卡片（真机样式：标题 + 灰说明 + 当前选择项 + 右侧操作）
+    private func settingCard(title: String,
+                             desc: String?,
+                             current: String?,
+                             trailing: AnyView? = nil) -> some View {
+        ZLCard {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    if let desc {
+                        Text(desc)
+                            .font(.system(size: 12))
+                            .foregroundStyle(ZLTheme.textSecond)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let current {
+                        Text("当前选择项：\(current)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(ZLTheme.textSecond)
+                    }
+                }
+                Spacer(minLength: 8)
+                trailing
+            }
         }
     }
 
-    private func hint(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 11))
-            .foregroundStyle(ZLTheme.textSecond)
-            .fixedSize(horizontal: false, vertical: true)
+    private func actionButtons() -> AnyView {
+        AnyView(
+            HStack(spacing: 6) {
+                Button { } label: {
+                    Image(systemName: "arrow.down.to.line")
+                        .font(.system(size: 15))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .frame(width: 40, height: 40)
+                        .background(ZLTheme.surfaceAlt)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                Button { } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .frame(width: 34, height: 40)
+                        .background(ZLTheme.surfaceAlt)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var renderSettings: some View {
+        settingCard(title: "全局渲染器",
+                    desc: "全局默认的渲染器，通过动态库转换层，确保游戏能在移动端运行",
+                    current: renderer,
+                    trailing: actionButtons())
+        settingCard(title: "Vulkan 驱动器",
+                    desc: nil,
+                    current: vulkanDriver,
+                    trailing: actionButtons())
+        settingCard(title: "图形 API",
+                    desc: "设置 Minecraft 26.2+ 将使用的图形 API",
+                    current: graphicsApi,
+                    trailing: actionButtons())
+        ZLCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("游戏窗口分辨率")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                HStack {
+                    Slider(value: $resolution, in: 20...100, step: 10)
+                        .tint(ZLTheme.primary)
+                    Text("\(Int(resolution))%")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(ZLTheme.primaryDeep)
+                        .frame(width: 52)
+                }
+                Text("分辨率越低，渲染压力越小、帧率越稳。")
+                    .font(.system(size: 12))
+                    .foregroundStyle(ZLTheme.textSecond)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var gameSettings: some View {
+        ZLCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("内存分配")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                HStack {
+                    Slider(value: Binding(
+                        get: { Double(memoryMB) },
+                        set: { memoryMB = Int($0) }
+                    ), in: 1024...8192, step: 512)
+                    .tint(ZLTheme.primary)
+                    Text("\(memoryMB) MB")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(ZLTheme.primaryDeep)
+                        .frame(width: 78)
+                }
+                Text("并非越大越好，分配过高会让系统资源紧张，反而卡顿闪退。")
+                    .font(.system(size: 12))
+                    .foregroundStyle(ZLTheme.textSecond)
+            }
+        }
+        settingCard(title: "自动选择 Java 环境", desc: "少数客户端需要特定版本时才需手动指定", current: "已开启")
+        settingCard(title: "全局版本隔离", desc: "每个版本独立配置文件、模组、光影、存档，互不干扰", current: "已开启")
+    }
+
+    @ViewBuilder
+    private var launcherSettings: some View {
+        settingCard(title: "下载源", desc: "国内网络下官方源可能很慢，下载失败时可切镜像", current: "优先使用官方源", trailing: actionButtons())
+        settingCard(title: "启动器语言", desc: nil, current: "简体中文", trailing: actionButtons())
+        settingCard(title: "关于", desc: nl2(), current: nil)
+    }
+
+    private func nl2() -> String {
+        CoreBridge.isCoreLinked ? "启动核心：Amethyst 已链接" : "启动核心：未接入（仅界面）"
     }
 }
