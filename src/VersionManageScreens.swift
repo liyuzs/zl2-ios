@@ -138,6 +138,14 @@ struct ExportPackScreen: View {
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
     @State private var format = 1
+    // 导出内容选择（对齐 ZL2 的 7 类文件夹）
+    @State private var includeOptions = true
+    @State private var includeResourcePacks = true
+    @State private var includeMods = true
+    @State private var includeSaves = true
+    @State private var includeShaders = true
+    @State private var includeConfig = true
+    @State private var includeLauncher = false
     @State private var name = "我的整合包"
     @State private var version = "1.0.0"
     @State private var author = ""
@@ -225,6 +233,20 @@ struct ExportPackScreen: View {
             .background(ZLTheme.surfaceAlt)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
+    private func contentToggle(_ title: String, _ folder: String,
+                               _ binding: Binding<Bool>) -> some View {
+        HStack(spacing: 10) {
+            Toggle("", isOn: binding).labelsHidden().tint(ZLTheme.primary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.system(size: 12))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Text(folder).font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(ZLTheme.textSecond)
+            }
+            Spacer()
+        }
+    }
+
 }
 
 // MARK: - 版本操作（复制/重命名/删除）
