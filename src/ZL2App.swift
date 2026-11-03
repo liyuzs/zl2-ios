@@ -30,6 +30,7 @@ enum AppRoute: Hashable {
     case controlLayout
     case skinCape
     case fileManager
+    case versionList
 }
 
 struct RootView: View {
@@ -42,7 +43,7 @@ struct RootView: View {
                 onMultiplayer: { path.append(.multiplayer) },
                 onDownload: { path.append(.download) },
                 onSettings: { path.append(.settings) },
-                onVersionSettings: { path.append(.versionContent("概览")) }
+                onVersionSettings: { path.append(.versionList) }
             )
             .zlGuide(.home)
             .navigationBarHidden(true)
@@ -95,6 +96,14 @@ struct RootView: View {
                     SkinCapeScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .fileManager:
                     FileManagerScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .versionList:
+                    VersionListScreen(
+                        onBack: { path.removeLast() },
+                        onHome: { path.removeAll() },
+                        onMultiplayer: { path.append(.multiplayer) },
+                        onDownload: { path.append(.download) },
+                        onSettings: { path.append(.settings) },
+                        onOpenVersion: { _ in path.append(.versionContent("概览")) })
                 }
             }
         }
