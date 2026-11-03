@@ -316,7 +316,7 @@ struct ZLControlLayout: Codable, Equatable, Identifiable, Sendable {
     /// 默认布局（对齐 ZL2 的默认控件：键盘常用键 + WASD + 摇杆）
     static var defaultLayout: ZLControlLayout {
         var layout = ZLControlLayout.empty
-        let layer = ZLLayer(name: "默认", uuid: UUID().uuidString)
+        var layer = ZLLayer(name: "默认", uuid: UUID().uuidString)
 
         // 键盘按键（真机截图里的 ESC/F3/F5/Tab/Ctrl/Alt/输入法）
         let keyboardKeys: [(String, String, Int, Int)] = [
