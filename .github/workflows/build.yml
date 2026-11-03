@@ -51,8 +51,9 @@ jobs:
             -DCONFIG_COMMIT=zl2 \
             -DCONFIG_CURSEFORGE_API_KEY= \
             -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --target ZL2Core -j 4
-          ls -lh build/*.a || true
+          # 构建全部目标（主库 + AFNetworking/awt_xawt 等动态依赖）
+          cmake --build build -j 4 || cmake --build build --target ZL2Core -j 4
+          ls -lh build/*.a build/*.dylib 2>/dev/null || true
 
       - name: Generate Xcode project
         run: |
