@@ -60,24 +60,14 @@ jobs:
       - name: 编译 iOS 静态库
         if: steps.find.outputs.repo != ''
         run: |
-          source "$HOME/.cargo/env" 2>/dev/null || true
-          set +e
-          # 优先 Core/ 目录（EasyTier-iOS 的形态），否则根目录
-          if [ -f /tmp/et/Core/Cargo.toml ]; then
-            cd /tmp/et/Core
-          elif [ -f /tmp/et/Cargo.toml ]; then
-            cd /tmp/et
-          else
-            echo "未找到 Cargo.toml"
-            exit 1
-          fi
-          echo "工作目录: $(pwd)"
-          cat Cargo.toml | head -30
-          echo "=== 开始编译（可能耗时长）==="
-          cargo build --release --target aarch64-apple-ios 2>&1 | tail -60
-          echo "=== 产物 ==="
-          find target/aarch64-apple-ios -name "*.a" 2>/dev/null | head -10
-          ls -lh target/aarch64-apple-ios/release/*.a 2>/dev/null || echo "无静态库产出"
+          export PATH="$HOME/.cargo/bin:/opt/homebrew/opt/rustup/bin:$PATH"
+          cd /tmp/et/Core
+          pwd
+          head -40 Cargo.toml
+          cargo build --release --target aarch64-apple-ios
+          echo "BUILD_EXIT=$?"
+          find target/aarch64-apple-ios -name "*.a" | head
+          ls -lh target/aarch64-apple-ios/release/ 2>/dev/null | head -20
 
       - name: 上传产物
         if: steps.find.outputs.repo != '' && success()
