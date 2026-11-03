@@ -27,6 +27,7 @@ enum AppRoute: Hashable {
 }
 
 struct RootView: View {
+    @StateObject private var themeManager = ThemeManager.shared
     @State private var path: [AppRoute] = []
 
     var body: some View {
@@ -78,6 +79,8 @@ struct RootView: View {
             }
         }
         .tint(ZLTheme.primary)
+        .environmentObject(themeManager)
+        .preferredColorScheme(themeManager.darkMode ? .dark : .light)
     }
 }
 

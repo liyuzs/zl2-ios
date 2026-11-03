@@ -212,9 +212,56 @@ struct SettingsScreen: View {
 
     @ViewBuilder
     private var launcherSettings: some View {
+        themeCard
         settingCard(title: "下载源", desc: "国内网络下官方源可能很慢，下载失败时可切镜像", current: "优先使用官方源", trailing: actionButtons())
         settingCard(title: "启动器语言", desc: nil, current: "简体中文", trailing: actionButtons())
         settingCard(title: "关于", desc: nl2(), current: nil)
+    }
+
+    // MARK: 颜色主题（8 套，来自 ZL2）
+    @EnvironmentObject private var themeManager: ThemeManager
+
+    private var themeCard: some View {
+        ZLCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("颜色主题").font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(ZLTheme.textPrimary)
+                        Text("跟随 ZL2 的 7 套配色，切换后全局生效")
+                            .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+                    }
+                    Spacer()
+                    Toggle("深色", isOn: Binding(
+                        get: { themeManager.darkMode },
+                        set: { themeManager.darkMode = $0 }
+                    ))
+                    .labelsHidden()
+                    .tint(ZLTheme.primary)
+                }
+
+                HStack(spacing: 14) {
+                    ForEach(ZLColorTheme.allCases) { t in
+                        Button {
+                            themeManager.themeName = t.rawValue
+                        } label: {
+                            VStack(spacing: 6) {
+                                Circle()
+                                    .fill(t.primary)
+                                    .frame(width: 34, height: 34)
+                                    .overlay(
+                                        Circle().stroke(themeManager.theme == t ? ZLTheme.textPrimary : .clear, lineWidth: 2)
+                                    )
+                                Text(t.displayName).font(.system(size: 10))
+                                    .foregroundStyle(themeManager.theme == t ? ZLTheme.textPrimary : ZLTheme.textSecond)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Spacer()
+                }
+            }
+        }
     }
 
     private func nl2() -> String {

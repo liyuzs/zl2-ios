@@ -2,27 +2,52 @@
 // 真机配色：米白背景 + 橄榄金主色 + 白色大圆角卡片 + 横屏
 import SwiftUI
 
+// MARK: - 主题管理器（8 套主题来自 ZL2 Color.kt）
+final class ThemeManager: ObservableObject {
+    static let shared = ThemeManager()
+
+    @Published var themeName: String {
+        didSet { UserDefaults.standard.set(themeName, forKey: "zl.theme.name") }
+    }
+    @Published var darkMode: Bool {
+        didSet { UserDefaults.standard.set(darkMode, forKey: "zl.theme.dark") }
+    }
+
+    init() {
+        let d = UserDefaults.standard
+        self.themeName = d.string(forKey: "zl.theme.name") ?? ZLColorTheme.verdantField.rawValue
+        self.darkMode = d.bool(forKey: "zl.theme.dark")
+    }
+
+    var theme: ZLColorTheme {
+        ZLColorTheme(rawValue: themeName) ?? .verdantField
+    }
+}
+
 enum ZLTheme {
-    // 背景与容器
-    static let background   = Color(hex: 0xF2EDE4)   // 米白底（真机取色）
-    static let surface      = Color(hex: 0xFFFFFF)   // 卡片白
-    static let surfaceAlt   = Color(hex: 0xFAF7F1)   // 次级卡片
-    static let stroke       = Color(hex: 0xE5DED0)   // 细边框
+    private static var tm: ThemeManager { ThemeManager.shared }
+    private static var th: ZLColorTheme { tm.theme }
+
+    // 背景与容器（跟进当前主题）
+    static var background: Color   { th.background }
+    static var surface: Color      { th.surface }
+    static var surfaceAlt: Color   { th.surfaceContainer }
+    static var stroke: Color       { th.outline }
 
     // 兼容旧命名（AccountScreen / LaunchScreen / ModsScreen 仍在用）
     static let cardStroke   = stroke
     static let cardBg       = surface
 
-    // 主色：橄榄金（真机按钮/开关/高亮同色系）
-    static let primary      = Color(hex: 0x8B7D3A)
-    static let primaryDeep  = Color(hex: 0x6E622D)
-    static let primarySoft  = Color(hex: 0xEFE6C9)   // 选中项浅金背景
-    static let primaryGlow  = Color(hex: 0xC9B76A)
+    // 主色（跟进当前主题）
+    static var primary: Color      { th.primary }
+    static var primaryDeep: Color  { th.onPrimaryContainer }
+    static var primarySoft: Color  { th.primaryContainer }
+    static var primaryGlow: Color  { th.secondary }
 
     // 文字
-    static let textPrimary  = Color(hex: 0x1C1A17)
-    static let textSecond   = Color(hex: 0x6B6459)
-    static let textOnGold   = Color(hex: 0xFFFBF2)
+    static var textPrimary: Color { th.onSurface }
+    static var textSecond: Color  { th.onSurfaceVariant }
+    static var textOnGold: Color  { th.onPrimary }
 
     // 语义色
     static let success      = Color(hex: 0x4A7C3F)   // "正式版" 绿标签
