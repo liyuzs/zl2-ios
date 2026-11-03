@@ -13,6 +13,7 @@ struct HomeScreen: View {
     var onDownload: () -> Void = {}
     var onSettings: () -> Void = {}
     var onFileManager: () -> Void = {}
+    @State private var showTaskMenu = false
     var onVersionSettings: () -> Void = {}
 
     var body: some View {
@@ -30,6 +31,7 @@ struct HomeScreen: View {
                     Spacer()
 
                     HStack(spacing: 8) {
+                        ZLTaskRailButton { showTaskMenu = true }
                         topButton("folder.fill", action: onFileManager)
                         topButton("person.2.fill", action: onMultiplayer)
                         topButton("arrow.down.to.line", action: onDownload)
