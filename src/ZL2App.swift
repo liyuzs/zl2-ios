@@ -44,6 +44,7 @@ struct RootView: View {
                 onSettings: { path.append(.settings) },
                 onVersionSettings: { path.append(.versionContent("概览")) }
             )
+            .zlGuide(.home)
             .navigationBarHidden(true)
             .navigationDestination(for: AppRoute.self) { route in
                 switch route {
@@ -89,6 +90,7 @@ struct RootView: View {
                     ExportPackScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .controlLayout:
                     ControlEditorScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                        .zlGuide(.controlEditor)
                 case .skinCape:
                     SkinCapeScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .fileManager:
