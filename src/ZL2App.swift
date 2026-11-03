@@ -18,6 +18,8 @@ enum AppRoute: Hashable {
     case account
     case controlEditor
     case about
+    case assets(String)          // 资源类型名
+    case versionContent(String)  // 版本内容类型名
 }
 
 struct RootView: View {
@@ -29,7 +31,7 @@ struct RootView: View {
                 onMultiplayer: { path.append(.multiplayer) },
                 onDownload: { path.append(.download) },
                 onSettings: { path.append(.settings) },
-                onVersionSettings: { path.append(.settings) }
+                onVersionSettings: { path.append(.versionContent("概览")) }
             )
             .navigationBarHidden(true)
             .navigationDestination(for: AppRoute.self) { route in
@@ -48,6 +50,16 @@ struct RootView: View {
                     ControlsScreen().navigationTitle("控制布局")
                 case .about:
                     AboutScreen().navigationTitle("关于")
+                case .assets(let kindName):
+                    AssetsScreen(kind: AssetKind(rawValue: kindName) ?? .modpack,
+                                 onBack: { path.removeLast() },
+                                 onHome: { path.removeAll() },
+                                 onSettings: { path.append(.settings) })
+                case .versionContent(let kindName):
+                    VersionContentScreen(
+                        initial: VersionContentKind(rawValue: kindName) ?? .overview,
+                        onBack: { path.removeLast() },
+                        onHome: { path.removeAll() })
                 }
             }
         }

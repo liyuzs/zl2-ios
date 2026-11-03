@@ -14,8 +14,8 @@ struct SettingsScreen: View {
     @AppStorage("resolution")  private var resolution = 50.0
     @AppStorage("memoryMB")    private var memoryMB = 2048
 
-    private let sections = ["渲染设置", "游戏设置", "控制设置", "手柄设置", "启动器设置"]
-    private let icons = ["paintbrush.pointed.fill", "gamecontroller.fill", "dpad.fill", "gamecontroller", "shippingbox.fill"]
+    private let sections = ["渲染设置", "游戏设置", "控制设置", "手柄设置", "Java 管理", "启动器设置"]
+    private let icons = ["paintbrush.pointed.fill", "gamecontroller.fill", "dpad.fill", "gamecontroller", "cup.and.saucer.fill", "shippingbox.fill"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,6 +30,9 @@ struct SettingsScreen: View {
                         switch section {
                         case 0: renderSettings
                         case 1: gameSettings
+                        case 2: controlSettings
+                        case 3: gamepadSettings
+                        case 4: javaSettings
                         default: launcherSettings
                         }
                     }
@@ -177,6 +180,34 @@ struct SettingsScreen: View {
         }
         settingCard(title: "自动选择 Java 环境", desc: "少数客户端需要特定版本时才需手动指定", current: "已开启")
         settingCard(title: "全局版本隔离", desc: "每个版本独立配置文件、模组、光影、存档，互不干扰", current: "已开启")
+    }
+
+
+    // MARK: 控制设置
+    @ViewBuilder
+    private var controlSettings: some View {
+        settingCard(title: "控制布局", desc: "编辑屏幕按键的位置、大小与触发事件", current: "默认布局", trailing: actionButtons())
+        settingCard(title: "按键透明度", desc: "控制布局在游戏内的可见度", current: "100%", trailing: actionButtons())
+        settingCard(title: "滑动手势", desc: "启用两指滑动模拟鼠标滚轮", current: "已开启")
+        settingCard(title: "输入法模式", desc: "游戏内文字输入方式", current: "直接输入", trailing: actionButtons())
+    }
+
+    // MARK: 手柄设置
+    @ViewBuilder
+    private var gamepadSettings: some View {
+        settingCard(title: "手柄映射", desc: "为外接手柄配置按键映射", current: "未连接手柄", trailing: actionButtons())
+        settingCard(title: "摇杆模式", desc: "左摇杆的控制方式", current: "移动", trailing: actionButtons())
+        settingCard(title: "扳机灵敏度", desc: "LT/RT 扳机的触发阈值", current: "中等", trailing: actionButtons())
+        settingCard(title: "震动反馈", desc: "手柄震动强度", current: "关闭")
+    }
+
+    // MARK: Java 管理
+    @ViewBuilder
+    private var javaSettings: some View {
+        settingCard(title: "已安装的 Java", desc: "内置 JRE 17（java_runtimes/java-17-openjdk）", current: "17", trailing: actionButtons())
+        settingCard(title: "自动选择 Java 环境", desc: "按游戏版本自动匹配所需 Java", current: "已开启")
+        settingCard(title: "JVM 参数", desc: "额外的虚拟机启动参数，一般无需修改", current: "默认")
+        settingCard(title: "内存分配", desc: nil, current: "\(memoryMB) MB", trailing: actionButtons())
     }
 
     @ViewBuilder
