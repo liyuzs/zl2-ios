@@ -75,26 +75,26 @@ struct VersionListScreen: View {
 
     // 左侧：游戏目录 + 底部两个按钮
     private var leftPanel: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 10) {
+            // 游戏目录（米金块）
             VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "folder.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(ZLTheme.primary)
-                        Text("默认游戏目录")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(ZLTheme.textPrimary)
-                        Spacer()
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 11))
-                            .foregroundStyle(ZLTheme.textSecond)
-                    }
-                    Text(VersionRepository.shared.mcRoot.path
-                        .replacingOccurrences(of: NSHomeDirectory(), with: ""))
-                        .font(.system(size: 9, design: .monospaced))
-                        .foregroundStyle(ZLTheme.primaryDeep.opacity(0.7))
-                        .lineLimit(2)
+                HStack(spacing: 6) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(ZLTheme.primary)
+                    Text("默认游戏目录")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Spacer()
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
                 }
+                Text(VersionRepository.shared.mcRoot.path
+                    .replacingOccurrences(of: NSHomeDirectory(), with: ""))
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(ZLTheme.primaryDeep.opacity(0.7))
+                    .lineLimit(2)
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -103,6 +103,7 @@ struct VersionListScreen: View {
 
             Spacer()
 
+            // 底部两个按钮
             VStack(spacing: 8) {
                 Button { showDirs = true } label: {
                     Text("添加游戏目录")
