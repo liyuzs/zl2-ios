@@ -21,14 +21,22 @@ jobs:
 
       - name: 安装 Rust iOS target
         run: |
-          if ! command -v rustup >/dev/null 2>&1; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-            source "$HOME/.cargo/env"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          echo "=== 现有工具 ==="
+          which rustc rustup cargo || true
+          rustc --version || true
+          if command -v rustup >/dev/null 2>&1; then
+            rustup target add aarch64-apple-ios
+            rustup target list --installed
+          else
+            echo "没有 rustup，尝试安装"
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup.sh || exit 1
+            sh /tmp/rustup.sh -y --default-toolchain stable --profile minimal
+            export PATH="$HOME/.cargo/bin:$PATH"
+            rustup target add aarch64-apple-ios
+            rustup target list --installed
           fi
-          source "$HOME/.cargo/env" 2>/dev/null || true
-          rustup target add aarch64-apple-ios
-          rustc --version
-          rustup target list --installed
+          echo "TARGET_OK" 
 
       - name: 查找 EasyTier iOS 仓库
         id: find
