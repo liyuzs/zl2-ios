@@ -29,6 +29,7 @@ enum AppRoute: Hashable {
     case exportPackNew
     case controlLayout
     case skinCape
+    case fileManager
 }
 
 struct RootView: View {
@@ -90,6 +91,8 @@ struct RootView: View {
                     ControlEditorScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .skinCape:
                     SkinCapeScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
+                case .fileManager:
+                    FileManagerScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 }
             }
         }
