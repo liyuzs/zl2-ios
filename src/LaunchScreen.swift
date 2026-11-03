@@ -4,6 +4,7 @@ import SwiftUI
 
 struct LaunchScreen: View {
     let versionName: String
+    var versionID: String = ""
     @Binding var isPresented: Bool
 
     @State private var stage: Stage = .check
@@ -12,6 +13,7 @@ struct LaunchScreen: View {
     @State private var failed = false
     @State private var coreLinked = false
     @State private var runtimeReady = false
+    @State private var versionReady = false
 
     enum Stage: String, CaseIterable {
         case check  = "环境自检"
@@ -63,6 +65,7 @@ struct LaunchScreen: View {
                 VStack(alignment: .leading, spacing: 10) {
                     checkRow("启动核心", coreLinked, true)
                     checkRow("Java 运行时", runtimeReady, true)
+                    checkRow("版本文件", versionReady, false)
                 }
             }
 
@@ -128,6 +131,11 @@ struct LaunchScreen: View {
         logs.append("开始环境自检…")
         coreLinked = CoreBridge.isCoreLinked
         runtimeReady = CoreBridge.runtimeCheck()
+        let docs = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).last ?? ""
+        let vid = versionID.isEmpty ? versionName : versionID
+        let metaPath = (docs as NSString).appendingPathComponent(
+            "instances/default/.minecraft/versions/\(vid)/\(vid).json")
+        versionReady = FileManager.default.fileExists(atPath: metaPath)
         logs.append(coreLinked ? "✓ Amethyst 核心已链接" : "✗ 未链接核心（仅界面构建）")
         logs.append(runtimeReady ? "✓ 找到 java_runtimes" : "✗ 未找到 java_runtimes")
         progress = 1
@@ -149,12 +157,25 @@ struct LaunchScreen: View {
             // 说明：真正启动需要完整版本 JSON 与游戏文件；
             // 这里先验证核心可调用性，缺游戏文件会由核心返回错误码
             let docs = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).last ?? NSTemporaryDirectory()
-            let probeJar = (docs as NSString).appendingPathComponent("probe.jar")
-            if FileManager.default.fileExists(atPath: probeJar) {
-                try await CoreBridge.launchJar(probeJar)
+            // 优先用已安装版本的元数据启动
+            let vid = versionID.isEmpty ? versionName : versionID
+            let metaPath = (docs as NSString).appendingPathComponent(
+                "instances/default/.minecraft/versions/\(vid)/\(vid).json")
+            if FileManager.default.fileExists(atPath: metaPath),
+               let data = FileManager.default.contents(atPath: metaPath),
+               let meta = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                logs.append("✓ 找到版本元数据：\(metaPath)")
+                logs.append("调用 launchJVM(launchTarget=版本JSON)…")
+                try await CoreBridge.launchVersion(meta)
             } else {
-                logs.append("⚠ 未放置 probe.jar，跳过真实启动")
-                logs.append("提示：真机测试时可放入一个最小 jar 验证 JVM 能否拉起")
+                let probeJar = (docs as NSString).appendingPathComponent("probe.jar")
+                if FileManager.default.fileExists(atPath: probeJar) {
+                    logs.append("未找到已安装版本，改用 probe.jar 验证 JVM")
+                    try await CoreBridge.launchJar(probeJar)
+                } else {
+                    logs.append("⚠ 该版本还未安装，请先到「下载」页安装")
+                    logs.append("提示：安装完成后可再次点「尝试启动」")
+                }
             }
             progress = 1
             stage = .done

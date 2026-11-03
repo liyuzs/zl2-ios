@@ -15,6 +15,10 @@ struct DownloadScreen: View {
     @State private var liveVersions: [DLVersion] = []
     @State private var loading = false
     @State private var loadError: String?
+    @State private var installing: String?
+    @State private var installMsg = ""
+    @State private var installFrac = 0.0
+    @State private var installed: Set<String> = []
 
     private let categories = ["游戏", "整合包", "模组", "资源包"]
     private let catIcons = ["gamecontroller.fill", "shippingbox.fill", "puzzlepiece.fill", "paintbrush.fill"]
@@ -69,6 +73,29 @@ struct DownloadScreen: View {
             loadError = error.localizedDescription
         }
         loading = false
+    }
+
+    // MARK: 安装版本
+    private func startInstall(_ id: String) async {
+        guard installing == nil else { return }
+        installing = id
+        installFrac = 0
+        installMsg = "开始安装 \(id)"
+        do {
+            let installer = VersionInstaller()
+            try await installer.install(versionID: id) { p in
+                Task { @MainActor in
+                    installFrac = p.fraction
+                    installMsg = p.message
+                }
+            }
+            installed.insert(id)
+            installMsg = "\(id) 安装完成"
+            installFrac = 1
+        } catch {
+            installMsg = "安装失败：\(error.localizedDescription)"
+        }
+        installing = nil
     }
 
     // 左侧竖排分类
@@ -145,6 +172,23 @@ struct DownloadScreen: View {
     private var list: some View {
         ScrollView {
             VStack(spacing: 10) {
+                if installing != nil {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(installMsg).font(.system(size: 12))
+                                .foregroundStyle(ZLTheme.textSecond)
+                            Spacer()
+                            Text("\(Int(installFrac * 100))%")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(ZLTheme.primaryDeep)
+                        }
+                        ProgressView(value: installFrac)
+                            .tint(ZLTheme.primary)
+                    }
+                    .padding(12)
+                    .background(ZLTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
                 if loading {
                     HStack(spacing: 8) {
                         ProgressView().tint(ZLTheme.primary)
@@ -182,15 +226,23 @@ struct DownloadScreen: View {
                                 .foregroundStyle(ZLTheme.textSecond)
                         }
                         Spacer()
-                        Button { } label: {
-                            Image(systemName: "link")
-                                .font(.system(size: 15))
-                                .foregroundStyle(ZLTheme.textSecond)
-                                .frame(width: 40, height: 40)
-                                .background(ZLTheme.surfaceAlt)
-                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        Button {
+                            Task { await startInstall(v.id) }
+                        } label: {
+                            if installing == v.id {
+                                ProgressView().tint(ZLTheme.primary)
+                                    .frame(width: 40, height: 40)
+                            } else {
+                                Image(systemName: installed.contains(v.id) ? "checkmark.circle.fill" : "arrow.down.circle.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(installed.contains(v.id) ? ZLTheme.success : ZLTheme.primary)
+                                    .frame(width: 40, height: 40)
+                                    .background(ZLTheme.surfaceAlt)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            }
                         }
                         .buttonStyle(.plain)
+                        .disabled(installing != nil)
                     }
                     .padding(14)
                     .background(ZLTheme.surface)

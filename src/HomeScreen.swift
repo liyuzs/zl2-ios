@@ -51,6 +51,7 @@ struct HomeScreen: View {
         }
         .fullScreenCover(isPresented: $launching) {
             LaunchScreen(versionName: selectedVersion,
+                         versionID: "1.20.1",
                          isPresented: Binding(get: { launching }, set: { if !$0 { launching = false } }))
         }
     }
