@@ -519,6 +519,12 @@ struct ZLClickEvent: Codable, Equatable, Sendable {
         value = c.zl(.key, "")
     }
 
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(type, forKey: .type)
+        try c.encode(value, forKey: .key)
+    }
+
     // MARK: 便捷构造
 
     static func key(_ key: String) -> ZLClickEvent { ZLClickEvent(type: .key, value: key) }

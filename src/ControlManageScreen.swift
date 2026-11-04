@@ -369,8 +369,8 @@ struct ControlManageScreen: View {
         guard let meta = currentMeta else { return }
         // 优先导出已经保存过的这份布局，避免用默认布局覆盖用户内容
         var layout: ZLControlLayout
-        if let url = ZLLayoutStore.list().first(where: { $0.name == meta.name }),
-           let existing = ZLLayoutStore.load(url) {
+        if let entry = ZLLayoutStore.list().first(where: { $0.name == meta.name }),
+           let existing = ZLLayoutStore.load(entry.url) {
             layout = existing
         } else {
             layout = ZLControlLayout.from(doc: ControlLayoutDoc.default)

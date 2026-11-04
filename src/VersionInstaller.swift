@@ -235,6 +235,23 @@ actor VersionInstaller {
         return data
     }
 
+    static func downloadAsset(hash: String, root: URL, session: URLSession, fm: FileManager) async -> Bool {
+        let dst = root.appendingPathComponent("\(hash.prefix(2))/\(hash)")
+        if fm.fileExists(atPath: dst.path) { return true }
+        guard let url = URL(string: "https://resources.download.minecraft.net/\(hash.prefix(2))/\(hash)") else { return false }
+        for _ in 0..<2 {
+            do {
+                let (tmp, resp) = try await session.download(from: url)
+                guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { continue }
+                try? fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try? fm.removeItem(at: dst)
+                try fm.moveItem(at: tmp, to: dst)
+                return true
+            } catch { continue }
+        }
+        return false
+    }
+
     // MARK: 下载单文件（带重试）
     private func download(_ url: URL, to dest: URL) async throws {
         var lastError: Error?

@@ -191,8 +191,6 @@ struct ControlAppearance: Identifiable, Codable, Equatable {
     var fontSize: Double = 0
     /// 边框粗细
     var borderWidth: Double = 1.0
-    /// 边框色
-    var borderHex: UInt32 = 0xCFC8B4
     /// 四角圆角
     var corners: ControlCorners = ControlCorners.uniform(12)
     /// 是否启用动画过渡
@@ -752,25 +750,6 @@ final class ControlStyleVault: ObservableObject {
         }
     }
 
-    /// 从 ZLLayoutStore 加载布局（真正把用户编辑的内容读回来）
-    private func loadLayout() {
-        guard !loaded else { return }
-        loaded = true
-        guard let data = ZLLayoutStore.loadRaw(name: layoutName),
-              let decoded = try? JSONDecoder().decode(ControlLayoutDoc.self, from: data) else {
-            return
-        }
-        doc = decoded
-        if layerIndex >= doc.layers.count { layerIndex = 0 }
-    }
-
-    /// 存回 ZLLayoutStore（编辑结果不再丢失）
-    private func saveLayout() {
-        guard loaded else { return }
-        if let data = try? JSONEncoder().encode(doc) {
-            ZLLayoutStore.saveRaw(name: layoutName, data: data)
-        }
-    }
 }
 
 // MARK: - 编辑器弹窗（属性 / 样式柜 / 导入导出 / 层属性）
@@ -839,6 +818,22 @@ struct ControlEditorScreen: View {
     private var currentItems: [ControlItem] {
         guard let layer = currentLayer else { return [] }
         return layer.items
+    }
+
+    private func loadLayout() {
+        guard !loaded else { return }
+        loaded = true
+        guard let data = ZLLayoutStore.loadRaw(name: layoutName),
+              let decoded = try? JSONDecoder().decode(ControlLayoutDoc.self, from: data) else { return }
+        doc = decoded
+        if layerIndex >= doc.layers.count { layerIndex = 0 }
+    }
+
+    private func saveLayout() {
+        guard loaded else { return }
+        if let data = try? JSONEncoder().encode(doc) {
+            ZLLayoutStore.saveRaw(name: layoutName, data: data)
+        }
     }
 
     private var selectedItem: ControlItem? {
@@ -2423,7 +2418,7 @@ struct LayoutInfoSheet: View {
                     HStack(spacing: 10) {
                         Button {
                             // 导出成 ZL2 原生格式（安卓 ZL2 可直接读取）
-                            if let zl = ZLControlLayout.from(doc),
+                            if let zl = ZLControlLayout.from(doc: doc),
                                let data = try? zl.exportJSON(),
                                let text = String(data: data, encoding: .utf8) {
                                 exportText = text

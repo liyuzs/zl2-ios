@@ -180,4 +180,23 @@ enum CoreBridge {
         }
         return false
     }
+    static func requiredJavaVersion(_ metadata: [String: Any]) -> Int {
+        if let jv = metadata["javaVersion"] as? [String: Any],
+           let major = jv["majorVersion"] as? Int, major > 0 {
+            return major
+        }
+        if let id = metadata["id"] as? String {
+            let parts = id.split(separator: ".")
+            if parts.count >= 2, let ma = Int(parts[0]), let mi = Int(parts[1]) {
+                if ma == 1 {
+                    if mi >= 21 { return 21 }
+                    if mi >= 17 { return 17 }
+                    if mi >= 12 { return 17 }
+                    return 8
+                }
+                if ma >= 22 { return 21 }
+            }
+        }
+        return 17
+    }
 }
