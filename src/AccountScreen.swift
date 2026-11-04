@@ -191,6 +191,8 @@ struct AccountScreen: View {
                 showMSLogin = true
             case .offline:
                 showLocalLogin = true
+            case .authlib:
+                showAuthlibLogin = true
             }
         }
     }
