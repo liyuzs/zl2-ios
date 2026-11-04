@@ -30,10 +30,10 @@ struct SplashScreen: View {
                             .font(.system(size: 44))
                             .foregroundStyle(ZLTheme.primary)
                     )
-                Text("ZalithLauncher")
+                Text("CraftLauncher")
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(ZLTheme.textPrimary)
-                Text("iOS 版")
+                Text("非官方 iOS 移植版")
                     .font(.system(size: 11))
                     .foregroundStyle(ZLTheme.textSecond)
 

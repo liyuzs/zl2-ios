@@ -37,11 +37,16 @@ struct HomeScreen: View {
             // 顶部：标题 + 右侧图标
             VStack(spacing: 0) {
                 HStack(alignment: .center) {
-                    Text("ZalithLauncher")
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(ZLTheme.textSecond)
-                        .padding(.leading, ZLTheme.screenPadding)
-                        .onTapGesture { titleTap() }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("CraftLauncher")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(ZLTheme.textPrimary)
+                        Text("非官方 iOS 移植版 · 基于 Zalith Launcher 2")
+                            .font(.system(size: 9))
+                            .foregroundStyle(ZLTheme.textSecond.opacity(0.8))
+                    }
+                    .padding(.leading, ZLTheme.screenPadding)
+                    .onTapGesture { titleTap() }
 
                     Spacer()
 

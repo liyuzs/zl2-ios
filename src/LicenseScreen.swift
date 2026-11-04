@@ -44,6 +44,10 @@ struct LicenseScreen: View {
 
     // 依据 ZL2 的 library/_Libraries.kt + iOS 工程实际链接的库整理
     private let components: [ZLLicenseComponent] = [
+        .init(name: "CraftLauncher（本应用）",
+              copyright: "Copyright © 2026 liyuzs —— 非官方 iOS 移植版",
+              license: "GPL-3.0",
+              url: "https://github.com/liyuzs/zl2-ios"),
         .init(name: "Zalith Launcher 2",
               copyright: "Copyright © 2025-2026 MovTery 及贡献者",
               license: "GPL-3.0",

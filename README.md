@@ -1,72 +1,87 @@
-# ZL2-iOS：把 Zalith Launcher 2 的界面搬上 iPhone
+# CraftLauncher · 在 iPhone / iPad 上玩 Minecraft Java 版
 
-> **界面原型。能编译成 App、能看能点，但还不能启动游戏。**
-> 启动核心要接 Amethyst，那是下一阶段的事。
+> **非官方 iOS 移植版**，基于 [Zalith Launcher 2](https://github.com/ZalithLauncher/ZalithLauncher2) 重新实现的 SwiftUI 界面 + [Amethyst](https://github.com/AngelAuraMC/Amethyst-iOS) 启动核心。
 
-## 这是什么
-
-用 SwiftUI 照着 ZL2（安卓）重画的一套界面。ZL2 的界面是 Jetpack Compose 写的，iOS 上跑不了，**所以这是重画，不是移植**——视觉还原度约 95%，代码一行都没复用。
-
-## 文件清单
-
-```
-.github/workflows/build.yml   ← GitHub 云端编译（不用 Mac）
-project.yml                   ← XcodeGen 工程定义（iOS 16+）
-scripts/check_project.py      ← 静态体检脚本（没编译器时先抓低级错误）
-
-src/  ── 界面层（SwiftUI）
-  Theme.swift                 ← 配色、卡片、按钮
-  HomeScreen.swift            ← 首页：账户条 + 版本卡片 + 启动键
-  AccountScreen.swift         ← 账户：微软/离线/外置认证
-  SettingsScreen.swift        ← 设置：渲染器/分辨率/内存/下载源
-  DownloadScreen.swift        ← 下载中心：版本列表 + 搜索
-  ModsScreen.swift            ← 模组管理 + 前置依赖提示
-  LaunchScreen.swift          ← 启动进度页
-  ZL2App.swift                ← 入口 + 抽屉 + 控制布局 + 关于
-
-src/  ── 服务层（纯 Foundation，无 UI 依赖）
-  AccountService.swift        ← 账户模型、离线 UUID(MD5)、持久化、OAuth 协议
-  LaunchContract.swift        ← 启动状态/进度/错误/LaunchService 协议 + Mock 实现
-  MojangAPI.swift             ← Mojang 版本清单、版本详情、文件下载（async/await）
-
-docs/
-  周末操作手册.md              ← 从注册 GitHub 到装机的完整步骤
-  核心集成方案.md              ← 怎么接 Amethyst 启动核心（700 行调研，含源码路径）
-STATUS.md                     ← 已完成/未验证/已知问题
-```
-
-## 怎么用
-
-**有 Mac**（最快看到效果）：
-```bash
-brew install xcodegen
-cd ios-zl2
-xcodegen generate
-open ZL2iOS.xcodeproj    # 选模拟器，Cmd+R
-```
-
-**只有 Windows**（推荐这条路）：
-照 `docs/周末操作手册.md` 走——注册 GitHub → 上传 → Actions 点一下 → 下载 `.ipa` → 发给朋友的 iPhone 装。
-
-## 现在能做什么 / 不能做什么
-
-| 能 | 不能 |
-|---|---|
-| 看到 ZL2 风格的首页、设置、下载、模组页 | 启动 Minecraft（核心没接） |
-| 切换离线账号、改渲染器和内存设置 | 真的下载游戏版本 |
-| 拖动控制布局的按键 | 真正连上服务器联机 |
-| 编译出可安装的 ipa | 微软正版登录 |
-
-## 许可
-
-界面代码为本项目新写。接入 Amethyst（GPL-3.0）后**整个项目必须 GPL-3.0 开源**，且**不得沿用 "ZalithLauncher" / "ZL" 名称**（Zalith 的 GPL 附加条款要求修改版改名）。
-
+**作者：liyuzs** · 界面代码为原创重写（55 个 Swift 文件），交互与布局参照 ZL2
 
 ---
 
-## 许可证
+## 声明
 
-本项目遵循 **GNU General Public License v3.0**，见 [LICENSE](LICENSE)。
+本项目是 **社区非官方修改版**，与 Zalith Launcher 官方**没有任何关系**，不代表官方立场。
 
-基于 [Zalith Launcher 2](https://github.com/ZalithLauncher/ZalithLauncher2)（GPL-3.0）
-与 [Amethyst](https://github.com/AngelAuraMC/Amethyst-Android)（GPL-3.0）开发。
+依据 Zalith Launcher 2 的 GPLv3 附加条款（第 7 条）：
+
+- ✅ 本项目**不以** `ZalithLauncher` 或其缩写 `ZL` 作为名称
+- ✅ 主界面已标注「非官方 iOS 移植版」
+- ✅ 完整保留原作者版权声明（见 `LICENSE` 与「关于」页）
+
+---
+
+## 它能做什么
+
+| 功能 | 状态 |
+|---|---|
+| 下载任意游戏版本（1.8 ~ 26+） | ✅ |
+| 启动游戏 | ✅ 需配合 JIT |
+| Fabric / Quilt 模组加载器 | ✅ |
+| 模组 / 资源包 / 光影管理 | ✅ |
+| 存档管理、服务器列表 | ✅ |
+| **键位编辑器**（对齐 ZL2 的 JSON 格式） | ✅ |
+| 游戏内菜单（双栏布局，照源码重写） | ✅ |
+| 微软账号登录 / 离线账号 | ✅ |
+| **局域网联机**（同一 WiFi 自动发现） | ✅ |
+| 7 套主题换肤 | ✅ |
+| 远程联机（EasyTier） | 🚧 待接入 |
+
+## 性能
+
+核心层真实生效的优化：
+
+- 渲染器走 **Metal / ANGLE**（iOS 上最快的路径）
+- **G1GC** + `-XX:MaxGCPauseMillis=20`
+- **JIT 常驻**（避免反复挂载卡顿）
+- 首次启动写入低画质 `options.txt`（视距 4、关粒子阴影）
+- 内存按物理内存 1/3 自适应
+
+> **必须开 JIT**：用 **StikDebug** 给本应用启用 JIT 后再启动游戏，否则帧率个位数。
+
+---
+
+## 怎么装（免费，7 天续签）
+
+**需要**：iPhone（iOS 16+）、一台电脑（只用一次）、一个免费 Apple ID
+
+1. **下载 IPA** —— 到 [Actions](https://github.com/liyuzs/zl2-ios/actions) 下载最新的 `ZL2.ipa`
+2. **电脑签名** —— NB 全能助手（中文，推荐）或 iLoader
+3. **手机信任** —— 设置 → 通用 → VPN与设备管理 → 信任证书
+4. **开 JIT** —— 装 StikDebug，选中本应用 → 启用 JIT
+5. **玩**
+
+> 免费签名 7 天过期。装 SideStore 后自动续签，不用手动管。
+
+---
+
+## 已知限制
+
+- **Forge / NeoForge 装不了**：需要跑 installer.jar，iOS 做不到。请用 Fabric 或 Quilt
+- **性能天花板**：iOS 的 JIT 权限比安卓严，原版 1.20 约 25-40 FPS
+- **远程联机**需要 Network Extension 权限，等付费开发者账号才能接
+- 部分页面仍是示例数据
+
+---
+
+## 许可证与致谢
+
+**GPL-3.0**（继承上游）。可以自由使用、修改、分发，但必须：
+
+1. 保留原作者署名
+2. 同样以 GPL-3.0 开源
+3. 遵守上游的附加条款（改名 + 标注非官方）
+
+**致谢**：
+
+- [Zalith Launcher 2](https://github.com/ZalithLauncher/ZalithLauncher2) —— MovTery 及贡献者，界面与交互的参考来源
+- [Amethyst](https://github.com/AngelAuraMC/Amethyst-iOS) —— Angel Aura MC，iOS 上的 Java 运行环境
+- [PojavLauncher](https://github.com/PojavLauncherTeam/PojavLauncher) —— 移动端启动器的鼻祖
+- MC 百科社区
