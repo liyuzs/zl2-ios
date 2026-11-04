@@ -1,0 +1,166 @@
+# Codemagic CI —— 替代 GitHub Actions 的 macOS 构建
+# 免费额度：个人账号每月 500 分钟 macOS M2
+# 产物：out/ZL2.ipa（未签名）+ 模拟器截图
+
+workflows:
+  ios-unsigned:
+    name: ZL2 iOS 构建（未签名）
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      vars:
+        SCHEME: ZL2iOS
+        PROJECT: ZL2iOS.xcodeproj
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+      cancel_previous_builds: true
+
+    scripts:
+      - name: 显示工具链
+        script: |
+          xcodebuild -version
+          swift --version
+          cmake --version || brew install cmake
+
+      - name: 安装 XcodeGen
+        script: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: 编译 Amethyst 核心（静态库）
+        script: |
+          set -e
+          SYSROOT=$(xcrun --sdk iphoneos --show-sdk-path)
+          CLANG=$(xcrun --sdk iphoneos -f clang)
+          CLANGXX=$(xcrun --sdk iphoneos -f clang++)
+          cd core
+          cmake -B build \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT="$SYSROOT" \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
+            -DCMAKE_C_COMPILER="$CLANG" \
+            -DCMAKE_CXX_COMPILER="$CLANGXX" \
+            -DCONFIG_RELEASE=1 \
+            -DCONFIG_BRANCH=main \
+            -DCONFIG_COMMIT=zl2 \
+            -DCONFIG_CURSEFORGE_API_KEY= \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j 4 || cmake --build build --target ZL2Core -j 4
+          ls -lh build/*.a build/*.dylib 2>/dev/null || true
+          cd ..
+
+      - name: 生成 Xcode 工程
+        script: |
+          xcodegen generate
+          xcodebuild -list -project "$PROJECT"
+
+      - name: 编译真机包（未签名）
+        script: |
+          set -o pipefail
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build 2>&1 | xcpretty || xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: 打包资源与运行时
+        script: |
+          set -e
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          echo "APP=$APP"
+          test -n "$APP"
+
+          mkdir -p "$APP/Frameworks"
+          cp -R core/resources/Frameworks/. "$APP/Frameworks/"
+          for f in core/resources/*.js; do
+            [ -f "$f" ] && cp "$f" "$APP/" && echo "copied $(basename "$f")"
+          done
+          cp -R core/build/*.dylib "$APP/Frameworks/" 2>/dev/null || true
+
+          mkdir -p "$APP/java_runtimes/java-17-openjdk"
+          curl -L --fail --retry 3 -o /tmp/jre17.zip \
+            https://assets.angelauramc.dev/openjdk/ios-arm64/jre17-ios-aarch64.zip
+          unzip -q -o /tmp/jre17.zip -d /tmp/jre17
+          tar xf /tmp/jre17/*.tar.xz -C "$APP/java_runtimes/java-17-openjdk"
+
+          ls "$APP/java_runtimes/java-17-openjdk/lib/libjli.dylib"
+          du -sh "$APP"
+
+      - name: 生成 IPA
+        script: |
+          set -e
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          test -n "$APP"
+          rm -rf Payload out && mkdir -p Payload out
+          cp -R "$APP" Payload/
+          zip -qry "out/ZL2.ipa" Payload
+          ls -la out
+
+      - name: 模拟器编译与截图
+        ignore_failure: true
+        script: |
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-sim \
+            CODE_SIGNING_ALLOWED=NO \
+            OTHER_LDFLAGS="" \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS="" \
+            build || true
+
+          DEVICE=$(xcrun simctl list devices available | grep -m1 -E 'iPhone 1[5-7]' | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+          [ -z "$DEVICE" ] && DEVICE=$(xcrun simctl list devices available | grep -m1 'iPhone' | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+          xcrun simctl boot "$DEVICE" || true
+          sleep 5
+          APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' 2>/dev/null | head -1)
+          if [ -n "$APP" ]; then
+            xcrun simctl install "$DEVICE" "$APP" || true
+            BID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist" 2>/dev/null || echo "com.example.zl2ios")
+            xcrun simctl launch "$DEVICE" "$BID" || true
+            sleep 8
+            xcrun simctl io "$DEVICE" screenshot /tmp/raw-shot.png || true
+            sips -r 270 /tmp/raw-shot.png --out out/screenshot-home.png >/dev/null 2>&1 || cp /tmp/raw-shot.png out/screenshot-home.png 2>/dev/null || true
+            xcrun simctl spawn "$DEVICE" log show --last 2m --predicate 'process == "ZL2"' 2>/dev/null | tail -40 > out/app-log.txt || true
+          fi
+          ls -la out
+
+    artifacts:
+      - out/ZL2.ipa
+      - out/screenshot-home.png
+      - out/app-log.txt
+
+    publishing:
+      # 同时上传到 GitHub Release（用 GitHub token）
+      github_releases:
+        - name: ZL2 构建
+          tag: build-cm
+          require_tag: false
+          overwrite: true
+          files:
+            - out/ZL2.ipa
+          draft: false
+          prerelease: false
