@@ -347,7 +347,22 @@ struct ModsManagerScreen: View {
         }
         do {
             try fm.copyItem(at: src, to: modsDir.appendingPathComponent(name))
-            toast = "已导入 \(name)"
+            // iOS 兼容性检查（来自 Amethyst 社区实践）
+            let lower = name.lowercased()
+            if lower.contains("sodium") {
+                // sodium 用了 iOS 不支持的优化指令，必须配 podium 才能启动
+                let hasPodium = (try? fm.contentsOfDirectory(atPath: modsDir.path))?
+                    .contains { $0.lowercased().contains("podium") } ?? false
+                if hasPodium {
+                    toast = "已导入 \(name)（已检测到 podium，兼容）"
+                } else {
+                    toast = "已导入 \(name)⚠️ sodium 在 iOS 上必须搭配 podium 才能启动，否则会闪退"
+                }
+            } else if lower.contains("iris") {
+                toast = "已导入 \(name)（光影需要搭配 sodium/podium）"
+            } else {
+                toast = "已导入 \(name)"
+            }
             reload()
         } catch {
             toast = "导入失败：\(error.localizedDescription)"
