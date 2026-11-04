@@ -60,3 +60,13 @@ open ZL2iOS.xcodeproj    # 选模拟器，Cmd+R
 ## 许可
 
 界面代码为本项目新写。接入 Amethyst（GPL-3.0）后**整个项目必须 GPL-3.0 开源**，且**不得沿用 "ZalithLauncher" / "ZL" 名称**（Zalith 的 GPL 附加条款要求修改版改名）。
+
+
+---
+
+## 许可证
+
+本项目遵循 **GNU General Public License v3.0**，见 [LICENSE](LICENSE)。
+
+基于 [Zalith Launcher 2](https://github.com/ZalithLauncher/ZalithLauncher2)（GPL-3.0）
+与 [Amethyst](https://github.com/AngelAuraMC/Amethyst-Android)（GPL-3.0）开发。
