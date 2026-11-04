@@ -27,7 +27,7 @@
           "buildVersion": "1",
           "date": "2026-11-04",
           "localizedDescription": "首个公开测试版",
-          "downloadURL": "https://github.com/liyuzs/zl2-ios/releases/download/v0.1.0/CraftLauncher.ipa",
+          "downloadURL": "https://github.com/liyuzs/zl2-ios/releases/latest/download/CraftLauncher.ipa",
           "size": 157286400,
           "minOSVersion": "16.0"
         }
