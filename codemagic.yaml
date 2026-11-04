@@ -1,6 +1,6 @@
 # Codemagic CI —— 替代 GitHub Actions 的 macOS 构建
 # 免费额度：个人账号每月 500 分钟 macOS M2
-# 产物：out/ZL2.ipa（未签名）+ 模拟器截图
+# 产物：out/ZL2.ipa（未签名）+ 模拟器截图 / 录屏
 
 workflows:
   ios-unsigned:
@@ -193,11 +193,74 @@ workflows:
           BID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist" 2>/dev/null)
           echo "BUNDLE_ID=$BID"
 
+          echo "=== 4.5 跳过首次引导（否则新手引导遮罩会盖住截图/录屏） ==="
+          # 首页有 GuideManager 首次启动引导（半透明黑遮罩 + 气泡），
+          # 这里预先把「已看过」写进 App 沙盒的 UserDefaults；失败就忽略，不影响构建。
+          DATA_DIR=$(xcrun simctl get_app_container "$DEVICE" "$BID" data 2>/dev/null || true)
+          if [ -n "$DATA_DIR" ]; then
+            PREFS_DIR="$DATA_DIR/Library/Preferences"
+            mkdir -p "$PREFS_DIR"
+            PREFS_PLIST="$PREFS_DIR/$BID.plist"
+            /usr/libexec/PlistBuddy -c "Add :zl.guide.home.seen bool true" "$PREFS_PLIST" >/dev/null 2>&1 \
+              || /usr/libexec/PlistBuddy -c "Set :zl.guide.home.seen true" "$PREFS_PLIST" >/dev/null 2>&1 \
+              || echo "引导标记写入失败（忽略，最多是画面被引导遮住）"
+          fi
+
           echo "=== 5. 启动 App ==="
           xcrun simctl launch "$DEVICE" "$BID" 2>&1 | head -5
           sleep 12
 
-          echo "=== 6. 截图 ==="
+          echo "=== 6. 录屏（30 秒） ==="
+          # 限制：simctl 没有触摸/滑动命令，App 也没有 -demo 之类的演示启动参数
+          #（已核对 src/：ProcessInfo 只用于内存和 AME_HOME 环境变量），
+          # 所以录到的是首页静态画面，不伪造点击。全程兜底，不影响截图与构建。
+          REC_FILE=/tmp/demo.mov
+          REC_SECONDS=30
+          rm -f "$REC_FILE"
+          xcrun simctl io "$DEVICE" recordVideo --codec=h264 --force "$REC_FILE" \
+            > /tmp/simctl-record.log 2>&1 &
+          REC_PID=$!
+          sleep 2
+          if kill -0 "$REC_PID" 2>/dev/null; then
+            echo "录制中（${REC_SECONDS} 秒）…"
+            sleep $((REC_SECONDS - 2))
+          else
+            echo "录屏进程提前退出："
+            head -5 /tmp/simctl-record.log 2>/dev/null || true
+          fi
+          # SIGINT 让 simctl 收尾写入 moov；8 秒内没退出就强杀，避免卡住构建
+          kill -INT "$REC_PID" 2>/dev/null || true
+          ( sleep 8; kill -KILL "$REC_PID" 2>/dev/null || true ) &
+          WATCHDOG_PID=$!
+          wait "$REC_PID" 2>/dev/null || true
+          kill "$WATCHDOG_PID" 2>/dev/null || true
+          wait "$WATCHDOG_PID" 2>/dev/null || true
+
+          if [ -s "$REC_FILE" ]; then
+            echo "录像大小: $(ls -lh "$REC_FILE" | awk '{print $5}')"
+            # 模拟器录像是竖屏帧缓冲（1179x2556）里躺着横屏 UI：
+            # 与截图步骤的 sips -r 270 保持一致，旋转 270°（transpose=2），
+            # 并补齐旋转后 1179 的奇数高度（libx264 + yuv420p 要求偶数边长）。
+            if command -v ffmpeg >/dev/null 2>&1; then
+              if ffmpeg -hide_banner -loglevel error -y -i "$REC_FILE" \
+                   -vf "transpose=2,pad=ceil(iw/2)*2:ceil(ih/2)*2" \
+                   -c:v libx264 -preset fast -crf 28 -pix_fmt yuv420p \
+                   -movflags +faststart -an out/demo.mp4; then
+                echo "已生成 out/demo.mp4"
+              else
+                echo "ffmpeg 转码失败，回退为直接复制 mov"
+                cp "$REC_FILE" out/demo.mp4 2>/dev/null || true
+              fi
+            else
+              echo "未安装 ffmpeg，直接复制 mov（QuickTime 容器，多数播放器可播）"
+              cp "$REC_FILE" out/demo.mp4 2>/dev/null || true
+            fi
+            ls -lh out/demo.mp4 2>/dev/null || echo "demo.mp4 生成失败（不影响构建）"
+          else
+            echo "录像文件为空或缺失，跳过 demo.mp4（不影响构建）"
+          fi
+
+          echo "=== 7. 截图 ==="
           xcrun simctl io "$DEVICE" screenshot /tmp/raw.png 2>&1 | head -3
           if [ -f /tmp/raw.png ]; then
             cp /tmp/raw.png out/screenshot-raw.png
@@ -208,11 +271,12 @@ workflows:
             echo "截图失败"
           fi
 
-          echo "=== 7. 应用日志 ==="
+          echo "=== 8. 应用日志 ==="
           xcrun simctl spawn "$DEVICE" log show --last 3m --predicate 'process == "ZL2"' 2>/dev/null | tail -50 > out/app-log.txt
           echo "日志行数: $(wc -l < out/app-log.txt)"
 
     artifacts:
       - out/ZL2.ipa
       - out/screenshot-home.png
+      - out/demo.mp4
       - out/app-log.txt
