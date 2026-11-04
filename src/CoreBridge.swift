@@ -72,6 +72,20 @@ enum CoreBridge {
         try? fm.createDirectory(atPath: gameDir, withIntermediateDirectories: true)
         setenv("GAME_DIR", gameDir, 1)
 
+        // === 性能优化 ===
+        // 1) 渲染器：auto = Metal/ANGLE（iOS 上最快的路径）
+        setenv("RENDERER", "auto", 1)
+        // 2) 关掉装饰性功能（省 GPU/CPU）
+        if getPrefObject("general.cosmetica") == nil {
+            setPrefObject("general.cosmetica", false)
+        }
+        // 3) 内存分配：按物理内存 1/3，上限 2048MB（iOS 单进程限制）
+        if getPrefObject("general.allocated_memory") == nil {
+            let ramMB = Int(ProcessInfo.processInfo.physicalMemory / 1024 / 1024)
+            let alloc = max(512, min(2048, ramMB / 3))
+            setPrefObject("general.allocated_memory", alloc)
+        }
+
         // 加载/创建偏好
         loadPreferences(false)
 
@@ -117,6 +131,9 @@ enum CoreBridge {
                               width: Int = 1280,
                               height: Int = 720) async throws {
         try bootstrap()
+        if let home = ProcessInfo.processInfo.environment["AME_HOME"] {
+            writePerfOptionsIfNeeded(gameDir: (home as NSString).appendingPathComponent("instances/default/.minecraft"))
+        }
         #if ZL2_CORE_LINKED
         guard runtimeCheck() else {
             throw CoreLaunchError.bootstrapFailed("找不到内置 JRE（java_runtimes/java-17-openjdk/lib/libjli.dylib）")
@@ -142,6 +159,9 @@ enum CoreBridge {
                           width: Int = 1280,
                           height: Int = 720) async throws {
         try bootstrap()
+        if let home = ProcessInfo.processInfo.environment["AME_HOME"] {
+            writePerfOptionsIfNeeded(gameDir: (home as NSString).appendingPathComponent("instances/default/.minecraft"))
+        }
         guard FileManager.default.fileExists(atPath: jarPath) else {
             throw CoreLaunchError.bootstrapFailed("jar 不存在：\(jarPath)")
         }
@@ -185,6 +205,31 @@ enum CoreBridge {
         }
         return false
     }
+    /// 首次启动前写入性能优先的 options.txt（视距 4、快速画质、关粒子）
+    static func writePerfOptionsIfNeeded(gameDir: String) {
+        let path = (gameDir as NSString).appendingPathComponent("options.txt")
+        guard !FileManager.default.fileExists(atPath: path) else { return }
+        let content = """
+        version:3465
+        renderDistance:4
+        simulationDistance:4
+        graphicsMode:0
+        particles:2
+        ao:false
+        entityShadows:false
+        maxFps:60
+        enableVsync:false
+        fov:0.0
+        gamma:0.5
+        clouds:false
+        fancyGraphics:false
+        smoothLighting:false
+        biomeBlendRadius:1
+        mipmapLevels:0
+        """
+        try? content.write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
     static func requiredJavaVersion(_ metadata: [String: Any]) -> Int {
         if let jv = metadata["javaVersion"] as? [String: Any],
            let major = jv["majorVersion"] as? Int, major > 0 {
