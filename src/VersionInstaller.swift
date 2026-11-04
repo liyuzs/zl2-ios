@@ -67,11 +67,26 @@ actor VersionInstaller {
                  onProgress: @Sendable @escaping (InstallProgress) -> Void) async throws {
         var failCount = 0
         var failedLibs: [String] = []
+
+        // 全局进度：把各阶段内部进度折算成 0~100，避免进度条来回跳
+        func report(_ phase: InstallProgress.Phase, _ frac: Double, _ msg: String) {
+            let lo: Double, hi: Double
+            switch phase {
+            case .metadata:  (lo, hi) = (0.00, 0.05)
+            case .jar:       (lo, hi) = (0.05, 0.20)
+            case .libraries: (lo, hi) = (0.20, 0.70)
+            case .assets:    (lo, hi) = (0.70, 1.00)
+            default:         (lo, hi) = (0.00, 1.00)
+            }
+            let overall = lo + (hi - lo) * min(max(frac, 0), 1)
+            onProgress(.init(phase: phase, completed: Int(overall * 100),
+                             total: 100, message: msg))
+        }
         let mcDir = Self.instanceDir(instanceName).appendingPathComponent(".minecraft", isDirectory: true)
         let versionDir = mcDir.appendingPathComponent("versions/\(versionID)", isDirectory: true)
         try fm.createDirectory(at: versionDir, withIntermediateDirectories: true)
 
-        onProgress(.init(phase: .metadata, completed: 0, total: 1, message: "获取 \(versionID) 元数据"))
+        report(.metadata, 0, "获取 \(versionID) 元数据")
 
         // 1) 版本详情 JSON
         let api = MojangAPI()
@@ -80,7 +95,7 @@ actor VersionInstaller {
             throw InstallError.badMetadata
         }
         let detail = try await api.fetchVersionDetail(from: entry.url)
-        onProgress(.init(phase: .metadata, completed: 1, total: 1, message: "元数据就绪"))
+        report(.metadata, Double(1) / Double(max(1, 1)), "元数据就绪")
 
         // 保存版本 JSON（Amethyst 需要读它）
         let jsonData = try JSONSerialization.data(withJSONObject: versionJSONObject(entry: entry, detail: detail),
@@ -94,9 +109,9 @@ actor VersionInstaller {
         let jarPath = versionDir.appendingPathComponent("\(versionID).jar")
         let jarSize = (try? fm.attributesOfItem(atPath: jarPath.path)[.size] as? Int) ?? 0
         if !fm.fileExists(atPath: jarPath.path) || jarSize < 1024 {
-            onProgress(.init(phase: .jar, completed: 0, total: 1, message: "下载 \(versionID).jar"))
+            report(.jar, 0, "下载 \(versionID).jar")
             try await download(clientURL, to: jarPath)
-            onProgress(.init(phase: .jar, completed: 1, total: 1, message: "jar 完成"))
+            report(.jar, Double(1) / Double(max(1, 1)), "jar 完成")
         }
 
         // 3) libraries
@@ -113,7 +128,7 @@ actor VersionInstaller {
         if !tasks.isEmpty {
             let total = tasks.count
             var done = 0
-            onProgress(.init(phase: .libraries, completed: 0, total: total, message: "依赖库 \(total) 个"))
+            report(.libraries, 0, "依赖库 \(total) 个")
             for (src, dst) in tasks {
                 try fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
                 do {
@@ -124,14 +139,14 @@ actor VersionInstaller {
                 }
                 done += 1
                 if done % 3 == 0 || done == total {
-                    onProgress(.init(phase: .libraries, completed: done, total: total, message: "依赖库 \(done)/\(total)"))
+                    report(.libraries, Double(done) / Double(max(total, 1)), "依赖库 \(done)/\(total)")
                 }
             }
         }
 
         // 4) assets
         if includeAssets, let assetIndex = detail.assetIndex, let idxURL = assetIndex.url {
-            onProgress(.init(phase: .assets, completed: 0, total: 1, message: "获取资源索引"))
+            report(.assets, Double(0) / Double(max(1, 1)), "获取资源索引")
             let indexPath = mcDir.appendingPathComponent("assets/indexes/\(assetIndex.id).json",
                                                          isDirectory: false)
             try fm.createDirectory(at: indexPath.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -156,8 +171,7 @@ actor VersionInstaller {
                     let total = pending.count
                     var done = 0
                     var assetFail = 0
-                    onProgress(.init(phase: .assets, completed: 0, total: total,
-                                     message: "资源文件 \(total) 个"))
+                    report(.assets, Double(0) / Double(max(total, 1)), "资源文件 \(total) 个")
                     // 并发 8 路下载
                     await withTaskGroup(of: Bool.self) { group in
                         var idx = 0
@@ -176,25 +190,22 @@ actor VersionInstaller {
                                 idx += 1
                             }
                             if done % 20 == 0 || done == total {
-                                onProgress(.init(phase: .assets, completed: done, total: total,
-                                                 message: "资源文件 \(done)/\(total)"))
+                                report(.assets, Double(done) / Double(max(total, 1)), "资源文件 \(done)/\(total)")
                             }
                         }
                     }
                     if assetFail > 0 {
-                        onProgress(.init(phase: .assets, completed: total, total: total,
-                                         message: "资源完成，\(assetFail) 个失败（可重试）"))
+                        report(.assets, Double(total) / Double(max(total, 1)), "资源完成，\(assetFail) 个失败（可重试）")
                     }
                 }
             }
-            onProgress(.init(phase: .assets, completed: 1, total: 1, message: "资源索引就绪"))
+            report(.assets, Double(1) / Double(max(1, 1)), "资源索引就绪")
         }
 
         if failCount > 0 {
-            onProgress(.init(phase: .done, completed: 1, total: 1,
-                             message: "\(versionID) 安装完成，但有 \(failCount) 个依赖库失败"))
+            report(.done, Double(1) / Double(max(1, 1)), "\(versionID) 安装完成，但有 \(failCount) 个依赖库失败")
         } else {
-            onProgress(.init(phase: .done, completed: 1, total: 1, message: "\(versionID) 安装完成"))
+            report(.done, 1, "\(versionID) 安装完成")
         }
     }
 
