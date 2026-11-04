@@ -247,7 +247,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     margv[++margc] = [NSString stringWithFormat:@"-DUIScreen.maximumFramesPerSecond=%d", (int)UIScreen.mainScreen.maximumFramesPerSecond].UTF8String;
     margv[++margc] = "-Dorg.lwjgl.glfw.checkThread0=false";
     margv[++margc] = "-Dorg.lwjgl.system.allocator=system";
-    //margv[++margc] = "-Dorg.lwjgl.util.NoChecks=true";
+    margv[++margc] = "-Dorg.lwjgl.util.NoChecks=true";
     margv[++margc] = "-Dlog4j2.formatMsgNoLookups=true";
 
     // Preset OpenGL libname
@@ -269,6 +269,9 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     // Workaround random stack guard allocation crashes
     margv[++margc] = "-XX:+UnlockExperimentalVMOptions";
     margv[++margc] = "-XX:+DisablePrimordialThreadGuardPages";
+    // 移动端性能调优：SerialGC 比 G1 更省 CPU，Metaspace 限容防膨胀
+    margv[++margc] = "-XX:+UseSerialGC";
+    margv[++margc] = "-XX:MaxMetaspaceSize=256M";
 
     // On iOS 26, use mirror mapped JIT by default
     if (@available(iOS 26.0, *)) {
