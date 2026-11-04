@@ -502,6 +502,19 @@ enum ZLLayoutStore {
         return (try? data.write(to: url)) != nil
     }
 
+    /// 按名字读原始 JSON（编辑器用，保留编辑器自有格式）
+    static func loadRaw(name: String) -> Data? {
+        let url = dir.appendingPathComponent("\(name).json")
+        return try? Data(contentsOf: url)
+    }
+
+    /// 按名字写原始 JSON
+    @discardableResult
+    static func saveRaw(name: String, data: Data) -> Bool {
+        let url = dir.appendingPathComponent("\(name).json")
+        return (try? data.write(to: url)) != nil
+    }
+
     static func load(_ url: URL) -> ZLControlLayout? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? ZLControlLayout.importJSON(data)

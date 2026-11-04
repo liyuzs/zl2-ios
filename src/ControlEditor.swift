@@ -741,6 +741,26 @@ final class ControlStyleVault: ObservableObject {
             UserDefaults.standard.set(data, forKey: Self.storageKey)
         }
     }
+
+    /// 从 ZLLayoutStore 加载布局（真正把用户编辑的内容读回来）
+    private func loadLayout() {
+        guard !loaded else { return }
+        loaded = true
+        guard let data = ZLLayoutStore.loadRaw(name: layoutName),
+              let decoded = try? JSONDecoder().decode(ControlLayoutDoc.self, from: data) else {
+            return
+        }
+        doc = decoded
+        if layerIndex >= doc.layers.count { layerIndex = 0 }
+    }
+
+    /// 存回 ZLLayoutStore（编辑结果不再丢失）
+    private func saveLayout() {
+        guard loaded else { return }
+        if let data = try? JSONEncoder().encode(doc) {
+            ZLLayoutStore.saveRaw(name: layoutName, data: data)
+        }
+    }
 }
 
 // MARK: - 编辑器弹窗（属性 / 样式柜 / 导入导出 / 层属性）
@@ -753,11 +773,14 @@ private enum ControlEditorSheet: String, Identifiable {
 struct ControlEditorScreen: View {
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
+    /// 要编辑的布局名（对应 ZLLayoutStore 里的文件）
+    var layoutName: String = "默认布局"
 
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject private var vault = ControlStyleVault.shared
 
     @State private var doc = ControlLayoutDoc.default
+    @State private var loaded = false
     @State private var layerIndex = 0
     @State private var selected: UUID? = nil
     @State private var editing = false
@@ -778,6 +801,8 @@ struct ControlEditorScreen: View {
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
+        .task(id: "editor-load") { loadLayout() }
+        .onDisappear { saveLayout() }
         .sheet(item: $sheet, onDismiss: { selected = nil }) { which in
             switch which {
             case .inspector:
