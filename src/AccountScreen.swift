@@ -59,7 +59,7 @@ struct AccountScreen: View {
                     onConfirm: confirmAddAccount,
                     onAddAuthServer: openAuthServerFromDialog
                 )
-                .transition(.opacity)
+                .transition(AnyTransition.opacity)
                 .zIndex(2)
             }
         }
@@ -444,6 +444,127 @@ struct AuthlibLoginSheet: View {
                     Button("取消") { dismiss() }
                 }
             }
+        }
+    }
+}
+
+// MARK: - 添加账号弹窗（ZL2 Dialog 样式，非 iOS Sheet）
+
+enum ZLAddAccountKind: String, CaseIterable, Identifiable {
+    case microsoft = "microsoft"
+    case offline = "offline"
+    case authlib = "authlib"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .microsoft: return "Microsoft 账号"
+        case .offline:   return "离线账号"
+        case .authlib:   return "外置登录"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .microsoft: return "登录正版账号，可玩所有服务器"
+        case .offline:   return "不联网，仅本地游玩"
+        case .authlib:   return "第三方验证服务器（Authlib）"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .microsoft: return "person.badge.key.fill"
+        case .offline:   return "person.fill"
+        case .authlib:   return "network"
+        }
+    }
+}
+
+struct ZLAddAccountDialog: View {
+    @Binding var kind: ZLAddAccountKind
+    var onCancel: () -> Void
+    var onConfirm: () -> Void
+    var onAddAuthServer: () -> Void
+
+    var body: some View {
+        ZStack {
+            // 半透明遮罩（点遮罩关闭）
+            Color.black.opacity(0.45)
+                .ignoresSafeArea()
+                .onTapGesture { onCancel() }
+
+            VStack(spacing: 0) {
+                Text("添加账号")
+                    .font(.system(size: 17, weight: .bold))
+                    .padding(.top, 20)
+                    .padding(.bottom, 6)
+
+                Text("选择登录方式")
+                    .font(.system(size: 12))
+                    .foregroundStyle(ZLTheme.textSecond)
+                    .padding(.bottom, 16)
+
+                VStack(spacing: 8) {
+                    ForEach(ZLAddAccountKind.allCases) { k in
+                        Button {
+                            kind = k
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: k.icon)
+                                    .font(.system(size: 17))
+                                    .frame(width: 26)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(k.title).font(.system(size: 14, weight: .medium))
+                                    Text(k.subtitle).font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+                                }
+                                Spacer()
+                                Image(systemName: kind == k ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(kind == k ? ZLTheme.primaryDeep : ZLTheme.textSecond.opacity(0.4))
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(kind == k ? ZLTheme.primarySoft : ZLTheme.background)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 20)
+
+                if kind == .authlib {
+                    Button("管理验证服务器", action: onAddAuthServer)
+                        .font(.system(size: 12))
+                        .foregroundStyle(ZLTheme.primaryDeep)
+                        .padding(.top, 10)
+                }
+
+                HStack(spacing: 10) {
+                    Button("取消", action: onCancel)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(ZLTheme.background)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                    Button("添加", action: onConfirm)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(ZLTheme.primaryDeep)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 20)
+            }
+            .frame(maxWidth: 340)
+            .background(ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .padding(.horizontal, 28)
         }
     }
 }
