@@ -269,8 +269,12 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     // Workaround random stack guard allocation crashes
     margv[++margc] = "-XX:+UnlockExperimentalVMOptions";
     margv[++margc] = "-XX:+DisablePrimordialThreadGuardPages";
-    // 移动端性能调优：SerialGC 比 G1 更省 CPU，Metaspace 限容防膨胀
-    margv[++margc] = "-XX:+UseSerialGC";
+    // 移动端性能调优（来源：Pojavly Optimized / Amethyst Optimized 社区实践）
+    // G1GC 在多核 A 系列芯片上比 SerialGC 快 5-7%
+    margv[++margc] = "-XX:+UseG1GC";
+    margv[++margc] = "-XX:MaxGCPauseMillis=20";
+    margv[++margc] = "-XX:G1NewSizePercent=20";
+    margv[++margc] = "-XX:G1ReservePercent=20";
     margv[++margc] = "-XX:MaxMetaspaceSize=256M";
 
     // On iOS 26, use mirror mapped JIT by default

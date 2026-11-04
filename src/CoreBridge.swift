@@ -75,11 +75,15 @@ enum CoreBridge {
         // === 性能优化 ===
         // 1) 渲染器：auto = Metal/ANGLE（iOS 上最快的路径）
         setenv("RENDERER", "auto", 1)
-        // 2) 关掉装饰性功能（省 GPU/CPU）
+        // 2) JIT 常驻（性能关键：避免反复 attach 造成卡顿）
+        if getPrefObject("debug.debug_always_attached_jit") == nil {
+            setPrefObject("debug.debug_always_attached_jit", true)
+        }
+        // 3) 关掉装饰性功能（省 GPU/CPU）
         if getPrefObject("general.cosmetica") == nil {
             setPrefObject("general.cosmetica", false)
         }
-        // 3) 内存分配：按物理内存 1/3，上限 2048MB（iOS 单进程限制）
+        // 4) 内存分配：按物理内存 1/3，上限 2048MB（iOS 单进程限制）
         if getPrefObject("general.allocated_memory") == nil {
             let ramMB = Int(ProcessInfo.processInfo.physicalMemory / 1024 / 1024)
             let alloc = max(512, min(2048, ramMB / 3))
