@@ -22,6 +22,15 @@ workflows:
       cancel_previous_builds: true
 
     scripts:
+      - name: 核对代码版本
+        script: |
+          echo "=== 当前构建的 commit ==="
+          git log -1 --format='%H %s'
+          echo "=== 关键文件行数 ==="
+          wc -l src/ControlEditor.swift src/ControlLayoutModel.swift
+          echo "=== loadLayout 位置 ==="
+          grep -n "private func loadLayout" src/ControlEditor.swift || echo "未找到 loadLayout"
+
       - name: 显示工具链
         script: |
           xcodebuild -version
