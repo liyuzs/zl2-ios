@@ -2418,8 +2418,8 @@ struct LayoutInfoSheet: View {
                     HStack(spacing: 10) {
                         Button {
                             // 导出成 ZL2 原生格式（安卓 ZL2 可直接读取）
-                            if let zl = ZLControlLayout.from(doc: doc),
-                               let data = try? zl.exportJSON(),
+                            let zl = ZLControlLayout.from(doc: doc)
+                            if let data = try? zl.exportJSON(),
                                let text = String(data: data, encoding: .utf8) {
                                 exportText = text
                             } else {

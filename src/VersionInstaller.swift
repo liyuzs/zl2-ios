@@ -193,7 +193,7 @@ actor VersionInstaller {
                         let concurrency = 8
                         while idx < min(concurrency, total) {
                             let (hash, _) = pending[idx]
-                            group.addTask { await Self.downloadAsset(hash: hash, root: objRoot, session: session, fm: fm) }
+                            group.addTask { await Self.downloadAsset(hash: hash, root: objRoot, session: self.session, fm: self.fm) }
                             idx += 1
                         }
                         while let ok = await group.next() {
@@ -201,7 +201,7 @@ actor VersionInstaller {
                             if !ok { assetFail += 1 }
                             if idx < total {
                                 let (hash, _) = pending[idx]
-                                group.addTask { await Self.downloadAsset(hash: hash, root: objRoot, session: session, fm: fm) }
+                                group.addTask { await Self.downloadAsset(hash: hash, root: objRoot, session: self.session, fm: self.fm) }
                                 idx += 1
                             }
                             if done % 20 == 0 || done == total {
