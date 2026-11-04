@@ -13,6 +13,12 @@ struct HomeScreen: View {
     @State private var eggText: String?
     @State private var eggToken = 0
     @State private var didGreet = false
+    // 彩蛋 2
+    @State private var avatarSpinning = false
+    @State private var iconBouncing = false
+    @State private var versionTaps = 0
+    @State private var secretIdx = 0
+    @State private var blankTaps = 0
 
     var onMultiplayer: () -> Void = {}
     var onDownload: () -> Void = {}
@@ -23,7 +29,10 @@ struct HomeScreen: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            ZLTheme.background.ignoresSafeArea()
+            ZLTheme.background
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { blankTap() }
 
             // 顶部：标题 + 右侧图标
             VStack(spacing: 0) {
@@ -85,14 +94,17 @@ struct HomeScreen: View {
         }
         .onAppear {
             // 深夜第一次进来自动打个招呼（小彩蛋）
-            if !didGreet, let g = ZLEasterEgg.lateNightGreeting {
+            if !didGreet {
                 didGreet = true
-                eggToken += 1
-                withAnimation(.spring(response: 0.36, dampingFraction: 0.8)) { eggText = g }
-                let token = eggToken
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
-                    guard eggToken == token else { return }
-                    withAnimation(.easeOut(duration: 0.25)) { eggText = nil }
+                // 节日优先，其次深夜
+                if let f = ZLFestival.greeting {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        showEgg(f, duration: 3.4)
+                    }
+                } else if let g = ZLEasterEgg.lateNightGreeting {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        showEgg(g, duration: 3.2)
+                    }
                 }
             }
         }
@@ -104,17 +116,68 @@ struct HomeScreen: View {
         titleTaps += 1
         ZLHaptic.selection()
         guard let msg = ZLEasterEgg.message(for: titleTaps) else { return }
-        eggToken += 1
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) { eggText = msg }
         ZLHaptic.light()
-        // 3 秒后自动收起
+        showEgg(msg, duration: 3.0)
         let token = eggToken
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             guard eggToken == token else { return }
-            withAnimation(.easeOut(duration: 0.2)) { eggText = nil }
-            // 一轮结束，重置计数
             if titleTaps >= ZLEasterEgg.clicks.count { titleTaps = 0 }
         }
+    }
+
+    // MARK: - 彩蛋 2：版本号连点
+
+    private func versionTap() {
+        versionTaps += 1
+        ZLHaptic.selection()
+
+        // 第 5 下开始吐隐藏信息
+        if versionTaps >= 5 {
+            let idx = versionTaps - 4
+            if let line = ZLSecretInfo.line(for: idx) {
+                showEgg(line, duration: 3.0)
+            } else {
+                versionTaps = 0
+            }
+        }
+        // 8 秒内不继续点就重置
+        let token = eggToken
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
+            guard eggToken == token else { return }
+            if versionTaps < 5 { versionTaps = 0 }
+        }
+    }
+
+    /// 统一显示一条彩蛋提示
+    private func showEgg(_ text: String, duration: TimeInterval) {
+        eggToken += 1
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) { eggText = text }
+        let token = eggToken
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+            guard eggToken == token else { return }
+            withAnimation(.easeOut(duration: 0.22)) { eggText = nil }
+        }
+    }
+
+    // MARK: - 彩蛋 3：点空白处
+
+    private static let blankMessages = [
+        "这里什么都没有",
+        "真的什么都没有",
+        "别点了，去玩游戏吧",
+        "好吧，你赢了 ✨",
+        "彩蛋已解锁：祝你今天顺利"
+    ]
+
+    private func blankTap() {
+        blankTaps += 1
+        let i = blankTaps - 1
+        guard Self.blankMessages.indices.contains(i) else {
+            blankTaps = 0
+            return
+        }
+        ZLHaptic.light()
+        showEgg(Self.blankMessages[i], duration: 2.2)
     }
 
     private func topButton(_ icon: String, action: @escaping () -> Void) -> some View {
@@ -138,6 +201,11 @@ struct HomeScreen: View {
             VStack(spacing: 8) {
                 skinAvatar
                     .frame(width: 96, height: 96)
+                    .spinWhen($avatarSpinning)
+                    .onLongPressGesture(minimumDuration: 0.35) {
+                        ZLHaptic.rigid()
+                        avatarSpinning = true
+                    }
                 Text(accountName)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(ZLTheme.textPrimary)
@@ -153,15 +221,23 @@ struct HomeScreen: View {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(ZLTheme.primarySoft)
                     .frame(width: 44, height: 44)
-                    .overlay(Image(systemName: "cube.fill")
-                        .font(.system(size: 20))
-                        .foregroundStyle(ZLTheme.primary))
+                    .overlay(
+                        Image(systemName: "cube.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(ZLTheme.primary)
+                            .bounceWhen($iconBouncing)
+                    )
+                    .onTapGesture {
+                        ZLHaptic.light()
+                        iconBouncing = true
+                    }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(selectedVersion)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(ZLTheme.textPrimary)
                         .lineLimit(1)
+                        .onTapGesture { versionTap() }
                     Text("1.20.1 · Fabric 0.19.2")
                         .font(.system(size: 12))
                         .foregroundStyle(ZLTheme.textSecond)

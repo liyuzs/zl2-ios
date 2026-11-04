@@ -289,3 +289,100 @@ struct ZLPercentText: View {
             .contentTransition(.numericText())
     }
 }
+
+// MARK: - 彩蛋 2：节日祝福
+
+enum ZLFestival {
+    /// 今天如果是节日，返回祝福语
+    static var greeting: String? {
+        let cal = Calendar.current
+        let now = Date()
+        let m = cal.component(.month, from: now)
+        let d = cal.component(.day, from: now)
+
+        switch (m, d) {
+        case (1, 1):   return "新年快乐 🎉 今年也要好好玩 MC"
+        case (2, 14):  return "情人节快乐 💛"
+        case (6, 1):   return "儿童节快乐 🎈 大朋友也要玩得开心"
+        case (10, 1):  return "国庆快乐 🇨🇳"
+        case (12, 24), (12, 25): return "圣诞快乐 🎄"
+        case (12, 31): return "今年最后一天了，明年见 👋"
+        default: break
+        }
+
+        // 中秋/春节每年日期不同，用农历判断太复杂，这里按大致区间给一句
+        if m == 9 || m == 10 {
+            return nil  // 交给具体节日，不硬猜
+        }
+        return nil
+    }
+}
+
+// MARK: - 彩蛋 2：隐藏信息（点版本号 5 下）
+
+enum ZLSecretInfo {
+    static let lines: [String] = [
+        "😺 你找到了这里",
+        "这个启动器用了 55 个 Swift 文件",
+        "界面是照着安卓版 ZL2 逐像素对的",
+        "Java 在 iPhone 上跑，靠 Amethyst 核心",
+        "如果启动失败，先看日志里有没有 JIT 相关提示",
+        "祝你游戏愉快 🎮"
+    ]
+
+    static func line(for count: Int) -> String? {
+        let i = count - 1
+        return lines.indices.contains(i) ? lines[i] : nil
+    }
+}
+
+// MARK: - 旋转动画（长按头像用）
+
+struct ZLSpinEffect: ViewModifier {
+    @Binding var spinning: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .rotationEffect(.degrees(spinning ? 360 : 0))
+            .scaleEffect(spinning ? 1.12 : 1)
+            .animation(.spring(response: 0.55, dampingFraction: 0.6), value: spinning)
+            .onChange(of: spinning) { on in
+                if on {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        spinning = false
+                    }
+                }
+            }
+    }
+}
+
+extension View {
+    func spinWhen(_ spinning: Binding<Bool>) -> some View {
+        modifier(ZLSpinEffect(spinning: spinning))
+    }
+}
+
+// MARK: - 弹跳动画（点图标用）
+
+struct ZLBounceEffect: ViewModifier {
+    @Binding var bouncing: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(bouncing ? 1.25 : 1)
+            .animation(.interpolatingSpring(stiffness: 320, damping: 12), value: bouncing)
+            .onChange(of: bouncing) { on in
+                if on {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                        bouncing = false
+                    }
+                }
+            }
+    }
+}
+
+extension View {
+    func bounceWhen(_ bouncing: Binding<Bool>) -> some View {
+        modifier(ZLBounceEffect(bouncing: bouncing))
+    }
+}
