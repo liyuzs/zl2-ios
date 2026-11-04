@@ -5,6 +5,8 @@ import SwiftUI
 struct LaunchScreen: View {
     let versionName: String
     var versionID: String = ""
+    /// 实例名（与 VersionInstaller 的 instanceName 对齐）
+    var instanceName: String = "default"
     @Binding var isPresented: Bool
 
     @State private var stage: Stage = .check
@@ -134,7 +136,7 @@ struct LaunchScreen: View {
         let docs = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).last ?? ""
         let vid = versionID.isEmpty ? versionName : versionID
         let metaPath = (docs as NSString).appendingPathComponent(
-            "instances/default/.minecraft/versions/\(vid)/\(vid).json")
+            "instances/\(instanceName)/.minecraft/versions/\(vid)/\(vid).json")
         versionReady = FileManager.default.fileExists(atPath: metaPath)
         logs.append(coreLinked ? "✓ Amethyst 核心已链接" : "✗ 未链接核心（仅界面构建）")
         logs.append(runtimeReady ? "✓ 找到 java_runtimes" : "✗ 未找到 java_runtimes")
@@ -160,7 +162,7 @@ struct LaunchScreen: View {
             // 优先用已安装版本的元数据启动
             let vid = versionID.isEmpty ? versionName : versionID
             let metaPath = (docs as NSString).appendingPathComponent(
-                "instances/default/.minecraft/versions/\(vid)/\(vid).json")
+                "instances/\(instanceName)/.minecraft/versions/\(vid)/\(vid).json")
             if FileManager.default.fileExists(atPath: metaPath),
                let data = FileManager.default.contents(atPath: metaPath),
                let meta = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {

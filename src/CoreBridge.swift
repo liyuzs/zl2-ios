@@ -116,10 +116,13 @@ enum CoreBridge {
         guard runtimeCheck() else {
             throw CoreLaunchError.bootstrapFailed("找不到内置 JRE（java_runtimes/java-17-openjdk/lib/libjli.dylib）")
         }
+        // Java 版本从版本元数据读（1.8~1.16 要 Java 8，1.20.5+ 要 Java 21）
+        let minJava = Self.requiredJavaVersion(metadata)
         // Amethyst 的 launchJVM 内部会弹对话框、操作 UI，必须在主线程调用
         let code: Int32 = await withCheckedContinuation { cont in
             DispatchQueue.main.async {
-                let r = launchJVM(Self.currentUsername(), metadata as NSDictionary, Int32(width), Int32(height), 17)
+                let r = launchJVM(Self.currentUsername(), metadata as NSDictionary,
+                                  Int32(width), Int32(height), Int32(minJava))
                 cont.resume(returning: r)
             }
         }
