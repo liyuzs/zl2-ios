@@ -244,11 +244,13 @@ enum CoreBridge {
             if parts.count >= 2, let ma = Int(parts[0]), let mi = Int(parts[1]) {
                 if ma == 1 {
                     if mi >= 21 { return 21 }
+                    if mi >= 20 { return 21 }   // 1.20.5+ 要 Java 21
                     if mi >= 17 { return 17 }
                     if mi >= 12 { return 17 }
                     return 8
                 }
-                if ma >= 22 { return 21 }
+                if ma >= 26 { return 25 }        // MC 26+ 要 Java 25
+                if ma >= 22 { return 25 }
             }
         }
         return 17

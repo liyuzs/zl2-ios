@@ -115,11 +115,16 @@ workflows:
           done
           cp -R core/build/*.dylib "$APP/Frameworks/" 2>/dev/null || true
 
-          mkdir -p "$APP/java_runtimes/java-17-openjdk"
-          curl -L --fail --retry 3 -o /tmp/jre17.zip \
-            https://assets.angelauramc.dev/openjdk/ios-arm64/jre17-ios-aarch64.zip
-          unzip -q -o /tmp/jre17.zip -d /tmp/jre17
-          tar xf /tmp/jre17/*.tar.xz -C "$APP/java_runtimes/java-17-openjdk"
+          # JRE 17 / 21 / 25（按 MC 版本自动选；MC 26+ 需要 25）
+          for JV in 17 21 25; do
+            mkdir -p "$APP/java_runtimes/java-${JV}-openjdk"
+            curl -L --fail --retry 3 -o "/tmp/jre${JV}.zip" \
+              "https://assets.angelauramc.dev/openjdk/ios-arm64/jre${JV}-ios-aarch64.zip"
+            rm -rf "/tmp/jre${JV}" && mkdir -p "/tmp/jre${JV}"
+            unzip -q -o "/tmp/jre${JV}.zip" -d "/tmp/jre${JV}"
+            tar xf "/tmp/jre${JV}"/*.tar.xz -C "$APP/java_runtimes/java-${JV}-openjdk"
+            echo "JRE $JV done"
+          done
 
           ls "$APP/java_runtimes/java-17-openjdk/lib/libjli.dylib"
           du -sh "$APP"
