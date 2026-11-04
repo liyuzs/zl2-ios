@@ -768,8 +768,9 @@ struct ZLJoystick: Codable, Equatable, Identifiable, Sendable {
         self.uuid = uuid
         self.position = position
         self.sizeType = sizeType == .wrapContent ? .percentage : sizeType
-        self.sizeDp = max(20, sizeDp)
-        self.sizePercentage = min(max(sizePercentage, 2000), 10000)
+        // ZL2 的 JoystickData 不对尺寸做范围校验（只在渲染时夹取），这里只避免 0 值
+        self.sizeDp = max(1, sizeDp)
+        self.sizePercentage = min(max(sizePercentage, 1), 10000)
         self.visibilityType = visibilityType
         self.joystickStyleId = joystickStyleId
         self.deadZoneRatio = min(max(deadZoneRatio, 0), 0.9)
