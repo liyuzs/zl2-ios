@@ -6,7 +6,7 @@
 name: ZL2iOS
 
 options:
-  bundleIdPrefix: com.example
+  bundleIdPrefix: com.liyuzs
   deploymentTarget:
     iOS: "16.0"
   createIntermediateGroups: true
@@ -32,7 +32,7 @@ targets:
 
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.zl2ios
+        PRODUCT_BUNDLE_IDENTIFIER: com.liyuzs.craftlauncher
         PRODUCT_NAME: ZL2
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"

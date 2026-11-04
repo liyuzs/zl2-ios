@@ -1,0 +1,53 @@
+{
+  "name": "CraftLauncher 源",
+  "identifier": "com.liyuzs.craftlauncher.source",
+  "subtitle": "非官方 iOS 移植版 Minecraft Java 启动器",
+  "description": "让 iPhone / iPad 玩上 Java 版 Minecraft。\n\n支持 1.8 ~ 26+ 版本、Fabric/Quilt 模组、光影、局域网联机。\n\n⚠️ 本应用是非官方社区修改版，与 Zalith Launcher 官方无关。",
+  "iconURL": "https://raw.githubusercontent.com/liyuzs/zl2-ios/main/docs/icon.png",
+  "headerURL": "https://raw.githubusercontent.com/liyuzs/zl2-ios/main/docs/header.png",
+  "website": "https://github.com/liyuzs/zl2-ios",
+  "tintColor": "#C8A24B",
+  "featuredApps": ["com.liyuzs.craftlauncher"],
+  "apps": [
+    {
+      "name": "CraftLauncher",
+      "bundleIdentifier": "com.liyuzs.craftlauncher",
+      "developerName": "liyuzs",
+      "subtitle": "非官方 iOS 移植版 MC Java 启动器",
+      "localizedDescription": "把 Java 版 Minecraft 带到 iPhone / iPad。\n\n**功能**\n· 下载 1.8 ~ 26+ 任意版本\n· Fabric / Quilt 模组加载器\n· 模组 / 资源包 / 光影管理\n· 键位编辑器（对齐 Zalith Launcher 2 的 JSON 格式）\n· 游戏内菜单、性能监控\n· 微软账号 / 离线账号\n· 局域网联机（同一 WiFi 自动发现）\n· 7 套主题\n\n**注意**\n必须用 StikDebug 启用 JIT，否则帧率个位数。\n\n**声明**\n本应用是非官方社区修改版，与 Zalith Launcher 官方无关。界面代码为原创重写，感谢原作者 MovTery 与 Angel Aura MC。",
+      "iconURL": "https://raw.githubusercontent.com/liyuzs/zl2-ios/main/docs/icon.png",
+      "tintColor": "#C8A24B",
+      "category": "games",
+      "screenshots": [
+        "https://raw.githubusercontent.com/liyuzs/zl2-ios/main/docs/screenshot-home.png"
+      ],
+      "versions": [
+        {
+          "version": "0.1.0",
+          "buildVersion": "1",
+          "date": "2026-11-04",
+          "localizedDescription": "首个公开测试版",
+          "downloadURL": "https://github.com/liyuzs/zl2-ios/releases/download/v0.1.0/CraftLauncher.ipa",
+          "size": 157286400,
+          "minOSVersion": "16.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {
+          "NSLocalNetworkUsageDescription": "用于发现同一 WiFi 下的 Minecraft 局域网游戏"
+        }
+      }
+    }
+  ],
+  "news": [
+    {
+      "title": "CraftLauncher 首个测试版发布",
+      "identifier": "release-0.1.0",
+      "caption": "支持 1.8~26+ 版本、模组、光影、局域网联机",
+      "date": "2026-11-04",
+      "tintColor": "#C8A24B",
+      "appID": "com.liyuzs.craftlauncher"
+    }
+  ]
+}
