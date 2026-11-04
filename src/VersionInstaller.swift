@@ -97,10 +97,25 @@ actor VersionInstaller {
         let detail = try await api.fetchVersionDetail(from: entry.url)
         report(.metadata, Double(1) / Double(max(1, 1)), "元数据就绪")
 
-        // 保存版本 JSON（Amethyst 需要读它）
-        let jsonData = try JSONSerialization.data(withJSONObject: versionJSONObject(entry: entry, detail: detail),
-                                                  options: [.prettyPrinted])
-        try jsonData.write(to: versionDir.appendingPathComponent("\(versionID).json"))
+        // 保存版本 JSON：必须保存**原始完整 JSON**（含 arguments / javaVersion / logging /
+        // libraries.rules / downloads.sha1），Amethyst 靠这些字段拼 JVM 和游戏参数。
+        // 自己重组会丢字段，导致启动必失败。
+        let jsonPath = versionDir.appendingPathComponent("\(versionID).json")
+        do {
+            let raw = try await downloadData(entry.url)
+            // 校验是合法 JSON 再落盘
+            if let o = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
+               o["id"] as? String != nil, o["mainClass"] as? String != nil {
+                try raw.write(to: jsonPath)
+            } else {
+                throw InstallError.badMetadata
+            }
+        } catch {
+            // 兜底：用重组版（字段不全，但至少能起来排查）
+            let jsonData = try JSONSerialization.data(withJSONObject: versionJSONObject(entry: entry, detail: detail),
+                                                      options: [.prettyPrinted])
+            try jsonData.write(to: jsonPath)
+        }
 
         // 2) client.jar
         guard let clientURL = detail.downloads?.client?.url else {
@@ -207,6 +222,17 @@ actor VersionInstaller {
         } else {
             report(.done, 1, "\(versionID) 安装完成")
         }
+    }
+
+    /// 下载原始字节（用于版本 JSON）
+    private func downloadData(_ url: URL) async throws -> Data {
+        var req = URLRequest(url: url, timeoutInterval: 30)
+        req.setValue("ZL2-iOS/1.0", forHTTPHeaderField: "User-Agent")
+        let (data, resp) = try await session.data(for: req)
+        if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            throw InstallError.failed("HTTP \(http.statusCode)")
+        }
+        return data
     }
 
     // MARK: 下载单文件（带重试）
