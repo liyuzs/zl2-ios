@@ -84,9 +84,9 @@ extension ControlAppearance {
         light.alpha = normalOpacity
         light.pressedAlpha = pressedOpacity
         light.backgroundColor = ZLColorValue(rgb: backgroundHex)
-        light.pressedBackgroundColor = ZLColorValue(rgb: backgroundHex)
+        light.pressedBackgroundColor = ZLColorValue(rgb: pressedBackgroundHex)
         light.contentColor = ZLColorValue(rgb: contentHex)
-        light.pressedContentColor = ZLColorValue(rgb: contentHex)
+        light.pressedContentColor = ZLColorValue(rgb: pressedContentHex)
         light.borderWidth = Int(borderWidth.rounded())
         light.pressedBorderWidth = Int(borderWidth.rounded())
         light.borderColor = ZLColorValue(rgb: borderHex)
@@ -98,7 +98,7 @@ extension ControlAppearance {
         dark.alpha = darkNormalOpacity
         dark.pressedAlpha = darkPressedOpacity
         dark.backgroundColor = ZLColorValue(rgb: darkBackgroundHex)
-        dark.pressedBackgroundColor = ZLColorValue(rgb: darkBackgroundHex)
+        dark.pressedBackgroundColor = ZLColorValue(rgb: darkBackgroundHex)  // 深色态仍用深色背景
         dark.contentColor = ZLColorValue(rgb: darkContentHex)
         dark.pressedContentColor = ZLColorValue(rgb: darkContentHex)
         dark.borderColor = ZLColorValue(rgb: darkBorderHex)
@@ -208,8 +208,9 @@ extension ControlItem {
         if let appearance = appearance {
             item.appearance = appearance
         }
-        // 取第一个事件（保留按键，不要退化成 sendText）
-        for e in b.clickEvents {
+        // 第一个事件作主事件，其余存 extraEvents（不丢）
+        item.extraEvents = Array(b.clickEvents.dropFirst())
+        for e in b.clickEvents.prefix(1) {
             switch e.type {
             case .key:
                 item.keyEvent = e.value

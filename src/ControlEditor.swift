@@ -181,6 +181,14 @@ struct ControlAppearance: Identifiable, Codable, Equatable {
     var backgroundHex: UInt32 = 0xF7F3E6
     /// 内容（文字 / 图标）色
     var contentHex: UInt32 = 0x2C2A20
+    /// 按下态背景色（ZL2 的 pressedBackgroundColor）
+    var pressedBackgroundHex: UInt32 = 0xE8E0C8
+    /// 按下态内容色
+    var pressedContentHex: UInt32 = 0x2C2A20
+    /// 边框色
+    var borderHex: UInt32 = 0x000000
+    /// 文字大小（ZL2 ButtonStyle.fontSize）
+    var fontSize: Double = 0
     /// 边框粗细
     var borderWidth: Double = 1.0
     /// 边框色
@@ -375,6 +383,8 @@ struct ControlItem: Identifiable, Codable, Equatable {
     var textToSend: String = ""
     /// ZL2 的按键事件值（GLFW 按键名，例如 GLFW_KEY_ESCAPE）
     var keyEvent: String = ""
+    /// 额外事件（ZL2 支持一个控件挂多个事件）
+    var extraEvents: [ZLClickEvent] = []
     var visibleScene: VisibleScene = .always
     var lockable: Bool = false
     /// 文本对齐 / 粗体 / 斜体 / 下划线（对齐 ZL2 的 textAlignment / textBold / textItalic / textUnderline）
@@ -2412,7 +2422,14 @@ struct LayoutInfoSheet: View {
 
                     HStack(spacing: 10) {
                         Button {
-                            exportText = doc.exportJSONText()
+                            // 导出成 ZL2 原生格式（安卓 ZL2 可直接读取）
+                            if let zl = ZLControlLayout.from(doc),
+                               let data = try? zl.exportJSON(),
+                               let text = String(data: data, encoding: .utf8) {
+                                exportText = text
+                            } else {
+                                exportText = doc.exportJSONText()
+                            }
                             showExport = true
                         } label: {
                             Label("分享", systemImage: "square.and.arrow.up")
