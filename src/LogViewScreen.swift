@@ -66,7 +66,7 @@ struct LogViewScreen: View {
             Menu {
                 ForEach(groupedFiles.indices, id: \.self) { gi in
                     let group = groupedFiles[gi]
-                    Section(group.0) {
+                    Section(header: Text(group.0)) {
                         ForEach(group.1) { f in
                             Button {
                                 selected = f.url
@@ -304,7 +304,7 @@ struct LogViewScreen: View {
     private var fileChanged: Bool {
         guard let url = selected,
               let attrs = try? fm.attributesOfItem(atPath: url.path) else { return false }
-        let size = (attrs[.size] as? Int64) ?? Int64((attrs[.size] as? Int) ?? 0)
+        let size = (attrs[.size] as? NSNumber)?.int64Value ?? 0
         let mod = attrs[.modificationDate] as? Date
         return size != lastSize || mod != lastModified
     }
@@ -315,7 +315,7 @@ struct LogViewScreen: View {
 
         func add(_ url: URL, group: String) {
             guard let attrs = try? fm.attributesOfItem(atPath: url.path) else { return }
-            let size = (attrs[.size] as? Int64) ?? Int64((attrs[.size] as? Int) ?? 0)
+            let size = (attrs[.size] as? NSNumber)?.int64Value ?? 0
             list.append(ZLLogFile(id: url.path,
                                   name: url.lastPathComponent,
                                   url: url,
@@ -369,7 +369,7 @@ struct LogViewScreen: View {
             lines = []
             return
         }
-        lastSize = (attrs[.size] as? Int64) ?? Int64((attrs[.size] as? Int) ?? 0)
+        lastSize = (attrs[.size] as? NSNumber)?.int64Value ?? 0
         lastModified = attrs[.modificationDate] as? Date
 
         guard let text = readTail(url) else {

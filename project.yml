@@ -56,6 +56,9 @@ targets:
         CFBundleDisplayName: ZL2
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
+        # 允许用户通过「文件」App 把整合包 / 模组放进 Documents，再用文件选择器导入
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false

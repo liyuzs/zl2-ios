@@ -259,7 +259,8 @@ struct FileSelectorScreen: View {
                 Text(mode.isDirectory ? "当前目录" : "已选文件")
                     .font(.system(size: 10))
                     .foregroundStyle(ZLTheme.textSecond)
-                Text((mode.isDirectory ? current : selectedFile)?.lastPathComponent ?? "—")
+                Text(mode.isDirectory ? current.lastPathComponent
+                                      : (selectedFile?.lastPathComponent ?? "—"))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(ZLTheme.textPrimary)
                     .lineLimit(1)

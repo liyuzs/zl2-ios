@@ -68,6 +68,10 @@ struct VersionListScreen: View {
         .sheet(isPresented: $showDirs) {
             GameDirsScreen(onBack: { showDirs = false }, onHome: { showDirs = false })
         }
+        .onChange(of: showDirs) { open in
+            // 从游戏目录页返回后，可能已经切换了实例，重新扫描版本
+            if !open { reload() }
+        }
         .sheet(isPresented: $showClean) {
             CleanFilesScreen(onBack: { showClean = false }, onHome: { showClean = false })
         }
@@ -82,7 +86,9 @@ struct VersionListScreen: View {
                     Image(systemName: "folder.fill")
                         .font(.system(size: 12))
                         .foregroundStyle(ZLTheme.primary)
-                    Text("默认游戏目录")
+                    Text(VersionRepository.shared.instanceName == "default"
+                         ? "默认游戏目录"
+                         : VersionRepository.shared.instanceName)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(ZLTheme.textPrimary)
                     Spacer()
@@ -145,7 +151,7 @@ struct VersionListScreen: View {
                 }
                 .buttonStyle(.plain)
 
-                Button { } label: {
+                Button { onDownload() } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "arrow.down.to.line").font(.system(size: 12))
                         Text("安装新游戏").font(.system(size: 12))

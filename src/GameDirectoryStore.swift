@@ -104,6 +104,7 @@ final class GameDirectoryStore: ObservableObject {
         }
         // 正在使用的排最前，其余按名称
         instances = list.sorted { a, b in
+            if a.id == b.id { return false }
             if a.id == activeName { return true }
             if b.id == activeName { return false }
             return a.id.localizedStandardCompare(b.id) == .orderedAscending

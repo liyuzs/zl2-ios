@@ -55,7 +55,8 @@ struct GameMenuScreen: View {
 
     @StateObject private var store = ZLSettingsStore.shared
     @StateObject private var toast = GameMenuToastCenter()
-    @State private var tab: GameMenuTab = .overview
+    // 安卓把 Tab 索引存在 GameViewModel.controlMenuTabIndex 里，菜单关掉再打开仍停在上次那页
+    @State private var tab: GameMenuTab = GameMenuSession.tab
     @State private var appeared = false
     @State private var forceCloseAlert = false
 
@@ -218,6 +219,8 @@ struct GameMenuScreen: View {
         HStack(spacing: 0) {
             ForEach(GameMenuTab.allCases, id: \.self) { item in
                 Button {
+                    // 安卓把 Tab 索引存在 GameViewModel.controlMenuTabIndex 里
+                    GameMenuSession.tab = item
                     withAnimation(.easeInOut(duration: 0.18)) { tab = item }
                 } label: {
                     VStack(spacing: 0) {
@@ -245,6 +248,14 @@ struct GameMenuScreen: View {
 
     @ViewBuilder
     private var actionRows: some View {
+        actionCommandRows
+        actionDisplayRows
+        resolutionSection
+    }
+
+    /// 右栏上半：命令类按钮（GameMenuSubscreen.kt:228-269）
+    @ViewBuilder
+    private var actionCommandRows: some View {
         // 强制关闭
         textButton(ZLStrings.game_button_force_close) { forceCloseAlert = true }
         // 日志输出
@@ -261,7 +272,11 @@ struct GameMenuScreen: View {
         }
 
         Color.clear.frame(height: 8)
+    }
 
+    /// 右栏中部：显示类开关（GameMenuSubscreen.kt:270-363）
+    @ViewBuilder
+    private var actionDisplayRows: some View {
         // 开启菜单悬浮窗
         switchRow(ZLStrings.game_menu_option_show_menu, "showMenuBall") { value in
             if !value {
@@ -293,8 +308,6 @@ struct GameMenuScreen: View {
         switchRow(ZLStrings.settings_renderer_max_refresh_rate_title, "requestMaxRefreshRate")
 
         Color.clear.frame(height: 8)
-
-        resolutionSection
     }
 
     // 分辨率规则 + 对应的子项（GameMenuSubscreen.kt:365-438）
@@ -497,9 +510,14 @@ struct GameMenuScreen: View {
     // 手势（GameMenuSubscreen.kt:871-1044）
     @ViewBuilder
     private var gestureRows: some View {
+        gestureControlRows
+        gestureHotbarRows
+    }
+
+    /// 手势控制本身（GameMenuSubscreen.kt:883-944）
+    @ViewBuilder
+    private var gestureControlRows: some View {
         let gestureOn = boolValue("gestureControl")
-        let customHotbar = stringValue("hotbarRule") == "HotbarRule.Custom"
-        let longClick = boolValue("hotbarLongClick")
 
         switchRow(ZLStrings.settings_control_gesture_control_title, "gestureControl")
         listRow(ZLStrings.settings_control_gesture_tap_action_title,
@@ -514,6 +532,13 @@ struct GameMenuScreen: View {
                   range: 100...1000, suffix: "ms", enabled: gestureOn)
 
         Color.clear.frame(height: 8)
+    }
+
+    /// 快捷栏相关（GameMenuSubscreen.kt:946-1042）
+    @ViewBuilder
+    private var gestureHotbarRows: some View {
+        let customHotbar = stringValue("hotbarRule") == "HotbarRule.Custom"
+        let longClick = boolValue("hotbarLongClick")
 
         listRow(ZLStrings.game_menu_option_hotbar_rule,
                 key: "hotbarRule",
@@ -747,7 +772,7 @@ struct GameMenuScreen: View {
 
 // MARK: - Tab 定义（GameMenuSubscreen.kt:90-103）
 
-private enum GameMenuTab: CaseIterable {
+private enum GameMenuTab: CaseIterable, Hashable {
     case overview
     case mouse
     case gamepad
@@ -780,6 +805,12 @@ private enum GameMenuTab: CaseIterable {
         case .gyroscope: return "陀螺仪"
         }
     }
+}
+
+// MARK: - 会话内的 Tab 记忆（对应 GameViewModel.controlMenuTabIndex）
+
+private enum GameMenuSession {
+    static var tab: GameMenuTab = .overview
 }
 
 // MARK: - 列表项模型

@@ -137,7 +137,7 @@ struct AssetsScreen: View {
     private var kindRail: some View {
         VStack(spacing: 6) {
             ForEach(AssetKind.allCases) { k in
-                Button { } label: {
+                NavigationLink(value: AppRoute.assets(k.rawValue)) {
                     VStack(spacing: 4) {
                         Image(systemName: k.icon).font(.system(size: 19))
                         Text(k.rawValue).font(.system(size: 11))
