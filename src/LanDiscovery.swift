@@ -1,9 +1,12 @@
 // ZL2-iOS · 局域网联机发现
-// 原理：Minecraft 局域网游戏会向 224.0.2.60:4445 组播
-// 报文格式：[MOTD]<motd>[/MOTD][AD]<port>[/AD]
-// 这是零依赖、不越狱也能用的联机方式（同一 WiFi 下）
+//
+// Minecraft 的「对局域网开放」会把服务信息组播到 224.0.2.60:4445，
+// 报文格式： [MOTD]<标题>[/MOTD][AD]<端口>[/AD]
+//
+// iOS 上必须用 BSD socket 并显式加入组播组（IP_ADD_MEMBERSHIP），
+// Network.framework 的 NWListener 不会加入组播组，收不到这些包。
 import Foundation
-import Network
+import Darwin
 
 struct LanServer: Identifiable, Equatable {
     let id = UUID()
@@ -12,18 +15,24 @@ struct LanServer: Identifiable, Equatable {
     var motd: String
     var lastSeen: Date
 
+    /// 去掉 § 颜色代码后的标题
     var displayMOTD: String {
         motd.replacingOccurrences(of: "§", with: "")
             .replacingOccurrences(of: "[0-9a-fk-orA-FK-OR]", with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
 enum LanDiscoveryError: LocalizedError {
     case socket(String)
+    case bind(String)
+    case join(String)
 
     var errorDescription: String? {
         switch self {
-        case .socket(let m): return "局域网监听失败：\(m)"
+        case .socket(let m): return "局域网监听失败（socket）：\(m)"
+        case .bind(let m):   return "局域网监听失败（bind）：\(m)"
+        case .join(let m):   return "加入组播组失败：\(m)"
         }
     }
 }
@@ -33,83 +42,131 @@ enum LanDiscoveryError: LocalizedError {
 final class LanDiscovery: ObservableObject {
     @Published private(set) var servers: [LanServer] = []
     @Published private(set) var running = false
+    @Published private(set) var lastError: String?
 
-    private var listener: NWListener?
+    private var fd: Int32 = -1
+    private var thread: Thread?
     private var cleaner: Timer?
-    private let port: NWEndpoint.Port = 4445
+
+    /// Minecraft 局域网广播组播地址
+    private let multicastGroup = "224.0.2.60"
+    /// 固定端口 4445
+    private let port: UInt16 = 4445
 
     func start() {
         guard !running else { return }
-        let params = NWParameters.udp
-        params.allowLocalEndpointReuse = true
-        // 加入组播组
-        params.requiredLocalEndpoint = NWEndpoint.hostPort(host: "0.0.0.0", port: port)
+        lastError = nil
 
-        do {
-            let l = try NWListener(using: params, on: port)
-            l.newConnectionHandler = { [weak self] conn in
-                Task { @MainActor in self?.handle(conn) }
-            }
-            l.stateUpdateHandler = { [weak self] state in
-                Task { @MainActor in
-                    switch state {
-                    case .ready: self?.running = true
-                    case .failed, .cancelled: self?.running = false
-                    default: break
-                    }
-                }
-            }
-            l.start(queue: .global(qos: .userInitiated))
-            listener = l
-            running = true
+        let sock = socket(AF_INET, SOCK_DGRAM, 0)
+        guard sock >= 0 else {
+            lastError = LanDiscoveryError.socket(String(cString: strerror(errno))).localizedDescription
+            return
+        }
 
-            // 5 秒没再收到就移除
-            cleaner = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-                Task { @MainActor in
-                    guard let self else { return }
-                    let now = Date()
-                    self.servers.removeAll { now.timeIntervalSince($0.lastSeen) > 12 }
-                }
+        var yes: Int32 = 1
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, socklen_t(MemoryLayout<Int32>.size))
+        setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &yes, socklen_t(MemoryLayout<Int32>.size))
+
+        var addr = sockaddr_in()
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = port.bigEndian
+        addr.sin_addr.s_addr = INADDR_ANY
+
+        let bindResult = withUnsafePointer(to: &addr) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                bind(sock, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
             }
-        } catch {
-            running = false
+        }
+        guard bindResult == 0 else {
+            lastError = LanDiscoveryError.bind(String(cString: strerror(errno))).localizedDescription
+            close(sock)
+            return
+        }
+
+        // 加入组播组 224.0.2.60
+        var mreq = ip_mreq()
+        mreq.imr_multiaddr.s_addr = inet_addr(multicastGroup)
+        mreq.imr_interface.s_addr = INADDR_ANY
+        let joinResult = setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq,
+                                    socklen_t(MemoryLayout<ip_mreq>.size))
+        guard joinResult == 0 else {
+            lastError = LanDiscoveryError.join(String(cString: strerror(errno))).localizedDescription
+            close(sock)
+            return
+        }
+
+        // 接收超时，便于线程退出
+        var tv = timeval(tv_sec: 1, tv_usec: 0)
+        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+
+        fd = sock
+        running = true
+
+        let t = Thread { [weak self] in
+            self?.receiveLoop(sock: sock)
+        }
+        t.name = "ZL2.LanDiscovery"
+        t.start()
+        thread = t
+
+        // 12 秒没再收到就移除（MC 每 1.5 秒广播一次）
+        cleaner = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                let now = Date()
+                self.servers.removeAll { now.timeIntervalSince($0.lastSeen) > 12 }
+            }
         }
     }
 
     func stop() {
-        listener?.cancel()
-        listener = nil
+        running = false
+        if fd >= 0 {
+            close(fd)
+            fd = -1
+        }
         cleaner?.invalidate()
         cleaner = nil
-        running = false
+        thread = nil
+        servers.removeAll()
     }
 
-    private func handle(_ conn: NWConnection) {
-        conn.start(queue: .global(qos: .userInitiated))
-        receive(conn)
-    }
+    // MARK: - 收包循环（后台线程）
 
-    private func receive(_ conn: NWConnection) {
-        conn.receiveMessage { [weak self] data, _, _, error in
-            if let data, !data.isEmpty,
-               let text = String(data: data, encoding: .utf8) {
-                let remote = conn.currentPath?.remoteEndpoint
-                let host: String
-                switch remote {
-                case .hostPort(let h, _): host = "\(h)"
-                default: host = "未知"
-                }
-                Task { @MainActor in
-                    self?.ingest(text: text, host: host)
+    private nonisolated func receiveLoop(sock: Int32) {
+        var buf = [UInt8](repeating: 0, count: 4096)
+        while true {
+            var sender = sockaddr_in()
+            var senderLen = socklen_t(MemoryLayout<sockaddr_in>.size)
+            let n = withUnsafeMutablePointer(to: &sender) {
+                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    recvfrom(sock, &buf, buf.count, 0, $0, &senderLen)
                 }
             }
-            if error == nil {
-                Task { @MainActor in self?.receive(conn) }
-            } else {
-                conn.cancel()
+            if n <= 0 {
+                if errno == EAGAIN || errno == EWOULDBLOCK {
+                    // 每秒醒一次，检查是否还需要继续
+                    let stillRunning: Bool = DispatchQueue.main.sync { [weak self] in
+                        self?.running ?? false
+                    }
+                    if !stillRunning { break }
+                    continue
+                }
+                break
+            }
+            guard let text = String(bytes: buf[0..<n], encoding: .utf8) else { continue }
+            var hostBuf = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
+            var saddr = sender.sin_addr
+            inet_ntop(AF_INET, &saddr, &hostBuf, socklen_t(INET_ADDRSTRLEN))
+            let host = String(cString: hostBuf)
+
+            DispatchQueue.main.async { [weak self] in
+                self?.ingest(text: text, host: host)
             }
         }
     }
+
+    // MARK: - 解析
 
     private func ingest(text: String, host: String) {
         guard let motd = Self.extract(text, tag: "MOTD"),
