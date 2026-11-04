@@ -87,6 +87,7 @@ struct AccountScreen: View {
     @State private var showAddAccount = false
     @State private var showLocalLogin = false
     @State private var showAuthlibLogin = false
+    @State private var addAccountKind: ZLAddAccountKind = .microsoft
 
     private var accountCards: some View {
         VStack(spacing: 10) {
