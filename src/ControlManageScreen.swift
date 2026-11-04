@@ -367,9 +367,14 @@ struct ControlManageScreen: View {
     /// 导出当前布局为 ZL2 格式
     private func exportCurrent() {
         guard let meta = currentMeta else { return }
-        // 构造默认布局并导出
-        let doc = ControlLayoutDoc.default
-        var layout = ZLControlLayout.from(doc: doc)
+        // 优先导出已经保存过的这份布局，避免用默认布局覆盖用户内容
+        var layout: ZLControlLayout
+        if let url = ZLLayoutStore.list().first(where: { $0.name == meta.name }),
+           let existing = ZLLayoutStore.load(url) {
+            layout = existing
+        } else {
+            layout = ZLControlLayout.from(doc: ControlLayoutDoc.default)
+        }
         layout.info = ZLLayoutInfo(name: meta.name, author: meta.author,
                                    description: meta.desc, versionCode: 1,
                                    versionName: meta.version)

@@ -40,6 +40,14 @@ enum VisibleScene: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+// MARK: - 文本对齐（对齐 ZL2 的 TextAlignment）
+enum ControlTextAlignment: String, Codable, CaseIterable, Identifiable {
+    case left   = "左"
+    case center = "中"
+    case right  = "右"
+    var id: String { rawValue }
+}
+
 // MARK: - 四角圆角（四个角可分别设置）
 struct ControlCorners: Codable, Equatable {
     var topLeft: Double
@@ -369,6 +377,17 @@ struct ControlItem: Identifiable, Codable, Equatable {
     var keyEvent: String = ""
     var visibleScene: VisibleScene = .always
     var lockable: Bool = false
+    /// 文本对齐 / 粗体 / 斜体 / 下划线（对齐 ZL2 的 textAlignment / textBold / textItalic / textUnderline）
+    var textAlignment: ControlTextAlignment = .left
+    var textBold: Bool = false
+    var textItalic: Bool = false
+    var textUnderline: Bool = false
+    /// 滑动联动（对齐 ZL2 的 isSwipple）
+    var isSwipple: Bool = false
+    /// 允许触摸事件向下穿透（对齐 ZL2 的 isPenetrable）
+    var isPenetrable: Bool = false
+    /// 开关式按下状态（对齐 ZL2 的 isToggleable）
+    var isToggleable: Bool = false
     /// 外观样式
     var appearance: ControlAppearance = .default
     /// 摇杆详细配置（仅 kind == .stick 有效）
@@ -387,8 +406,10 @@ struct ControlItem: Identifiable, Codable, Equatable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, kind, label, x, y, width, height, action, textToSend,
-             visibleScene, lockable, appearance, stick
+        case id, kind, label, x, y, width, height, action, textToSend
+        case visibleScene, lockable, appearance, stick
+        case textAlignment, textBold, textItalic, textUnderline
+        case isSwipple, isPenetrable, isToggleable
         case legacyOpacity = "opacity"
         case legacyCornerRadius = "cornerRadius"
     }
@@ -419,6 +440,13 @@ extension ControlItem {
         textToSend = container.zlValue(.textToSend, "")
         visibleScene = container.zlValue(.visibleScene, VisibleScene.always)
         lockable = container.zlValue(.lockable, false)
+        textAlignment = container.zlValue(.textAlignment, ControlTextAlignment.left)
+        textBold = container.zlValue(.textBold, false)
+        textItalic = container.zlValue(.textItalic, false)
+        textUnderline = container.zlValue(.textUnderline, false)
+        isSwipple = container.zlValue(.isSwipple, false)
+        isPenetrable = container.zlValue(.isPenetrable, false)
+        isToggleable = container.zlValue(.isToggleable, false)
 
         // 新的外观字段优先；缺失时用旧的 opacity / cornerRadius 迁移
         var style = container.zlValue(.appearance, ControlAppearance.default)
@@ -444,6 +472,13 @@ extension ControlItem {
         try container.encode(textToSend, forKey: .textToSend)
         try container.encode(visibleScene, forKey: .visibleScene)
         try container.encode(lockable, forKey: .lockable)
+        try container.encode(textAlignment, forKey: .textAlignment)
+        try container.encode(textBold, forKey: .textBold)
+        try container.encode(textItalic, forKey: .textItalic)
+        try container.encode(textUnderline, forKey: .textUnderline)
+        try container.encode(isSwipple, forKey: .isSwipple)
+        try container.encode(isPenetrable, forKey: .isPenetrable)
+        try container.encode(isToggleable, forKey: .isToggleable)
         try container.encode(appearance, forKey: .appearance)
         try container.encode(stick, forKey: .stick)
         // 旧版本兼容镜像
@@ -463,11 +498,14 @@ struct ControlLayer: Identifiable, Codable, Equatable {
     var hiddenByMouse = false
     /// 手柄操作时隐藏
     var hiddenByGamepad = false
+    /// 这一层的可见场景（对齐 ZL2 的 ControlLayer.visibilityType）
+    var visibleScene: VisibleScene = .always
     /// 合并控件到下层（运行时与下方控件层合并）
     var mergeIntoLowerLayer = false
 
     enum CodingKeys: String, CodingKey {
-        case id, name, items, hiddenByDefault, hiddenByMouse, hiddenByGamepad, mergeIntoLowerLayer
+        case id, name, items, hiddenByDefault, hiddenByMouse, hiddenByGamepad
+        case visibleScene, mergeIntoLowerLayer
     }
 
     /// 已开启的属性数量（列表里做标记用）
@@ -490,6 +528,7 @@ extension ControlLayer {
         hiddenByDefault = container.zlValue(.hiddenByDefault, false)
         hiddenByMouse = container.zlValue(.hiddenByMouse, false)
         hiddenByGamepad = container.zlValue(.hiddenByGamepad, false)
+        visibleScene = container.zlValue(.visibleScene, VisibleScene.always)
         mergeIntoLowerLayer = container.zlValue(.mergeIntoLowerLayer, false)
     }
 }
@@ -2094,6 +2133,18 @@ struct ControlLayerSettingsSheet: View {
                 toggleRow("实体鼠标操作时隐藏", desc: "连接鼠标并操作时自动隐藏，避免遮挡", isOn: $layer.hiddenByMouse)
                 Divider()
                 toggleRow("手柄操作时隐藏", desc: "用手柄操作时自动隐藏这一层", isOn: $layer.hiddenByGamepad)
+                Divider()
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("可见场景")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Picker("可见场景", selection: $layer.visibleScene) {
+                        ForEach(VisibleScene.allCases) { scene in
+                            Text(scene.rawValue).tag(scene)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
                 Divider()
                 toggleRow("合并控件到下层", desc: "运行时把这一层的控件并入下方控件层", isOn: $layer.mergeIntoLowerLayer)
             }

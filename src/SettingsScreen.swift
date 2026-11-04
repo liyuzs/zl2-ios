@@ -1,25 +1,137 @@
-// ZL2-iOS · 设置（依据真机截图还原）
-// 真机布局：顶部栏 · 左侧竖排分类 · 右侧「标题+说明+当前项+操作」卡片
+// ZL2-iOS · 设置页
+// 结构对齐 ZL2 安卓版：左侧竖排分类（渲染 / 游戏 / 控制 / 手柄 / 启动器，分隔线后 Java 管理 / 控制管理 / 关于）
+// 每个分类内的设置项、控件类型、标题/说明文案均取自 AllSettings.kt 与 values-zh-rCN/strings.xml
+import Foundation
 import SwiftUI
+
+// MARK: - 设置读写（key 与 AllSettings.kt 一致，默认值统一回退到 ZLSettings）
+
+final class ZLSettingsStore: ObservableObject {
+    static let shared = ZLSettingsStore()
+
+    /// 每次写入自增，驱动 SwiftUI 刷新
+    @Published private(set) var revision = 0
+
+    private let defaults = UserDefaults.standard
+
+    func bool(_ def: ZLSettingDef) -> Bool {
+        if let v = defaults.object(forKey: def.key) as? Bool { return v }
+        return def.defaultValue == "true"
+    }
+
+    func int(_ def: ZLSettingDef) -> Int {
+        if let v = defaults.object(forKey: def.key) as? Int { return v }
+        return Int(def.defaultValue) ?? 0
+    }
+
+    /// 可空整数：安卓默认 null 的项（ramAllocation / physicalKeyImeCode / lastIgnoredVersion）
+    func intOrNil(_ def: ZLSettingDef) -> Int? {
+        if let v = defaults.object(forKey: def.key) as? Int { return v }
+        if def.isNullable || def.defaultValue.isEmpty { return nil }
+        return Int(def.defaultValue)
+    }
+
+    func string(_ def: ZLSettingDef) -> String {
+        if let v = defaults.object(forKey: def.key) as? String { return v }
+        return def.isNullable ? "" : def.defaultValue
+    }
+
+    func set(_ def: ZLSettingDef, _ value: Bool) {
+        defaults.set(value, forKey: def.key)
+        revision += 1
+    }
+
+    func set(_ def: ZLSettingDef, _ value: Int) {
+        defaults.set(value, forKey: def.key)
+        revision += 1
+    }
+
+    func set(_ def: ZLSettingDef, _ value: String) {
+        defaults.set(value, forKey: def.key)
+        revision += 1
+    }
+
+    func reset(_ def: ZLSettingDef) {
+        defaults.removeObject(forKey: def.key)
+        revision += 1
+    }
+
+    /// "x,y" → (x, y)，用于鼠标热点 / 菜单悬浮窗位置
+    static func parsePoint(_ raw: String) -> (Int, Int) {
+        let parts = raw.split(separator: ",")
+        if parts.count == 2,
+           let x = Int(parts[0].trimmingCharacters(in: .whitespaces)),
+           let y = Int(parts[1].trimmingCharacters(in: .whitespaces)) {
+            return (x, y)
+        }
+        return (50, 50)
+    }
+}
+
+// MARK: - 设置行描述
+
+private struct ZLOption: Identifiable {
+    let value: String
+    let label: String
+    var id: String { value }
+}
+
+private struct ZLSettingRow: Identifiable {
+    enum Kind {
+        case toggle
+        case slider(unit: String, minValue: Int?, maxValue: Int?)
+        case picker([ZLOption])
+        case text(placeholder: String)
+        case number(placeholder: String)
+        case info(String)
+        case hotspot
+        case keyCode
+        case blur
+        case animateSpeed
+        case darkMode
+    }
+
+    let key: String
+    let title: String
+    let summary: String?
+    let kind: Kind
+
+    var id: String { key }
+    var def: ZLSettingDef? { ZLSettings.def(key) }
+}
+
+// MARK: - 设置页
 
 struct SettingsScreen: View {
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
     var onDownload: () -> Void = {}
 
-    @State private var section = 0
-    @AppStorage("renderer")    private var renderer = "MobileGlues (OpenGL 4.0, 1.17+)"
-    @AppStorage("vulkanDriver") private var vulkanDriver = "Turnip"
-    @AppStorage("graphicsApi") private var graphicsApi = "仅首次启动时设置为 OpenGL"
-    @AppStorage("resolution")  private var resolution = 50.0
-    @AppStorage("memoryMB")    private var memoryMB = 2048
+    @StateObject private var store = ZLSettingsStore.shared
+    @EnvironmentObject private var themeManager: ThemeManager
 
-    private let sections = ["渲染设置", "游戏设置", "控制设置", "手柄设置", "启动器设置", "其它"]
-    private let icons = ["paintbrush.pointed.fill", "gamecontroller.fill", "dpad.fill", "gamepad.fill", "shippingbox.fill", "ellipsis.circle"]
+    @State private var section = 0
+    @State private var hotspotTarget: ZLSettingDef?
+
+    // ZL2 的设置页分类（strings.xml: settings_tab_*）
+    private let sections = [
+        ZLStrings.settings_tab_renderer,
+        ZLStrings.settings_tab_game,
+        ZLStrings.settings_tab_control,
+        ZLStrings.settings_tab_gamepad,
+        ZLStrings.settings_tab_launcher,
+    ]
+    private let icons = [
+        "paintbrush.pointed.fill",
+        "gamecontroller.fill",
+        "dpad.fill",
+        "gamepad.fill",
+        "shippingbox.fill",
+    ]
 
     var body: some View {
         VStack(spacing: 0) {
-            ZLTopBar(title: "设置 - \(sections[section])",
+            ZLTopBar(title: "\(ZLStrings.generic_setting) - \(sections[max(0, min(section, sections.count - 1))])",
                      active: .settings,
                      onBack: onBack, onHome: onHome, onDownload: onDownload)
 
@@ -32,8 +144,7 @@ struct SettingsScreen: View {
                         case 1: gameSettings
                         case 2: controlSettings
                         case 3: gamepadSettings
-                        case 4: launcherSettings
-                        default: otherSettings
+                        default: launcherSettings
                         }
                     }
                     .padding(.trailing, ZLTheme.screenPadding)
@@ -43,23 +154,49 @@ struct SettingsScreen: View {
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
+        .sheet(item: $hotspotTarget) { def in
+            ZLHotspotEditor(def: def, store: store)
+        }
+        .onAppear(perform: syncThemeSettings)
     }
+
+    // MARK: 左侧分类
 
     private var sideRail: some View {
         VStack(spacing: 6) {
             ForEach(sections.indices, id: \.self) { i in
                 Button { section = i } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: icons[i]).font(.system(size: 19))
-                        Text(sections[i]).font(.system(size: 11))
-                    }
-                    .foregroundStyle(section == i ? ZLTheme.primaryDeep : ZLTheme.textSecond)
-                    .frame(width: 76, height: 62)
-                    .background(section == i ? ZLTheme.primarySoft : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    railLabel(title: sections[i], icon: icons[i], selected: section == i)
                 }
                 .buttonStyle(.plain)
             }
+
+            Divider()
+                .padding(.vertical, 10)
+                .padding(.horizontal, 18)
+
+            NavigationLink(value: AppRoute.javaManage) {
+                railLabel(title: ZLStrings.settings_tab_java_manage,
+                          icon: "cup.and.saucer.fill", selected: false)
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink(value: AppRoute.controlManage) {
+                railLabel(title: ZLStrings.settings_tab_control_manage,
+                          icon: "dpad.fill", selected: false)
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+                .padding(.vertical, 10)
+                .padding(.horizontal, 18)
+
+            NavigationLink(value: AppRoute.about) {
+                railLabel(title: ZLStrings.settings_tab_info_about,
+                          icon: "info.circle", selected: false)
+            }
+            .buttonStyle(.plain)
+
             Spacer()
         }
         .padding(.leading, 8)
@@ -67,532 +204,475 @@ struct SettingsScreen: View {
         .frame(width: 92)
     }
 
-    // MARK: 卡片（真机样式：标题 + 灰说明 + 当前选择项 + 右侧操作）
-    private func settingCard(title: String,
-                             desc: String?,
-                             current: String?,
-                             trailing: AnyView? = nil) -> some View {
-        ZLCard {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(title)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    if let desc {
-                        Text(desc)
-                            .font(.system(size: 11))
-                            .foregroundStyle(ZLTheme.textSecond)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if let current {
-                        Text("当前选择项：\(current)")
-                            .font(.system(size: 11))
-                            .foregroundStyle(ZLTheme.textSecond)
-                    }
-                }
-                Spacer(minLength: 8)
-                trailing
-            }
+    private func railLabel(title: String, icon: String, selected: Bool) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon).font(.system(size: 19))
+            Text(title).font(.system(size: 11)).lineLimit(1)
         }
+        .foregroundStyle(selected ? ZLTheme.primaryDeep : ZLTheme.textSecond)
+        .frame(width: 76, height: 62)
+        .background(selected ? ZLTheme.primarySoft : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    // 真机样式的滑块：轨道 + 数值 + 左右箭头
-    private func arrowSlider(_ value: Binding<Double>, _ range: ClosedRange<Double>,
-                             _ unit: String) -> some View {
-        HStack(spacing: 8) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(ZLTheme.surfaceAlt)
-                        .frame(height: 6)
-                    Capsule().fill(ZLTheme.primary)
-                        .frame(width: geo.size.width * progressOf(value.wrappedValue, range), height: 6)
-                    Circle()
-                        .fill(ZLTheme.primary)
-                        .frame(width: 14, height: 14)
-                        .offset(x: geo.size.width * progressOf(value.wrappedValue, range) - 7)
-                }
-                .frame(maxHeight: .infinity, alignment: .center)
-            }
-            .frame(height: 18)
-
-            Text("\(Int(value.wrappedValue))\(unit)")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(ZLTheme.primaryDeep)
-                .frame(minWidth: 38)
-
-            HStack(spacing: 2) {
-                Button { if value.wrappedValue > range.lowerBound { value.wrappedValue -= 1 } } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(ZLTheme.textSecond)
-                        .frame(width: 20, height: 18)
-                }
-                .buttonStyle(.plain)
-                Button { if value.wrappedValue < range.upperBound { value.wrappedValue += 1 } } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(ZLTheme.textSecond)
-                        .frame(width: 20, height: 18)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private func progressOf(_ v: Double, _ r: ClosedRange<Double>) -> Double {
-        guard r.upperBound > r.lowerBound else { return 0 }
-        return min(max((v - r.lowerBound) / (r.upperBound - r.lowerBound), 0), 1)
-    }
-
-    private func actionButtons() -> AnyView {
-        AnyView(
-            HStack(spacing: 6) {
-                Button { } label: {
-                    Image(systemName: "arrow.down.to.line")
-                        .font(.system(size: 15))
-                        .foregroundStyle(ZLTheme.textSecond)
-                        .frame(width: 40, height: 40)
-                        .background(ZLTheme.surfaceAlt)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                Button { } label: {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 13))
-                        .foregroundStyle(ZLTheme.textSecond)
-                        .frame(width: 34, height: 40)
-                        .background(ZLTheme.surfaceAlt)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-        )
-    }
+    // MARK: - 渲染设置（15 项）
 
     @ViewBuilder
     private var renderSettings: some View {
-        settingCard(title: "全局渲染器",
-                    desc: "全局默认的渲染器，通过动态库转换层，确保游戏能在移动端运行",
-                    current: renderer,
-                    trailing: actionButtons())
-        settingCard(title: "Vulkan 驱动器",
-                    desc: nil,
-                    current: vulkanDriver,
-                    trailing: actionButtons())
-        settingCard(title: "图形 API",
-                    desc: "设置 Minecraft 26.2+ 将使用的图形 API",
-                    current: graphicsApi,
-                    trailing: actionButtons())
-        ZLCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("游戏窗口分辨率")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(ZLTheme.textPrimary)
-                HStack {
-                    Slider(value: $resolution, in: 20...100, step: 10)
-                        .tint(ZLTheme.primary)
-                    Text("\(Int(resolution))%")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(ZLTheme.primaryDeep)
-                        .frame(width: 52)
-                }
-                Text("分辨率越低，渲染压力越小、帧率越稳。")
-                    .font(.system(size: 12))
-                    .foregroundStyle(ZLTheme.textSecond)
-            }
-        }
+        cardGroup(rows: [
+            text("renderer",
+                 ZLStrings.settings_renderer_global_renderer_title,
+                 ZLStrings.settings_renderer_global_renderer_summary,
+                 placeholder: ZLStrings.generic_unspecified),
+            toggle("sfpewPluginLayer",
+                   ZLStrings.settings_renderer_sfpew_plugin_layer_title,
+                   ZLStrings.settings_renderer_sfpew_plugin_layer_summary),
+            toggle("sfpewRelaxedContext",
+                   ZLStrings.renderer_config_sfpew_relaxed_context_title,
+                   ZLStrings.renderer_config_sfpew_relaxed_context_desc),
+            text("vulkanDriver",
+                 ZLStrings.settings_renderer_global_vulkan_driver_title,
+                 nil,
+                 placeholder: "default turnip"),
+            picker("graphicsApi",
+                   ZLStrings.settings_game_graphics_api_title,
+                   ZLStrings.settings_game_graphics_api_summary,
+                   options: [
+                       ZLOption(value: "GraphicsApi.DEFAULT", label: ZLStrings.settings_game_graphics_api_default),
+                       ZLOption(value: "GraphicsApi.OPENGL", label: "OpenGL"),
+                       ZLOption(value: "GraphicsApi.DEFAULT_OPENGL", label: ZLStrings.settings_game_graphics_api_default_opengl),
+                       ZLOption(value: "GraphicsApi.VULKAN", label: "Vulkan"),
+                   ]),
+        ])
+
+        cardGroup(rows: [
+            picker("resolutionRule",
+                   ZLStrings.settings_renderer_resolution_rule_title,
+                   ZLStrings.settings_renderer_resolution_rule_summary,
+                   options: [
+                       ZLOption(value: "ResolutionRule.PERCENTAGE", label: ZLStrings.settings_renderer_resolution_rule_percentage),
+                       ZLOption(value: "ResolutionRule.CUSTOM", label: ZLStrings.generic_custom),
+                   ]),
+            slider("resolutionRatio",
+                   ZLStrings.settings_renderer_resolution_scale_title,
+                   ZLStrings.settings_renderer_resolution_scale_summary,
+                   unit: "%"),
+            number("customResolutionWidth",
+                   ZLStrings.settings_renderer_resolution_custom_width,
+                   ZLStrings.settings_renderer_resolution_custom_summary,
+                   placeholder: "0"),
+            number("customResolutionHeight",
+                   ZLStrings.settings_renderer_resolution_custom_height,
+                   nil,
+                   placeholder: "0"),
+        ])
+
+        cardGroup(rows: [
+            toggle("gameFullScreen",
+                   ZLStrings.settings_renderer_full_screen_title,
+                   ZLStrings.settings_renderer_full_screen_summary),
+            toggle("sustainedPerformance",
+                   ZLStrings.settings_renderer_sustained_performance_title,
+                   ZLStrings.settings_renderer_sustained_performance_summary),
+            toggle("requestMaxRefreshRate",
+                   ZLStrings.settings_renderer_max_refresh_rate_title,
+                   ZLStrings.settings_renderer_max_refresh_rate_summary),
+            toggle("zinkPreferSystemDriver",
+                   ZLStrings.settings_renderer_vulkan_driver_system_title,
+                   ZLStrings.settings_renderer_vulkan_driver_system_summary),
+            toggle("vsyncInZink",
+                   ZLStrings.settings_renderer_vsync_in_zink_title,
+                   ZLStrings.settings_renderer_vsync_in_zink_summary),
+            toggle("dumpShaders",
+                   ZLStrings.settings_renderer_shader_dump_title,
+                   ZLStrings.settings_renderer_shader_dump_summary),
+        ])
     }
 
-    @AppStorage("jvmArgs") private var jvmArgs = ""
-    @AppStorage("showLogAuto") private var showLogAuto = true
+    // MARK: - 游戏设置（11 项）
 
     @ViewBuilder
     private var gameSettings: some View {
-        // JVM 参数（真机：输入框 + 内存提示）
-        ZLCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("JVM 参数").font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(ZLTheme.textPrimary)
-                TextField("-Dfile.encoding=UTF-8", text: $jvmArgs)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 11, design: .monospaced))
-                    .padding(.horizontal, 10).frame(height: 38)
-                    .background(ZLTheme.surfaceAlt)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                HStack {
-                    Text("留白则忽略此设置")
-                        .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
-                    Spacer()
-                    Text("\(memoryMB)MB")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(ZLTheme.primaryDeep)
-                }
-            }
-        }
+        cardGroup(rows: [
+            toggle("versionIsolation",
+                   ZLStrings.settings_game_version_isolation_title,
+                   ZLStrings.settings_game_version_isolation_summary),
+            toggle("skipGameIntegrityCheck",
+                   ZLStrings.settings_game_skip_game_integrity_check_title,
+                   ZLStrings.settings_game_skip_game_integrity_check_summary),
+            text("versionCustomInfo",
+                 ZLStrings.settings_game_version_custom_info_title,
+                 ZLStrings.settings_game_version_custom_info_summary,
+                 placeholder: ZLStrings.generic_unspecified),
+        ])
 
-        // 日志字号 + 刷新间隔（真机）
-        ZLCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("日志字号大小").font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(ZLTheme.textPrimary)
-                Text("调整日志界面上文字的显示大小").font(.system(size: 11))
-                    .foregroundStyle(ZLTheme.textSecond)
-                HStack {
-                    Slider(value: $logFontSize, in: 10...24, step: 1).tint(ZLTheme.primary)
-                    Text("\(Int(logFontSize))sp").font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 48)
-                }
-            }
-        }
-        ZLCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("日志刷新间隔").font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(ZLTheme.textPrimary)
-                Text("设置日志刷新时间间隔，过低会加重负担").font(.system(size: 11))
-                    .foregroundStyle(ZLTheme.textSecond)
-                HStack {
-                    Slider(value: $logFlushMs, in: 50...1000, step: 50).tint(ZLTheme.primary)
-                    Text("\(Int(logFlushMs))ms").font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 58)
-                }
-            }
-        }
+        cardGroup(rows: [
+            text("javaRuntime",
+                 ZLStrings.settings_game_java_runtime_title,
+                 ZLStrings.settings_game_java_runtime_summary,
+                 placeholder: ZLStrings.generic_unspecified),
+            toggle("autoPickJavaRuntime",
+                   ZLStrings.settings_game_auto_pick_java_runtime_title,
+                   ZLStrings.settings_game_auto_pick_java_runtime_summary),
+            info("nativeLibPlugins",
+                 ZLStrings.settings_game_native_lib_plugin_title,
+                 ZLStrings.settings_game_native_lib_plugin_summary,
+                 value: ZLStrings.generic_unspecified),
+            slider("ramAllocation",
+                   ZLStrings.settings_game_java_memory_title,
+                   ZLStrings.settings_game_java_memory_summary,
+                   unit: "MB",
+                   minValue: 256,
+                   maxValue: maxMemoryMB),
+            text("jvmArgs",
+                 ZLStrings.settings_game_jvm_args_title,
+                 ZLStrings.settings_game_jvm_args_summary,
+                 placeholder: "-Dfile.encoding=UTF-8"),
+        ])
 
-        ZLCard {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("自动显示日志").font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    Text("游戏启动后自动显示运行日志").font(.system(size: 11))
-                        .foregroundStyle(ZLTheme.textSecond)
-                }
-                Spacer()
-                Toggle("", isOn: $showLogAuto).labelsHidden().tint(ZLTheme.primary)
-            }
-        }
-
-        ZLCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("内存分配")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(ZLTheme.textPrimary)
-                HStack {
-                    Slider(value: Binding(
-                        get: { Double(memoryMB) },
-                        set: { memoryMB = Int($0) }
-                    ), in: 1024...8192, step: 512)
-                    .tint(ZLTheme.primary)
-                    Text("\(memoryMB) MB")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(ZLTheme.primaryDeep)
-                        .frame(width: 78)
-                }
-                Text("并非越大越好，分配过高会让系统资源紧张，反而卡顿闪退。")
-                    .font(.system(size: 12))
-                    .foregroundStyle(ZLTheme.textSecond)
-            }
-        }
-        settingCard(title: "自动选择 Java 环境", desc: "少数客户端需要特定版本时才需手动指定", current: "已开启")
-        settingCard(title: "全局版本隔离", desc: "每个版本独立配置文件、模组、光影、存档，互不干扰", current: "已开启")
+        cardGroup(rows: [
+            toggle("showLogAutomatic",
+                   ZLStrings.settings_game_show_log_automatic_title,
+                   ZLStrings.settings_game_show_log_automatic_summary),
+            slider("logTextSize",
+                   ZLStrings.settings_game_log_text_size_title,
+                   ZLStrings.settings_game_log_text_size_summary,
+                   unit: "Sp"),
+            slider("logBufferFlushInterval",
+                   ZLStrings.settings_game_log_buffer_flush_interval_title,
+                   ZLStrings.settings_game_log_buffer_flush_interval_summary,
+                   unit: "ms"),
+        ])
     }
 
+    /// 安卓用 getMaxMemoryForSettings() 取设备可用上限，iOS 这里用物理内存换算
+    private var maxMemoryMB: Int {
+        max(1024, Int(ProcessInfo.processInfo.physicalMemory / 1024 / 1024))
+    }
 
-    // MARK: 控制设置
-    @AppStorage("logFontSize") private var logFontSize = 16.0
-    @AppStorage("logFlushMs") private var logFlushMs = 200.0
-    @AppStorage("mouseSensitivity") private var mouseSensitivity = 156.0
-    @AppStorage("gyroInterval") private var gyroInterval = 16.0
-    @AppStorage("gyroSmooth") private var gyroSmooth = true
-    @AppStorage("animMode") private var animMode = 1
-    @AppStorage("animLow") private var animLow = 6.0
-    @AppStorage("animHeight") private var animHeight = 6.0
-    @AppStorage("longPressDelay") private var longPressDelay = 256.0
-    @AppStorage("physicalMouse") private var physicalMouse = false
-    @AppStorage("matrixMouse") private var matrixMouse = false
-
-    @AppStorage("inputMethodKey") private var inputMethodKey = ""
-    @AppStorage("cursorStyle") private var cursorStyle = 0
+    // MARK: - 控制设置（29 项）
 
     @ViewBuilder
     private var controlSettings: some View {
-        // 控制管理入口（真机：进布局列表）
-        NavigationLink(value: AppRoute.controlManage) {
-            HStack(spacing: 12) {
-                Image(systemName: "dpad.fill")
-                    .foregroundStyle(ZLTheme.primary)
-                    .frame(width: 36, height: 36)
-                    .background(ZLTheme.primarySoft)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("控制管理").font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    Text("管理控制布局与外观").font(.system(size: 11))
-                        .foregroundStyle(ZLTheme.textSecond)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 11))
-                    .foregroundStyle(ZLTheme.textSecond)
-            }
-            .padding(14)
-            .background(ZLTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .buttonStyle(.plain)
+        cardGroup(rows: [
+            toggle("physicalMouseMode",
+                   ZLStrings.settings_control_mouse_physical_mouse_mode_title,
+                   ZLStrings.settings_control_mouse_physical_mouse_mode_summary),
+            keyCode("physicalKeyImeCode",
+                    ZLStrings.settings_control_physical_key_bind_ime_title,
+                    ZLStrings.settings_control_physical_key_bind_ime_summary),
+        ])
 
-        // 实体键盘呼出输入法（真机：绑定按键）
-        ZLCard {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("实体键盘呼出输入法").font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    Text("点击绑定一个按键，用于在游戏内呼出输入法").font(.system(size: 11))
-                        .foregroundStyle(ZLTheme.textSecond)
-                }
-                Spacer()
-                Text(inputMethodKey.isEmpty ? "未绑定" : inputMethodKey)
-                    .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
-            }
-        }
+        cardGroup(rows: [
+            hotspot("arrowMouseHotspot",
+                    ZLStrings.settings_control_mouse_pointer_arrow_title,
+                    ZLStrings.settings_control_mouse_pointer_arrow_summary),
+            hotspot("linkMouseHotspot",
+                    ZLStrings.settings_control_mouse_pointer_link_title,
+                    ZLStrings.settings_control_mouse_pointer_link_summary),
+            hotspot("iBeamMouseHotspot",
+                    ZLStrings.settings_control_mouse_pointer_ibeam_title,
+                    ZLStrings.settings_control_mouse_pointer_ibeam_summary),
+            hotspot("crossHairMouseHotspot",
+                    ZLStrings.settings_control_mouse_pointer_crosshair_title,
+                    ZLStrings.settings_control_mouse_pointer_common_summary),
+            hotspot("resizeNSMouseHotspot",
+                    ZLStrings.settings_control_mouse_pointer_resize_ns_title,
+                    ZLStrings.settings_control_mouse_pointer_resize_ns_summary),
+            hotspot("resizeEWMouseHotspot",
+                    ZLStrings.settings_control_mouse_pointer_resize_ew_title,
+                    ZLStrings.settings_control_mouse_pointer_resize_ew_summary),
+            hotspot("resizeAllMouseHotspot",
+                    ZLStrings.settings_control_mouse_pointer_resize_all_title,
+                    ZLStrings.settings_control_mouse_pointer_common_summary),
+            hotspot("notAllowedMouseHotspot",
+                    ZLStrings.settings_control_mouse_pointer_not_allowed_title,
+                    ZLStrings.settings_control_mouse_pointer_not_allowed_summary),
+        ])
 
-        // 虚拟鼠标指针三态（真机：默认 / 手形 / 输入光标）
-        cursorCard("虚拟鼠标指针（默认）", "自定义默认虚拟指针图片以匹配个人需求", 0)
-        cursorCard("虚拟鼠标指针（手形）", "MC 1.21.9+ 在可交互组件上切换到手形", 1)
-        cursorCard("虚拟鼠标指针（输入光标）", "MC 1.21.9+ 输入框显示输入光标", 2)
+        cardGroup(rows: [
+            slider("mouseSize",
+                   ZLStrings.settings_control_mouse_size_title,
+                   nil,
+                   unit: "Dp"),
+            toggle("hideMouse",
+                   ZLStrings.settings_control_mouse_hide_title,
+                   ZLStrings.settings_control_mouse_hide_summary),
+            toggle("enableMouseClick",
+                   ZLStrings.settings_control_mouse_enable_click_title,
+                   ZLStrings.settings_control_mouse_enable_click_summary),
+            picker("mouseControlMode",
+                   ZLStrings.settings_control_mouse_control_mode_title,
+                   ZLStrings.settings_control_mouse_control_mode_summary,
+                   options: [
+                       ZLOption(value: "MouseControlMode.SLIDE", label: ZLStrings.settings_control_mouse_control_mode_slide),
+                       ZLOption(value: "MouseControlMode.CLICK", label: ZLStrings.settings_control_mouse_control_mode_click),
+                   ]),
+            picker("mouseTouchBlockMode",
+                   ZLStrings.settings_control_mouse_block_touch_title,
+                   ZLStrings.settings_control_mouse_block_touch_summary,
+                   options: [
+                       ZLOption(value: "MouseTouchBlockMode.NONE", label: ZLStrings.generic_close),
+                       ZLOption(value: "MouseTouchBlockMode.LEFT", label: ZLStrings.settings_control_mouse_block_touch_left),
+                       ZLOption(value: "MouseTouchBlockMode.RIGHT", label: ZLStrings.settings_control_mouse_block_touch_right),
+                   ]),
+            slider("cursorSensitivity",
+                   ZLStrings.settings_control_mouse_sensitivity_title,
+                   ZLStrings.settings_control_mouse_sensitivity_summary,
+                   unit: "%"),
+            slider("mouseCaptureSensitivity",
+                   ZLStrings.settings_control_mouse_capture_sensitivity_title,
+                   ZLStrings.settings_control_mouse_capture_sensitivity_summary,
+                   unit: "%"),
+            slider("mouseLongPressDelay",
+                   ZLStrings.settings_control_mouse_long_press_delay_title,
+                   ZLStrings.settings_control_mouse_long_press_delay_summary,
+                   unit: "ms"),
+        ])
 
-        // 长按触发的延迟（真机：滑块 256ms）
-        ZLCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("手感长按触发的延迟").font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(ZLTheme.textPrimary)
-                Text("按下后需要按住多久才判定为长按").font(.system(size: 11))
-                    .foregroundStyle(ZLTheme.textSecond)
-                HStack {
-                    Slider(value: $longPressDelay, in: 100...600, step: 16)
-                        .tint(ZLTheme.primary)
-                    Text("\(Int(longPressDelay))ms")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 56)
-                }
-            }
-        }
+        cardGroup(rows: [
+            toggle("gestureControl",
+                   ZLStrings.settings_control_gesture_control_title,
+                   ZLStrings.settings_control_gesture_control_summary),
+            picker("gestureTapMouseAction",
+                   ZLStrings.settings_control_gesture_tap_action_title,
+                   ZLStrings.settings_control_gesture_tap_action_summary,
+                   options: gestureActionOptions),
+            picker("gestureLongPressMouseAction",
+                   ZLStrings.settings_control_gesture_long_press_action_title,
+                   ZLStrings.settings_control_gesture_long_press_action_summary,
+                   options: gestureActionOptions),
+            slider("gestureLongPressDelay",
+                   ZLStrings.settings_control_gesture_long_press_delay_title,
+                   ZLStrings.settings_control_mouse_long_press_delay_summary,
+                   unit: "ms"),
+        ])
 
-        settingCard(title: "长按触发的操作类型", desc: "设置长按控件时触发的动作", current: "长按持续触发")
-
-        ZLCard {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("实物鼠标控制").font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    Text("连接实体鼠标时禁用虚拟指针，直接用系统鼠标").font(.system(size: 11))
-                        .foregroundStyle(ZLTheme.textSecond)
-                }
-                Spacer()
-                Toggle("", isOn: $physicalMouse).labelsHidden().tint(ZLTheme.primary)
-            }
-        }
-
-        ZLCard {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("矩阵鼠标控制").font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    Text("在虚拟按键上滑动时，让指针持续移动").font(.system(size: 11))
-                        .foregroundStyle(ZLTheme.textSecond)
-                }
-                Spacer()
-                Toggle("", isOn: $matrixMouse).labelsHidden().tint(ZLTheme.primary)
-            }
-        }
-
-        // 抓取鼠标滑动灵敏度（真机 156%）
-        ZLCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("抓取鼠标滑动灵敏度").font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(ZLTheme.textPrimary)
-                Text("调节鼠标指针移动的灵敏度").font(.system(size: 11))
-                    .foregroundStyle(ZLTheme.textSecond)
-                HStack {
-                    Slider(value: $mouseSensitivity, in: 50...300, step: 1).tint(ZLTheme.primary)
-                    Text("\(Int(mouseSensitivity))%").font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 52)
-                }
-            }
-        }
-
-        // 陀螺仪（真机：采样率 / 平滑 / 窗口）
-        ZLCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("陀螺仪采样率").font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(ZLTheme.textPrimary)
-                Text("使用手机陀螺仪控制视角的采样间隔").font(.system(size: 11))
-                    .foregroundStyle(ZLTheme.textSecond)
-                HStack {
-                    Slider(value: $gyroInterval, in: 4...50, step: 1).tint(ZLTheme.primary)
-                    Text("\(Int(gyroInterval))ms").font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 52)
-                }
-            }
-        }
-        ZLCard {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("陀螺仪数据平滑").font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    Text("降低抖动，让视角更稳").font(.system(size: 11))
-                        .foregroundStyle(ZLTheme.textSecond)
-                }
-                Spacer()
-                Toggle("", isOn: $gyroSmooth).labelsHidden().tint(ZLTheme.primary)
-            }
-        }
-
-        settingCard(title: "控制布局", desc: "编辑屏幕按键的位置、大小与触发事件", current: "默认布局", trailing: actionButtons())
-        settingCard(title: "输入法模式", desc: "游戏内文字输入方式", current: "直接输入", trailing: actionButtons())
+        cardGroup(rows: [
+            toggle("gyroscopeControl",
+                   ZLStrings.settings_control_gyroscope_title,
+                   ZLStrings.settings_control_gyroscope_summary),
+            slider("gyroscopeSensitivity",
+                   ZLStrings.settings_control_gyroscope_sensitivity_title,
+                   nil,
+                   unit: "%"),
+            slider("gyroscopeSampleRate",
+                   ZLStrings.settings_control_gyroscope_sample_rate_title,
+                   ZLStrings.settings_control_gyroscope_sample_rate_summary,
+                   unit: "ms"),
+            toggle("gyroscopeSmoothing",
+                   ZLStrings.settings_control_gyroscope_smoothing_title,
+                   ZLStrings.settings_control_gyroscope_smoothing_summary),
+            slider("gyroscopeSmoothingWindow",
+                   ZLStrings.settings_control_gyroscope_smoothing_window_title,
+                   ZLStrings.settings_control_gyroscope_smoothing_window_summary,
+                   unit: ""),
+            toggle("gyroscopeInvertX",
+                   ZLStrings.settings_control_gyroscope_invert_x_title,
+                   ZLStrings.settings_control_gyroscope_invert_x_summary),
+            toggle("gyroscopeInvertY",
+                   ZLStrings.settings_control_gyroscope_invert_y_title,
+                   ZLStrings.settings_control_gyroscope_invert_y_summary),
+        ])
     }
 
-    // MARK: 手柄设置
+    private var gestureActionOptions: [ZLOption] {
+        [
+            ZLOption(value: "GestureActionType.MOUSE_LEFT", label: ZLStrings.settings_control_gesture_trigger_mouse_left),
+            ZLOption(value: "GestureActionType.MOUSE_RIGHT", label: ZLStrings.settings_control_gesture_trigger_mouse_right),
+        ]
+    }
+
+    // MARK: - 手柄设置（10 项；页面上展示 7 项 + 映射配置）
+
     @ViewBuilder
     private var gamepadSettings: some View {
-        settingCard(title: "手柄映射", desc: "为外接手柄配置按键映射", current: "未连接手柄", trailing: actionButtons())
-        settingCard(title: "摇杆模式", desc: "左摇杆的控制方式", current: "移动", trailing: actionButtons())
-        settingCard(title: "扳机灵敏度", desc: "LT/RT 扳机的触发阈值", current: "中等", trailing: actionButtons())
-        settingCard(title: "震动反馈", desc: "手柄震动强度", current: "关闭")
+        cardGroup(rows: [
+            toggle("gamepadControl",
+                   ZLStrings.settings_gamepad_title,
+                   ZLStrings.settings_gamepad_summary),
+            picker("gamepadInputMode",
+                   ZLStrings.settings_gamepad_input_mode_title,
+                   nil,
+                   options: [
+                       ZLOption(value: "GamepadInputMode.Mapped", label: ZLStrings.settings_gamepad_input_mode_mapped),
+                       ZLOption(value: "GamepadInputMode.SdlDirect", label: ZLStrings.settings_gamepad_input_mode_sdl),
+                   ]),
+        ])
+
+        cardGroup(rows: [
+            slider("gamepadDeadZoneScale",
+                   ZLStrings.settings_gamepad_deadzone_title,
+                   ZLStrings.settings_gamepad_deadzone_summary,
+                   unit: "%"),
+            slider("gamepadCursorSensitivity",
+                   ZLStrings.settings_gamepad_cursor_sensitivity_title,
+                   ZLStrings.settings_gamepad_cursor_sensitivity_summary,
+                   unit: "%"),
+            slider("gamepadCameraSensitivity",
+                   ZLStrings.settings_gamepad_camera_sensitivity_title,
+                   ZLStrings.settings_gamepad_camera_sensitivity_summary,
+                   unit: "%"),
+            picker("joystickControlMode",
+                   ZLStrings.settings_gamepad_joystick_mode_title,
+                   ZLStrings.settings_gamepad_joystick_mode_summary,
+                   options: [
+                       ZLOption(value: "JoystickMode.LeftMovement", label: ZLStrings.settings_gamepad_joystick_mode_left),
+                       ZLOption(value: "JoystickMode.RightMovement", label: ZLStrings.settings_gamepad_joystick_mode_right),
+                   ]),
+        ])
+
+        cardGroup(rows: [
+            info("gamepadMappingConfig",
+                 ZLStrings.settings_gamepad_config_title,
+                 ZLStrings.settings_gamepad_config_summary,
+                 value: mappingConfigValue),
+        ])
     }
 
-    // MARK: Java 管理
-    @ViewBuilder
-    private var javaSettings: some View {
-        settingCard(title: "已安装的 Java", desc: "内置 JRE 17（java_runtimes/java-17-openjdk）", current: "17", trailing: actionButtons())
-        settingCard(title: "自动选择 Java 环境", desc: "按游戏版本自动匹配所需 Java", current: "已开启")
-        settingCard(title: "JVM 参数", desc: "额外的虚拟机启动参数，一般无需修改", current: "默认")
-        settingCard(title: "内存分配", desc: nil, current: "\(memoryMB) MB", trailing: actionButtons())
+    /// 手柄映射配置名（iOS 端尚未接入配置管理，只展示当前值）
+    private var mappingConfigValue: String {
+        guard let def = ZLSettings.def("gamepadMappingConfig") else { return "default" }
+        let value = store.string(def)
+        return value.isEmpty ? "default" : value
     }
 
-    // MARK: 其它（Java 管理 + 关于）
-    @ViewBuilder
-    private var otherSettings: some View {
-        NavigationLink(value: AppRoute.javaManage) {
-            HStack(spacing: 12) {
-                Image(systemName: "cup.and.saucer.fill")
-                    .foregroundStyle(ZLTheme.primary)
-                    .frame(width: 36, height: 36)
-                    .background(ZLTheme.primarySoft)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Java 管理").font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    Text("管理已安装的 Java 运行时").font(.system(size: 11))
-                        .foregroundStyle(ZLTheme.textSecond)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 11))
-                    .foregroundStyle(ZLTheme.textSecond)
-            }
-            .padding(14)
-            .background(ZLTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .buttonStyle(.plain)
-
-        NavigationLink(value: AppRoute.about) {
-            HStack(spacing: 12) {
-                Image(systemName: "info.circle.fill")
-                    .foregroundStyle(ZLTheme.primary)
-                    .frame(width: 36, height: 36)
-                    .background(ZLTheme.primarySoft)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("关于").font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    Text("致谢与开源许可").font(.system(size: 11))
-                        .foregroundStyle(ZLTheme.textSecond)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 11))
-                    .foregroundStyle(ZLTheme.textSecond)
-            }
-            .padding(14)
-            .background(ZLTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
+    // MARK: - 启动器设置（14 项 + 背景/动画）
 
     @ViewBuilder
     private var launcherSettings: some View {
         themeCard
-        // 动画速度（真机：空白/从未加载/从网络加载）
-        ZLCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("动画速度").font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(ZLTheme.textPrimary)
-                Picker("", selection: $animMode) {
-                    Text("空白").tag(0)
-                    Text("从未加载").tag(1)
-                    Text("从网络加载").tag(2)
-                }
-                .pickerStyle(.segmented)
-            }
-        }
-        ZLCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("动画低速 / 动画高度").font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(ZLTheme.textPrimary)
-                HStack {
-                    Text("低速").font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
-                    Slider(value: $animLow, in: 1...12, step: 1).tint(ZLTheme.primary)
-                    Text("\(Int(animLow))s").font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 34)
-                }
-                HStack {
-                    Text("高度").font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
-                    Slider(value: $animHeight, in: 1...12, step: 1).tint(ZLTheme.primary)
-                    Text("\(Int(animHeight))s").font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(ZLTheme.primaryDeep).frame(width: 34)
-                }
-            }
-        }
 
-        settingCard(title: "下载源", desc: "国内网络下官方源可能很慢，下载失败时可切镜像", current: "优先使用官方源", trailing: actionButtons())
-        settingCard(title: "启动器语言", desc: nil, current: "简体中文", trailing: actionButtons())
-        settingCard(title: "关于", desc: nl2(), current: nil)
+        cardGroup(rows: [
+            darkMode("launcherDarkMode",
+                     ZLStrings.settings_launcher_dark_mode_title,
+                     nil),
+            picker("launcherLanguage",
+                   ZLStrings.settings_launcher_language,
+                   nil,
+                   options: languageOptions),
+            toggle("launcherFestivalEffects",
+                   ZLStrings.settings_launcher_festivals_effects_title,
+                   ZLStrings.settings_launcher_festivals_effects_summary),
+            toggle("launcherFullScreen",
+                   ZLStrings.settings_launcher_full_screen_title,
+                   ZLStrings.settings_launcher_full_screen_summary),
+        ])
+
+        backgroundCard
+
+        cardGroup(rows: [
+            slider("launcherBackgroundOpacity",
+                   ZLStrings.settings_launcher_background_opacity_title,
+                   ZLStrings.settings_launcher_background_opacity_summary,
+                   unit: "%"),
+            slider("videoBackgroundVolume",
+                   ZLStrings.settings_launcher_background_video_volume_title,
+                   ZLStrings.settings_launcher_background_video_volume_summary,
+                   unit: "%"),
+            blur("backgroundBlur",
+                  ZLStrings.settings_title_blur,
+                  ZLStrings.settings_launcher_background_blur_summary),
+        ])
+
+        cardGroup(rows: [
+            toggle("launcherSwapAnimEnabled",
+                   ZLStrings.settings_launcher_swap_anim_enabled_title,
+                   ZLStrings.settings_launcher_swap_anim_enabled_summary),
+            animateSpeed("launcherAnimateSpeedLevel",
+                         ZLStrings.settings_launcher_animate_speed_title,
+                         ZLStrings.settings_launcher_animate_speed_summary),
+        ])
+
+        cardGroup(rows: [
+            picker("gameDownloadSource",
+                   ZLStrings.settings_launcher_mirror_game_source_title,
+                   nil,
+                   options: mirrorOptions),
+            picker("assetPlatformSource",
+                   ZLStrings.settings_launcher_mirror_asset_platform_source_title,
+                   nil,
+                   options: mirrorOptions),
+            slider("launcherLogRetentionDays",
+                   ZLStrings.settings_launcher_log_retention_days_title,
+                   ZLStrings.settings_launcher_log_retention_days_summary,
+                   unit: ZLStrings.unit_day),
+        ])
     }
 
-    // MARK: 颜色主题（8 套，来自 ZL2）
-    @EnvironmentObject private var themeManager: ThemeManager
+    private var mirrorOptions: [ZLOption] {
+        [
+            ZLOption(value: "MirrorSourceType.AUTO", label: ZLStrings.settings_launcher_mirror_auto),
+            ZLOption(value: "MirrorSourceType.OFFICIAL", label: ZLStrings.settings_launcher_mirror_official),
+            ZLOption(value: "MirrorSourceType.MIRROR", label: ZLStrings.settings_launcher_mirror_mirror),
+        ]
+    }
+
+    /// 语言名取自 values/strings.xml 里 translatable="false" 的原文
+    private var languageOptions: [ZLOption] {
+        [
+            ZLOption(value: "AppLanguage.FOLLOW_SYSTEM", label: ZLStrings.generic_follow_system),
+            ZLOption(value: "AppLanguage.ARABIC", label: "اَلْعَرَبِيَّةُ"),
+            ZLOption(value: "AppLanguage.ENGLISH", label: "English"),
+            ZLOption(value: "AppLanguage.SPANISH", label: "Español"),
+            ZLOption(value: "AppLanguage.FILIPINO", label: "Filipino"),
+            ZLOption(value: "AppLanguage.INDONESIAN", label: "Indonesia"),
+            ZLOption(value: "AppLanguage.ITALIAN", label: "Italiano"),
+            ZLOption(value: "AppLanguage.JAPANESE", label: "日本語"),
+            ZLOption(value: "AppLanguage.KOREAN", label: "한국어"),
+            ZLOption(value: "AppLanguage.PORTUGUESE", label: "Português"),
+            ZLOption(value: "AppLanguage.BRAZILIAN_PORTUGUESE", label: "Português (Brasil)"),
+            ZLOption(value: "AppLanguage.RUSSIAN", label: "Русский"),
+            ZLOption(value: "AppLanguage.THAI", label: "ไทย"),
+            ZLOption(value: "AppLanguage.TURKISH", label: "Türkçe"),
+            ZLOption(value: "AppLanguage.UYGHUR", label: "ۋىغرۇچە"),
+            ZLOption(value: "AppLanguage.VIETNAMESE", label: "Tiếng Việt"),
+            ZLOption(value: "AppLanguage.SIMPLIFIED_CHINESE", label: "简体中文"),
+            ZLOption(value: "AppLanguage.TRADITIONAL_CHINESE", label: "繁體中文"),
+        ]
+    }
+
+    // MARK: 启动器背景（launcherBackground*；iOS 端暂未接入背景导入）
+
+    private var backgroundCard: some View {
+        ZLCard {
+            HStack(alignment: .center, spacing: 12) {
+                labelBlock(ZLStrings.settings_launcher_background_title,
+                           ZLStrings.settings_launcher_background_summary)
+                Spacer(minLength: 8)
+                Text(ZLStrings.generic_unspecified)
+                    .font(.system(size: 12))
+                    .foregroundStyle(ZLTheme.textSecond)
+            }
+        }
+    }
+
+    // MARK: 颜色主题卡片（launcherColorTheme / launcherCustomColor / launcherCustomPaletteStyle）
 
     private var themeCard: some View {
         ZLCard {
             VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("颜色主题").font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(ZLTheme.textPrimary)
-                        Text("跟随 ZL2 的 7 套配色，切换后全局生效")
-                            .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
-                    }
-                    Spacer()
-                    Toggle("深色", isOn: Binding(
-                        get: { themeManager.darkMode },
-                        set: { themeManager.darkMode = $0 }
-                    ))
-                    .labelsHidden()
-                    .tint(ZLTheme.primary)
-                }
+                labelBlock(ZLStrings.settings_launcher_color_theme_title,
+                           ZLStrings.settings_launcher_color_theme_summary)
 
                 HStack(spacing: 14) {
                     ForEach(ZLColorTheme.allCases) { t in
                         Button {
                             themeManager.themeName = t.rawValue
+                            if let def = ZLSettings.def("launcherColorTheme") {
+                                store.set(def, colorThemeValue(t))
+                            }
                         } label: {
                             VStack(spacing: 6) {
                                 Circle()
                                     .fill(t.primary)
                                     .frame(width: 34, height: 34)
                                     .overlay(
-                                        Circle().stroke(themeManager.theme == t ? ZLTheme.textPrimary : .clear, lineWidth: 2)
+                                        Circle().stroke(themeManager.theme == t ? ZLTheme.textPrimary : .clear,
+                                                        lineWidth: 2)
                                     )
-                                Text(t.displayName).font(.system(size: 10))
+                                Text(t.displayName)
+                                    .font(.system(size: 10))
                                     .foregroundStyle(themeManager.theme == t ? ZLTheme.textPrimary : ZLTheme.textSecond)
                             }
                         }
@@ -604,33 +684,434 @@ struct SettingsScreen: View {
         }
     }
 
-    private func cursorCard(_ title: String, _ desc: String, _ idx: Int) -> some View {
-        ZLCard {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(ZLTheme.textPrimary)
-                    Text(desc).font(.system(size: 11))
-                        .foregroundStyle(ZLTheme.textSecond)
-                }
-                Spacer()
-                Button { cursorStyle = idx } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: cursorStyle == idx ? "cursorarrow.click.2" : "cursorarrow")
-                            .font(.system(size: 11))
-                        Text("设置热点").font(.system(size: 11))
+    private func colorThemeValue(_ theme: ZLColorTheme) -> String {
+        switch theme {
+        case .embermire: return "ColorThemeType.EMBERMIRE"
+        case .velvetRose: return "ColorThemeType.VELVET_ROSE"
+        case .mistwave: return "ColorThemeType.MISTWAVE"
+        case .glacier: return "ColorThemeType.GLACIER"
+        case .verdantField: return "ColorThemeType.VERDANTFIELD"
+        case .urbanAsh: return "ColorThemeType.URBAN_ASH"
+        case .verdantDawn: return "ColorThemeType.VERDANT_DAWN"
+        }
+    }
+
+    /// 安卓的深色模式是 Enable / Disable / FollowSystem 三态
+    private func syncThemeSettings() {
+        if let def = ZLSettings.def("launcherDarkMode") {
+            themeManager.darkMode = store.string(def) == "DarkMode.Enable"
+        }
+    }
+
+    // MARK: - 行构造
+
+    private func toggle(_ key: String, _ title: String, _ summary: String?) -> ZLSettingRow {
+        ZLSettingRow(key: key, title: title, summary: summary, kind: .toggle)
+    }
+
+    private func slider(_ key: String, _ title: String, _ summary: String?,
+                        unit: String, minValue: Int? = nil, maxValue: Int? = nil) -> ZLSettingRow {
+        ZLSettingRow(key: key, title: title, summary: summary,
+                     kind: .slider(unit: unit, minValue: minValue, maxValue: maxValue))
+    }
+
+    private func picker(_ key: String, _ title: String, _ summary: String?,
+                        options: [ZLOption]) -> ZLSettingRow {
+        ZLSettingRow(key: key, title: title, summary: summary, kind: .picker(options))
+    }
+
+    private func text(_ key: String, _ title: String, _ summary: String?,
+                      placeholder: String) -> ZLSettingRow {
+        ZLSettingRow(key: key, title: title, summary: summary, kind: .text(placeholder: placeholder))
+    }
+
+    private func number(_ key: String, _ title: String, _ summary: String?,
+                        placeholder: String) -> ZLSettingRow {
+        ZLSettingRow(key: key, title: title, summary: summary, kind: .number(placeholder: placeholder))
+    }
+
+    private func info(_ key: String, _ title: String, _ summary: String?, value: String) -> ZLSettingRow {
+        ZLSettingRow(key: key, title: title, summary: summary, kind: .info(value))
+    }
+
+    private func hotspot(_ key: String, _ title: String, _ summary: String?) -> ZLSettingRow {
+        ZLSettingRow(key: key, title: title, summary: summary, kind: .hotspot)
+    }
+
+    private func keyCode(_ key: String, _ title: String, _ summary: String?) -> ZLSettingRow {
+        ZLSettingRow(key: key, title: title, summary: summary, kind: .keyCode)
+    }
+
+    private func blur(_ key: String, _ title: String, _ summary: String?) -> ZLSettingRow {
+        ZLSettingRow(key: key, title: title, summary: summary, kind: .blur)
+    }
+
+    private func animateSpeed(_ key: String, _ title: String, _ summary: String?) -> ZLSettingRow {
+        ZLSettingRow(key: key, title: title, summary: summary, kind: .animateSpeed)
+    }
+
+    private func darkMode(_ key: String, _ title: String, _ summary: String?) -> ZLSettingRow {
+        ZLSettingRow(key: key, title: title, summary: summary, kind: .darkMode)
+    }
+
+    // MARK: - 卡片渲染
+
+    @ViewBuilder
+    private func cardGroup(rows: [ZLSettingRow]) -> some View {
+        ZLCard(padding: 0) {
+            VStack(spacing: 0) {
+                ForEach(rows.indices, id: \.self) { i in
+                    rowView(rows[i])
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 13)
+                    if i < rows.count - 1 {
+                        Divider()
                     }
-                    .foregroundStyle(ZLTheme.primaryDeep)
-                    .padding(.horizontal, 10).frame(height: 30)
-                    .background(ZLTheme.primarySoft)
-                    .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
             }
         }
     }
 
-    private func nl2() -> String {
-        CoreBridge.isCoreLinked ? "启动核心：Amethyst 已链接" : "启动核心：未接入（仅界面）"
+    @ViewBuilder
+    private func rowView(_ row: ZLSettingRow) -> some View {
+        if let def = row.def {
+            switch row.kind {
+            case .toggle:
+                HStack(alignment: .center, spacing: 12) {
+                    labelBlock(row.title, row.summary)
+                    Spacer(minLength: 8)
+                    Toggle("", isOn: Binding(
+                        get: { store.bool(def) },
+                        set: { store.set(def, $0) }
+                    ))
+                    .labelsHidden()
+                    .tint(ZLTheme.primary)
+                }
+
+            case .slider(let unit, let minValue, let maxValue):
+                sliderRow(def, row, unit: unit, minValue: minValue, maxValue: maxValue)
+
+            case .picker(let options):
+                HStack(alignment: .center, spacing: 12) {
+                    labelBlock(row.title, row.summary)
+                    Spacer(minLength: 8)
+                    pickerMenu(def, options: options)
+                }
+
+            case .text(let placeholder):
+                VStack(alignment: .leading, spacing: 8) {
+                    labelBlock(row.title, row.summary)
+                    textField(def, placeholder: placeholder, numeric: false)
+                }
+
+            case .number(let placeholder):
+                VStack(alignment: .leading, spacing: 8) {
+                    labelBlock(row.title, row.summary)
+                    textField(def, placeholder: placeholder, numeric: true)
+                }
+
+            case .info(let value):
+                HStack(alignment: .center, spacing: 12) {
+                    labelBlock(row.title, row.summary)
+                    Spacer(minLength: 8)
+                    Text(value)
+                        .font(.system(size: 12))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .lineLimit(1)
+                }
+
+            case .hotspot:
+                HStack(alignment: .center, spacing: 12) {
+                    labelBlock(row.title, row.summary)
+                    Spacer(minLength: 8)
+                    Button {
+                        hotspotTarget = def
+                    } label: {
+                        Text(ZLStrings.settings_control_mouse_pointer_hotspot)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(ZLTheme.primaryDeep)
+                            .padding(.horizontal, 10)
+                            .frame(height: 30)
+                            .background(ZLTheme.primarySoft)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+            case .keyCode:
+                HStack(alignment: .center, spacing: 12) {
+                    labelBlock(row.title, row.summary)
+                    Spacer(minLength: 8)
+                    Text(keyCodeText(def))
+                        .font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond)
+                    Button {
+                        store.reset(def)
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(ZLTheme.textSecond)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+            case .blur:
+                blurRow(def, row)
+
+            case .animateSpeed:
+                animateSpeedRow(def, row)
+
+            case .darkMode:
+                HStack(alignment: .center, spacing: 12) {
+                    labelBlock(row.title, row.summary)
+                    Spacer(minLength: 8)
+                    pickerMenu(def, options: [
+                        ZLOption(value: "DarkMode.Enable", label: ZLStrings.generic_enable),
+                        ZLOption(value: "DarkMode.Disable", label: ZLStrings.generic_disable),
+                        ZLOption(value: "DarkMode.FollowSystem", label: ZLStrings.generic_follow_system),
+                    ], onChange: { value in
+                        themeManager.darkMode = (value == "DarkMode.Enable")
+                    })
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func labelBlock(_ title: String, _ summary: String?) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(ZLTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let summary {
+                Text(summary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sliderRow(_ def: ZLSettingDef, _ row: ZLSettingRow,
+                           unit: String, minValue: Int?, maxValue: Int?) -> some View {
+        let lower = minValue ?? def.range?.lowerBound ?? 0
+        let upper = max(maxValue ?? def.range?.upperBound ?? 100, lower + 1)
+        let raw = store.int(def)
+        let current = min(max(raw, lower), upper)
+
+        VStack(alignment: .leading, spacing: 8) {
+            labelBlock(row.title, row.summary)
+            HStack(spacing: 12) {
+                Slider(value: Binding(
+                    get: { Double(min(max(store.int(def), lower), upper)) },
+                    set: { store.set(def, Int($0.rounded())) }
+                ), in: Double(lower)...Double(upper), step: 1)
+                .tint(ZLTheme.primary)
+
+                Text("\(current)\(unit)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(ZLTheme.primaryDeep)
+                    .frame(minWidth: 52, alignment: .trailing)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func pickerMenu(_ def: ZLSettingDef, options: [ZLOption],
+                            onChange: ((String) -> Void)? = nil) -> some View {
+        let current = store.string(def)
+        let label = options.first(where: { $0.value == current })?.label
+            ?? (current.isEmpty ? ZLStrings.generic_unspecified : current)
+
+        Menu {
+            ForEach(options) { option in
+                Button {
+                    store.set(def, option.value)
+                    onChange?(option.value)
+                } label: {
+                    if option.value == current {
+                        Label(option.label, systemImage: "checkmark")
+                    } else {
+                        Text(option.label)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(label)
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .semibold))
+            }
+            .foregroundStyle(ZLTheme.primaryDeep)
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(ZLTheme.primarySoft)
+            .clipShape(Capsule())
+        }
+    }
+
+    @ViewBuilder
+    private func textField(_ def: ZLSettingDef, placeholder: String, numeric: Bool) -> some View {
+        TextField(placeholder, text: Binding(
+            get: { store.string(def) },
+            set: { store.set(def, $0) }
+        ))
+        .textFieldStyle(.plain)
+        .font(.system(size: 12, design: numeric ? .monospaced : .default))
+        .keyboardType(numeric ? .numberPad : .default)
+        .autocorrectionDisabled()
+        .textInputAutocapitalization(.never)
+        .padding(.horizontal, 10)
+        .frame(height: 38)
+        .background(ZLTheme.surfaceAlt)
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+    }
+
+    private func keyCodeText(_ def: ZLSettingDef) -> String {
+        guard let code = store.intOrNil(def) else {
+            return ZLStrings.settings_control_physical_key_bind_ime_un_bind
+        }
+        return ZLStrings.settings_control_physical_key_bind_ime_bound
+            .replacingOccurrences(of: "%s", with: "\(code)")
+    }
+
+    @ViewBuilder
+    private func blurRow(_ def: ZLSettingDef, _ row: ZLSettingRow) -> some View {
+        let lower = def.range?.lowerBound ?? 0
+        let upper = def.range?.upperBound ?? 40
+        let current = min(max(store.int(def), lower), upper)
+        let typeDef = ZLSettings.def("backgroundBlurType")
+        let isForeground = typeDef.map { store.string($0) == "BackgroundBlur.Foreground" } ?? false
+
+        VStack(alignment: .leading, spacing: 8) {
+            labelBlock(row.title, row.summary)
+            HStack(spacing: 12) {
+                Slider(value: Binding(
+                    get: { Double(min(max(store.int(def), lower), upper)) },
+                    set: { store.set(def, Int($0.rounded())) }
+                ), in: Double(lower)...Double(upper), step: 1)
+                .tint(ZLTheme.primary)
+
+                Text("\(current)Dp")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(ZLTheme.primaryDeep)
+                    .frame(minWidth: 52, alignment: .trailing)
+
+                if let typeDef {
+                    Button {
+                        store.set(typeDef, isForeground ? "BackgroundBlur.Background" : "BackgroundBlur.Foreground")
+                    } label: {
+                        Image(systemName: isForeground ? "circle.fill" : "circle.dashed")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(ZLTheme.primaryDeep)
+                            .frame(width: 30, height: 30)
+                            .background(ZLTheme.primarySoft)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(ZLStrings.settings_title_blur)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func animateSpeedRow(_ def: ZLSettingDef, _ row: ZLSettingRow) -> some View {
+        let lower = def.range?.lowerBound ?? 1
+        let upper = def.range?.upperBound ?? 30
+        let current = min(max(store.int(def), lower), upper)
+
+        VStack(alignment: .leading, spacing: 8) {
+            labelBlock(row.title, row.summary)
+            HStack(spacing: 12) {
+                Slider(value: Binding(
+                    get: { Double(min(max(store.int(def), lower), upper)) },
+                    set: { store.set(def, Int($0.rounded())) }
+                ), in: Double(lower)...Double(upper), step: 1)
+                .tint(ZLTheme.primary)
+
+                // 安卓 valueText = "×" + value / 10f
+                Text(String(format: "×%.1f", Double(current) / 10.0))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(ZLTheme.primaryDeep)
+                    .frame(minWidth: 52, alignment: .trailing)
+            }
+        }
+    }
+}
+
+// MARK: - 鼠标热点编辑器（安卓：设置热点 → X/Y 百分比）
+
+private struct ZLHotspotEditor: View {
+    let def: ZLSettingDef
+    @ObservedObject var store: ZLSettingsStore
+
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var x: Double
+    @State private var y: Double
+
+    init(def: ZLSettingDef, store: ZLSettingsStore) {
+        self.def = def
+        _store = ObservedObject(wrappedValue: store)
+        let point = ZLSettingsStore.parsePoint(store.string(def))
+        _x = State(initialValue: Double(point.0))
+        _y = State(initialValue: Double(point.1))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text(ZLStrings.settings_control_mouse_pointer_hotspot)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(ZLTheme.textPrimary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("\(ZLStrings.settings_control_mouse_pointer_hotspot_x_percent)：\(Int(x))%")
+                    .font(.system(size: 12))
+                    .foregroundStyle(ZLTheme.textSecond)
+                Slider(value: $x, in: 0...100, step: 1)
+                    .tint(ZLTheme.primary)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("\(ZLStrings.settings_control_mouse_pointer_hotspot_y_percent)：\(Int(y))%")
+                    .font(.system(size: 12))
+                    .foregroundStyle(ZLTheme.textSecond)
+                Slider(value: $y, in: 0...100, step: 1)
+                    .tint(ZLTheme.primary)
+            }
+
+            HStack(spacing: 12) {
+                Button(ZLStrings.generic_reset) {
+                    let point = ZLSettingsStore.parsePoint(def.defaultValue)
+                    x = Double(point.0)
+                    y = Double(point.1)
+                    store.set(def, "\(Int(x)),\(Int(y))")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(ZLTheme.textSecond)
+
+                Spacer()
+
+                Button(ZLStrings.generic_save) {
+                    store.set(def, "\(Int(x)),\(Int(y))")
+                    dismiss()
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(ZLTheme.textOnGold)
+                .padding(.horizontal, 22)
+                .frame(height: 40)
+                .background(ZLTheme.primary)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(20)
+        .presentationDetents([.medium])
+        .background(ZLTheme.background.ignoresSafeArea())
     }
 }
