@@ -142,6 +142,9 @@ workflows:
       - name: 模拟器编译与截图
         ignore_failure: true
         script: |
+          set +e
+          mkdir -p out
+          echo "=== 1. 模拟器编译 ==="
           xcodebuild \
             -project "$PROJECT" \
             -scheme "$SCHEME" \
@@ -152,23 +155,62 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             OTHER_LDFLAGS="" \
             SWIFT_ACTIVE_COMPILATION_CONDITIONS="" \
-            build || true
-
-          DEVICE=$(xcrun simctl list devices available | grep -m1 -E 'iPhone 1[5-7]' | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
-          [ -z "$DEVICE" ] && DEVICE=$(xcrun simctl list devices available | grep -m1 'iPhone' | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
-          xcrun simctl boot "$DEVICE" || true
-          sleep 5
-          APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' 2>/dev/null | head -1)
-          if [ -n "$APP" ]; then
-            xcrun simctl install "$DEVICE" "$APP" || true
-            BID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist" 2>/dev/null || echo "com.example.zl2ios")
-            xcrun simctl launch "$DEVICE" "$BID" || true
-            sleep 8
-            xcrun simctl io "$DEVICE" screenshot /tmp/raw-shot.png || true
-            sips -r 270 /tmp/raw-shot.png --out out/screenshot-home.png >/dev/null 2>&1 || cp /tmp/raw-shot.png out/screenshot-home.png 2>/dev/null || true
-            xcrun simctl spawn "$DEVICE" log show --last 2m --predicate 'process == "ZL2"' 2>/dev/null | tail -40 > out/app-log.txt || true
+            build > /tmp/simbuild.log 2>&1
+          SIMRC=$?
+          echo "sim build exit=$SIMRC"
+          if [ $SIMRC -ne 0 ]; then
+            echo "=== 模拟器编译错误 ==="
+            grep -E "error:" /tmp/simbuild.log | head -20
+            echo "=== 错误已写入构建摘要 ==="
+            {
+              echo "## 模拟器编译失败"
+              echo '```'
+              grep -E "error:" /tmp/simbuild.log | head -20
+              echo '```'
+            } >> "$CM_BUILD_SUMMARY"
+            exit 0
           fi
-          ls -la out
+
+          echo "=== 2. 选设备 ==="
+          xcrun simctl list devices available | head -20
+          DEVICE=$(xcrun simctl list devices available | grep -E 'iPhone 1[5-7]' | head -1 | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+          [ -z "$DEVICE" ] && DEVICE=$(xcrun simctl list devices available | grep 'iPhone' | head -1 | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+          echo "DEVICE=$DEVICE"
+
+          echo "=== 3. 启动模拟器 ==="
+          xcrun simctl boot "$DEVICE" 2>&1 | head -3
+          sleep 10
+
+          APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          echo "APP=$APP"
+          if [ -z "$APP" ]; then
+            echo "没找到 .app，模拟器编译产物缺失"
+            exit 0
+          fi
+
+          echo "=== 4. 安装 ==="
+          xcrun simctl install "$DEVICE" "$APP" 2>&1 | head -5
+          BID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist" 2>/dev/null)
+          echo "BUNDLE_ID=$BID"
+
+          echo "=== 5. 启动 App ==="
+          xcrun simctl launch "$DEVICE" "$BID" 2>&1 | head -5
+          sleep 12
+
+          echo "=== 6. 截图 ==="
+          xcrun simctl io "$DEVICE" screenshot /tmp/raw.png 2>&1 | head -3
+          if [ -f /tmp/raw.png ]; then
+            cp /tmp/raw.png out/screenshot-raw.png
+            sips -r 270 /tmp/raw.png --out out/screenshot-home.png 2>/dev/null || cp /tmp/raw.png out/screenshot-home.png
+            echo "截图已保存"
+            ls -la out/*.png
+          else
+            echo "截图失败"
+          fi
+
+          echo "=== 7. 应用日志 ==="
+          xcrun simctl spawn "$DEVICE" log show --last 3m --predicate 'process == "ZL2"' 2>/dev/null | tail -50 > out/app-log.txt
+          echo "日志行数: $(wc -l < out/app-log.txt)"
 
     artifacts:
       - out/ZL2.ipa
