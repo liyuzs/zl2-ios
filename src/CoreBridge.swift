@@ -35,6 +35,11 @@ enum CoreBridge {
 
     private static var bootstrapped = false
 
+    /// 切换游戏目录后调用：下次启动/启动游戏时重新写入 GAME_DIR
+    static func resetBootstrap() {
+        bootstrapped = false
+    }
+
     /// 初始化 Amethyst 运行环境（照搬 main.m 的逻辑）
     static func bootstrap() throws {
         guard isCoreLinked else { throw CoreLaunchError.coreNotLinked }
@@ -62,8 +67,8 @@ enum CoreBridge {
         // 核心约定 <GAME_DIR>/versions/<id>/<id>.json，
         // VersionInstaller / LaunchScreen / VersionRepository 都用
         // <Documents>/instances/<name>/.minecraft，这里必须对齐，否则装好的版本找不到
-        let gameDir = (home as NSString)
-            .appendingPathComponent("instances/default/.minecraft")
+        // 当前实例名由 VersionRepository 持有（游戏目录页可切换）。
+        let gameDir = VersionRepository.shared.mcRoot.path
         try? fm.createDirectory(atPath: gameDir, withIntermediateDirectories: true)
         setenv("GAME_DIR", gameDir, 1)
 

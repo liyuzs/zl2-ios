@@ -58,6 +58,9 @@ struct HomeScreen: View {
                          versionID: "1.20.1",
                          isPresented: Binding(get: { launching }, set: { if !$0 { launching = false } }))
         }
+        .sheet(isPresented: $showTaskMenu) {
+            ZLTaskMenu(onClose: { showTaskMenu = false })
+        }
     }
 
     private func topButton(_ icon: String, action: @escaping () -> Void) -> some View {

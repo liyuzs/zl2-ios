@@ -5,8 +5,8 @@ import SwiftUI
 struct LaunchScreen: View {
     let versionName: String
     var versionID: String = ""
-    /// 实例名（与 VersionInstaller 的 instanceName 对齐）
-    var instanceName: String = "default"
+    /// 实例名（与 VersionInstaller 的 instanceName 对齐；跟随游戏目录页的选择）
+    var instanceName: String = VersionRepository.shared.instanceName
     @Binding var isPresented: Bool
 
     @State private var stage: Stage = .check

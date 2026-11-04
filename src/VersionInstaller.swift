@@ -62,7 +62,7 @@ actor VersionInstaller {
 
     /// 安装一个版本
     func install(versionID: String,
-                 instanceName: String = "default",
+                 instanceName: String = VersionRepository.shared.instanceName,
                  includeAssets: Bool = true,
                  onProgress: @Sendable @escaping (InstallProgress) -> Void) async throws {
         var failCount = 0

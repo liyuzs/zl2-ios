@@ -39,6 +39,7 @@ struct VersionContentScreen: View {
     @State private var showActions = false
     @State private var alertText = ""
     @State private var showAlert = false
+    @State private var showLog = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -63,6 +64,9 @@ struct VersionContentScreen: View {
             installed = VersionRepository.shared.listVersions()
         }
         .alert(alertText, isPresented: $showAlert) { Button("好", role: .cancel) { } }
+        .sheet(isPresented: $showLog) {
+            LogViewScreen(onBack: { showLog = false }, onHome: { showLog = false })
+        }
         .sheet(isPresented: $showActions) {
             VersionActionSheet(versionName: actionVersion,
                                isPresented: $showActions,
@@ -156,7 +160,7 @@ struct VersionContentScreen: View {
                     manageRow("编辑描述", "text.alignleft") { }
                     manageRow("重命名版本", "pencil") { }
                     manageRow("导出整合包", "square.and.arrow.up") { }
-                    manageRow("运行日志", "doc.text") { }
+                    manageRow("运行日志", "doc.text") { showLog = true }
                     manageRow("删除版本", "trash", danger: true) { }
                 }
             }

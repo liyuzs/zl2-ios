@@ -529,6 +529,32 @@ struct AboutScreen: View {
                     }
                 }
 
+                ZLCard {
+                    NavigationLink(value: AppRoute.license) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "doc.text.fill")
+                                .font(.system(size: 17))
+                                .foregroundStyle(ZLTheme.primary)
+                                .frame(width: 38, height: 38)
+                                .background(ZLTheme.primarySoft)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("开源许可与致谢")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(ZLTheme.textPrimary)
+                                Text("第三方组件、许可证全文与隐私说明")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(ZLTheme.textSecond)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12))
+                                .foregroundStyle(ZLTheme.textSecond)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 Text("本项目遵循 GPL-3.0\nZalith Launcher 2 由 MovTery 开发")
                     .font(.system(size: 10))
                     .foregroundStyle(ZLTheme.textSecond)

@@ -39,6 +39,7 @@ struct ModsManagerScreen: View {
     @State private var deleteTarget: ZLModInfo?
     @State private var detail: ZLModInfo?
     @State private var toast = ""
+    @State private var showImporter = false
 
     private var modsDir: URL {
         VersionRepository.shared.mcRoot
@@ -63,6 +64,11 @@ struct ModsManagerScreen: View {
                 .buttonStyle(.plain)
 
                 Spacer()
+
+                Button { showImporter = true } label: {
+                    toolChip("导入模组", "square.and.arrow.down")
+                }
+                .buttonStyle(.plain)
 
                 ZLSearchField(placeholder: "搜索模组", text: $search, width: 190)
             }
@@ -110,6 +116,18 @@ struct ModsManagerScreen: View {
         .sheet(item: $detail) { m in
             ModDetailSheet(mod: m) { detail = nil }
         }
+        .sheet(isPresented: $showImporter) {
+            FileSelectorScreen(
+                startURL: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0],
+                mode: .file(extensions: ["jar"]),
+                title: "导入模组",
+                onBack: { showImporter = false },
+                onHome: { showImporter = false },
+                onSelect: { url in
+                    showImporter = false
+                    importMod(url)
+                })
+        }
     }
 
     private var emptyState: some View {
@@ -119,8 +137,8 @@ struct ModsManagerScreen: View {
                 .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
             Text("把 .jar 文件放进 mods 目录，或从下载中心安装")
                 .font(.system(size: 10.5)).foregroundStyle(ZLTheme.textSecond.opacity(0.7))
-            Button { openModsDir() } label: {
-                Text("打开 mods 目录")
+            Button { showImporter = true } label: {
+                Text("从文件导入 .jar")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(ZLTheme.primaryDeep)
                     .padding(.horizontal, 14).frame(height: 34)
@@ -311,8 +329,29 @@ struct ModsManagerScreen: View {
         reload()
     }
 
-    private func openModsDir() {
-        _ = modsDir
+    private func importMod(_ src: URL) {
+        let fm = FileManager.default
+        try? fm.createDirectory(at: modsDir, withIntermediateDirectories: true)
+        let dst0 = modsDir.appendingPathComponent(src.lastPathComponent)
+        if src.standardizedFileURL == dst0.standardizedFileURL {
+            toast = "这个文件已经在 mods 目录里"
+            return
+        }
+        // 同名时自动加序号，不覆盖已有模组
+        let base = src.deletingPathExtension().lastPathComponent
+        var name = src.lastPathComponent
+        var index = 1
+        while fm.fileExists(atPath: modsDir.appendingPathComponent(name).path), index < 100 {
+            name = "\(base)-\(index).jar"
+            index += 1
+        }
+        do {
+            try fm.copyItem(at: src, to: modsDir.appendingPathComponent(name))
+            toast = "已导入 \(name)"
+            reload()
+        } catch {
+            toast = "导入失败：\(error.localizedDescription)"
+        }
     }
 }
 

@@ -23,7 +23,11 @@ final class VersionRepository {
     static let shared = VersionRepository()
 
     private let fm = FileManager.default
-    var instanceName = "default"
+
+    /// 当前实例目录：GameDirsScreen 切换后会同步到这里，并持久化到 UserDefaults
+    var instanceName: String {
+        didSet { UserDefaults.standard.set(instanceName, forKey: "zl.game.instance") }
+    }
 
     var mcRoot: URL {
         let docs = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -35,6 +39,7 @@ final class VersionRepository {
     var assetsDir: URL { mcRoot.appendingPathComponent("assets", isDirectory: true) }
 
     init() {
+        instanceName = UserDefaults.standard.string(forKey: "zl.game.instance") ?? "default"
         try? fm.createDirectory(at: versionsDir, withIntermediateDirectories: true)
     }
 

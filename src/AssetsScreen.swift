@@ -95,6 +95,8 @@ struct AssetsScreen: View {
     @State private var loading = false
     @State private var loadError: String?
     @State private var totalHits = 0
+    // 点卡片进入项目详情（对应 ZL2 的 AssetInfoScreen）
+    @State private var detailHit: ModrinthHit?
 
     private let platforms = ["未选择", "Windows", "Linux", "macOS", "Android", "iOS"]
     private let mcVersions = ["未选择", "1.21.4", "1.20.1", "1.19.2", "1.16.5", "1.12.2"]
@@ -122,6 +124,12 @@ struct AssetsScreen: View {
             // 收藏与存档走本地，不打网络
             if kind == .favorite || kind == .saves { return }
             await runSearch()
+        }
+        .sheet(item: $detailHit) { h in
+            AssetInfoScreen(hit: h,
+                            kind: kind,
+                            onBack: { detailHit = nil },
+                            onHome: { detailHit = nil })
         }
     }
 
@@ -419,6 +427,8 @@ struct AssetsScreen: View {
         .background(ZLTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+        .contentShape(Rectangle())
+        .onTapGesture { detailHit = h }
     }
 
     /// 下载并放入对应目录

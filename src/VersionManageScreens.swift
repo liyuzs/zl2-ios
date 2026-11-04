@@ -3,68 +3,303 @@
 import SwiftUI
 
 // MARK: - 游戏目录管理
+// 真实的实例目录管理：每个目录 = <Documents>/instances/<名字>/.minecraft
+// 切换后 VersionRepository 会同步切换根目录（版本列表 / 模组 / 存档 / 安装器都跟着走），
+// 选择结果持久化，重启 App 仍然是上次的目录。
 struct GameDirsScreen: View {
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
-    @State private var dirs: [String] = ["默认游戏目录"]
-    @State private var showAdd = false
+
+    @StateObject private var store = GameDirectoryStore.shared
+    @State private var showCreate = false
     @State private var newName = ""
+    @State private var renameTarget: ZLGameInstance?
+    @State private var renameName = ""
+    @State private var deleteTarget: ZLGameInstance?
+    @State private var showBrowser = false
+    @State private var errorText: String?
 
     var body: some View {
         VStack(spacing: 0) {
             ZLTopBar(title: "游戏目录", onBack: onBack, onHome: onHome)
-            ScrollView {
-                VStack(spacing: 10) {
-                    ForEach(dirs.indices, id: \.self) { i in
-                        HStack(spacing: 12) {
-                            Image(systemName: "folder.fill")
-                                .font(.system(size: 20)).foregroundStyle(ZLTheme.primary)
-                                .frame(width: 44, height: 44)
-                                .background(ZLTheme.primarySoft)
-                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(dirs[i]).font(.system(size: 14, weight: .medium))
-                                    .foregroundStyle(ZLTheme.textPrimary)
-                                Text(i == 0 ? "当前使用中" : "未激活")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(i == 0 ? ZLTheme.success : ZLTheme.textSecond)
-                            }
-                            Spacer()
-                            if i != 0 {
-                                Button {
-                                    dirs.remove(at: i)
-                                } label: {
-                                    Image(systemName: "trash")
-                                        .foregroundStyle(ZLTheme.danger)
-                                        .frame(width: 36, height: 36)
-                                        .background(ZLTheme.surfaceAlt)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(14)
-                        .background(ZLTheme.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    ZLGoldButton(title: "添加游戏目录", icon: "plus") { showAdd = true }
-                }
-                .padding(ZLTheme.screenPadding)
+            HStack(alignment: .top, spacing: ZLTheme.cardGap) {
+                currentPanel
+                    .frame(width: 258)
+                listPanel
+                    .frame(maxWidth: .infinity)
+                    .padding(.trailing, ZLTheme.screenPadding)
             }
+            .padding(.leading, ZLTheme.screenPadding)
+            .padding(.bottom, ZLTheme.screenPadding)
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
-        .alert("为该游戏目录命名", isPresented: $showAdd) {
-            TextField("目录名称", text: $newName)
+        .task { store.reload() }
+        .alert("新建游戏目录", isPresented: $showCreate) {
+            TextField("例如：生存 / 创造 / 1.20.1 模组", text: $newName)
             Button("取消", role: .cancel) { newName = "" }
-            Button("添加") {
-                if !newName.isEmpty && !dirs.contains(newName) {
-                    dirs.append(newName)
-                }
-                newName = ""
-            }
+            Button("创建") { createDir() }
         } message: {
-            Text("目录名不能重复")
+            Text("会创建 instances/<名称>/.minecraft，并立即切换过去")
+        }
+        .alert("重命名目录", isPresented: Binding(
+            get: { renameTarget != nil },
+            set: { if !$0 { renameTarget = nil } }
+        )) {
+            TextField("新名称", text: $renameName)
+            Button("取消", role: .cancel) { renameTarget = nil }
+            Button("确定") { doRename() }
+        } message: {
+            Text("只改文件夹名，目录里的游戏文件不会移动")
+        }
+        .alert("删除游戏目录", isPresented: Binding(
+            get: { deleteTarget != nil },
+            set: { if !$0 { deleteTarget = nil } }
+        )) {
+            Button("取消", role: .cancel) { deleteTarget = nil }
+            Button("删除", role: .destructive) { doDelete() }
+        } message: {
+            Text("将删除「\(deleteTarget?.id ?? "")」及其中所有版本、模组与存档，无法恢复。")
+        }
+        .alert("操作失败", isPresented: Binding(
+            get: { errorText != nil },
+            set: { if !$0 { errorText = nil } }
+        )) {
+            Button("好", role: .cancel) { }
+        } message: {
+            Text(errorText ?? "")
+        }
+        .sheet(isPresented: $showBrowser) {
+            FileSelectorScreen(startURL: store.instancesRoot,
+                               mode: .directory,
+                               title: "选择游戏目录",
+                               onBack: { showBrowser = false },
+                               onHome: { showBrowser = false },
+                               onSelect: { url in
+                                   showBrowser = false
+                                   adoptDir(url)
+                               })
+        }
+    }
+
+    // MARK: 当前目录
+
+    private var currentPanel: some View {
+        ZLCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 8) {
+                    Image(systemName: "folder.fill.badge.person.crop")
+                        .font(.system(size: 17))
+                        .foregroundStyle(ZLTheme.primary)
+                    Text("当前游戏目录")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Spacer()
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(store.activeName)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(ZLTheme.primaryDeep)
+                    Text(store.active?.displayPath ?? "Documents/instances/\(store.activeName)/.minecraft")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack(spacing: 6) {
+                    ZLTag(text: "\(store.active?.versionCount ?? 0) 个版本")
+                    ZLTag(text: "使用中", color: ZLTheme.success)
+                    Spacer()
+                }
+
+                Divider()
+
+                Text("切换目录后，版本列表、模组、存档与后续安装都会使用新目录。")
+                    .font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                ZLGoldButton(title: "新建游戏目录", icon: "plus") { showCreate = true }
+
+                Button { showBrowser = true } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder")
+                        Text("浏览 instances 目录")
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(ZLTheme.primaryDeep)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 40)
+                    .background(ZLTheme.primarySoft)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: 目录列表
+
+    private var listPanel: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Text("全部目录").font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Text("\(store.instances.count)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(ZLTheme.textSecond)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(ZLTheme.surface)
+                    .clipShape(Capsule())
+                Spacer()
+                Button { store.reload() } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .frame(width: 34, height: 30)
+                        .background(ZLTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    if store.instances.isEmpty {
+                        VStack(spacing: 8) {
+                            Image(systemName: "folder")
+                                .font(.system(size: 30))
+                                .foregroundStyle(ZLTheme.textSecond.opacity(0.35))
+                            Text("还没有游戏目录").font(.system(size: 13))
+                                .foregroundStyle(ZLTheme.textSecond)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                    }
+                    ForEach(store.instances) { inst in
+                        instanceRow(inst)
+                    }
+                }
+                .padding(10)
+            }
+            .background(ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+    }
+
+    private func instanceRow(_ inst: ZLGameInstance) -> some View {
+        let active = store.isActive(inst.id)
+        return HStack(spacing: 12) {
+            Image(systemName: active ? "largecircle.fill.circle" : "circle")
+                .font(.system(size: 17))
+                .foregroundStyle(active ? ZLTheme.primary : ZLTheme.textSecond)
+
+            Image(systemName: "folder.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(active ? ZLTheme.primary : ZLTheme.textSecond)
+                .frame(width: 38, height: 38)
+                .background(active ? ZLTheme.primarySoft : ZLTheme.surfaceAlt)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Text(inst.id)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                        .lineLimit(1)
+                    if active {
+                        ZLTag(text: "使用中", color: ZLTheme.success)
+                    }
+                }
+                Text("\(inst.versionCount) 个版本 · \(inst.displayPath)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(ZLTheme.textSecond)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 6)
+
+            Menu {
+                Button {
+                    if !active { store.activate(inst.id) }
+                } label: {
+                    Label(active ? "正在使用" : "切换到此目录", systemImage: "checkmark.circle")
+                }
+                .disabled(active)
+                Button {
+                    renameTarget = inst
+                    renameName = inst.id
+                } label: {
+                    Label("重命名", systemImage: "pencil")
+                }
+                .disabled(inst.id == "default")
+                Button(role: .destructive) {
+                    deleteTarget = inst
+                } label: {
+                    Label("删除", systemImage: "trash")
+                }
+                .disabled(inst.id == "default" || active)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 14))
+                    .foregroundStyle(ZLTheme.textSecond)
+                    .frame(width: 34, height: 32)
+                    .background(ZLTheme.surfaceAlt)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            }
+        }
+        .padding(11)
+        .background(active ? ZLTheme.primarySoft.opacity(0.6) : ZLTheme.background)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if !active { store.activate(inst.id) }
+        }
+    }
+
+    // MARK: 操作
+
+    private func createDir() {
+        do {
+            _ = try store.create(newName)
+            newName = ""
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func doRename() {
+        guard let t = renameTarget else { return }
+        do {
+            try store.rename(t.id, to: renameName)
+        } catch {
+            errorText = error.localizedDescription
+        }
+        renameTarget = nil
+    }
+
+    private func doDelete() {
+        guard let t = deleteTarget else { return }
+        do {
+            try store.delete(t.id)
+        } catch {
+            errorText = error.localizedDescription
+        }
+        deleteTarget = nil
+    }
+
+    private func adoptDir(_ url: URL) {
+        // 选 instances 根目录本身没有意义
+        if url.standardizedFileURL.path == store.instancesRoot.standardizedFileURL.path {
+            errorText = "请选择或新建一个实例文件夹（instances 下的子目录）"
+            return
+        }
+        do {
+            _ = try store.adopt(url)
+        } catch {
+            errorText = error.localizedDescription
         }
     }
 }
