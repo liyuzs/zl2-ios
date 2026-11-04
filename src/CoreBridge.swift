@@ -138,6 +138,10 @@ enum CoreBridge {
         if let home = ProcessInfo.processInfo.environment["AME_HOME"] {
             writePerfOptionsIfNeeded(gameDir: (home as NSString).appendingPathComponent("instances/default/.minecraft"))
         }
+        // JIT 检测：没开 JIT 的话游戏会非常卡，提前告知
+        if let jitNote = jitStatusNote() {
+            NSLog("[ZL2] \(jitNote)")
+        }
         #if ZL2_CORE_LINKED
         guard runtimeCheck() else {
             throw CoreLaunchError.bootstrapFailed("找不到内置 JRE（java_runtimes/java-17-openjdk/lib/libjli.dylib）")
@@ -165,6 +169,10 @@ enum CoreBridge {
         try bootstrap()
         if let home = ProcessInfo.processInfo.environment["AME_HOME"] {
             writePerfOptionsIfNeeded(gameDir: (home as NSString).appendingPathComponent("instances/default/.minecraft"))
+        }
+        // JIT 检测：没开 JIT 的话游戏会非常卡，提前告知
+        if let jitNote = jitStatusNote() {
+            NSLog("[ZL2] \(jitNote)")
         }
         guard FileManager.default.fileExists(atPath: jarPath) else {
             throw CoreLaunchError.bootstrapFailed("jar 不存在：\(jarPath)")
@@ -209,6 +217,21 @@ enum CoreBridge {
         }
         return false
     }
+    /// 检查 JIT 是否已启用（iOS 上需要 StikDebug 等外部工具附加）
+    /// 返回 nil 表示正常；返回字符串表示需要提示用户
+    static func jitStatusNote() -> String? {
+        // 核心用 JIT26CreateRegionLegacy 检测；这里做轻量判断：
+        // 有 JIT 时 W^X 可写可执行区域能创建；没有时 malloc 的页不可执行
+        let page = UnsafeMutableRawPointer.allocate(byteCount: 4096, alignment: 4096)
+        defer { page.deallocate() }
+        // 尝试 mprotect 为可写可执行（JIT 未开时 iOS 会拒绝）
+        let result = mprotect(page, 4096, PROT_READ | PROT_WRITE | PROT_EXEC)
+        if result != 0 {
+            return "JIT 未启用：请在 StikDebug 里对 ZL2 启用 JIT 后再启动游戏，否则会非常卡或闪退"
+        }
+        return nil
+    }
+
     /// 首次启动前写入性能优先的 options.txt（视距 4、快速画质、关粒子）
     static func writePerfOptionsIfNeeded(gameDir: String) {
         let path = (gameDir as NSString).appendingPathComponent("options.txt")

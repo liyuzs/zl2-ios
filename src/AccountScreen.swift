@@ -50,6 +50,20 @@ struct AccountScreen: View {
             .padding(.vertical, 12)
         }
         .background(ZLTheme.surface)
+        // 添加账号：ZL2 是盖在页面上的 Dialog，不是 iOS 的底部 Sheet
+        .overlay {
+            if showAddAccount {
+                ZLAddAccountDialog(
+                    kind: $addAccountKind,
+                    onCancel: cancelAddAccount,
+                    onConfirm: confirmAddAccount,
+                    onAddAuthServer: openAuthServerFromDialog
+                )
+                .transition(.opacity)
+                .zIndex(2)
+            }
+        }
+        .toolbar(showAddAccount ? Visibility.hidden : Visibility.visible, for: .navigationBar)
         .alert(alertText, isPresented: $showAlert) {
             Button("好", role: .cancel) { }
         }
@@ -95,7 +109,7 @@ struct AccountScreen: View {
                 Text("账号列表").font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(ZLTheme.textPrimary)
                 Spacer()
-                Button { showAddAccount = true } label: {
+                Button { openAddAccount() } label: {
                     Label("添加账号", systemImage: "plus")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(ZLTheme.textOnGold)
@@ -142,12 +156,9 @@ struct AccountScreen: View {
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
             }
         }
-        .sheet(isPresented: $showAddAccount) {
-            addAccountSheet
-        }
         .sheet(isPresented: $showLocalLogin) {
-            LocalLoginSheet { name, _ in
-                _ = try? AccountStore.shared.addOffline(name: name)
+            LocalLoginSheet { name, uuid in
+                addOfflineAccount(named: name, uuid: uuid)
             }
         }
         .sheet(isPresented: $showAuthlibLogin) {
@@ -159,62 +170,62 @@ struct AccountScreen: View {
         }
     }
 
-    private var addAccountSheet: some View {
-        VStack(spacing: 14) {
-            Text("添加账号").font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(ZLTheme.textPrimary)
-                .padding(.top, 20)
+    // MARK: 添加账号弹窗
 
-            VStack(spacing: 8) {
-                Button { showAddAccount = false; accountType = "microsoft" } label: {
-                    addRow("微软账号", "person.badge.key", "登录正版账号")
-                }
-                .buttonStyle(.plain)
-                Button { showAddAccount = false; showLocalLogin = true } label: {
-                    addRow("离线账号", "person.fill", "指定用户名与皮肤")
-                }
-                .buttonStyle(.plain)
-                Button { showAddAccount = false; showAuthlibLogin = true } label: {
-                    addRow("认证服务器", "server.rack", "LittleSkin 等外置认证")
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, ZLTheme.screenPadding)
-
-            Button { showAddAccount = false } label: {
-                Text("关闭").font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(ZLTheme.primaryDeep)
-                    .frame(maxWidth: .infinity).frame(height: 44)
-                    .background(ZLTheme.primarySoft)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, ZLTheme.screenPadding)
-            .padding(.bottom, 20)
-        }
-        .background(ZLTheme.background)
-        .presentationDetents([.medium])
+    private func openAddAccount() {
+        addAccountKind = .microsoft
+        withAnimation(.easeOut(duration: 0.16)) { showAddAccount = true }
     }
 
-    private func addRow(_ title: String, _ icon: String, _ desc: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon).font(.system(size: 16))
-                .foregroundStyle(ZLTheme.primary)
-                .frame(width: 40, height: 40)
-                .background(ZLTheme.primarySoft)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(ZLTheme.textPrimary)
-                Text(desc).font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+    private func cancelAddAccount() {
+        withAnimation(.easeOut(duration: 0.16)) { showAddAccount = false }
+    }
+
+    private func confirmAddAccount() {
+        let chosen = addAccountKind
+        withAnimation(.easeOut(duration: 0.16)) { showAddAccount = false }
+        // 等弹窗淡出后再拉起子流程，避免同一时刻触发两次 presentation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            switch chosen {
+            case .microsoft:
+                showMSLogin = true
+            case .offline:
+                showLocalLogin = true
             }
-            Spacer()
-            Image(systemName: "chevron.right").font(.system(size: 11))
-                .foregroundStyle(ZLTheme.textSecond)
         }
-        .padding(12)
-        .background(ZLTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func openAuthServerFromDialog() {
+        withAnimation(.easeOut(duration: 0.16)) { showAddAccount = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            showAuthlibLogin = true
+        }
+    }
+
+    /// 离线账号：LocalLoginDialog 允许自定义 UUID，这里一并尊重
+    private func addOfflineAccount(named name: String, uuid: String?) {
+        do {
+            let userName = try OfflineAccountFactory.validatedUsername(name)
+            let account: Account
+            if let uuid, !uuid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let compact = AccountUUID.compact(from: uuid)
+                guard compact.count == 32,
+                      compact.range(of: "^[0-9a-f]{32}$", options: .regularExpression) != nil else {
+                    alertText = "无效 UUID 格式"
+                    showAlert = true
+                    return
+                }
+                account = Account(type: .offline, username: userName, uuid: compact)
+            } else {
+                account = try OfflineAccountFactory.makeAccount(username: userName)
+            }
+            AccountStore.shared.save(account)
+            accountName = account.username
+            accountType = "offline"
+        } catch {
+            alertText = error.localizedDescription
+            showAlert = true
+        }
     }
 
     // MARK: 当前账户
@@ -285,12 +296,7 @@ struct AccountScreen: View {
     // MARK: 组件
     private func methodRow(_ title: String, _ icon: String, _ type: String) -> some View {
         Button {
-            if type == "microsoft" {
-                alertText = "微软登录需要接入 OAuth，核心接入后再开放"
-                showAlert = true
-            } else {
-                accountType = type
-            }
+            accountType = type
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: icon).frame(width: 24).foregroundStyle(ZLTheme.primary)
