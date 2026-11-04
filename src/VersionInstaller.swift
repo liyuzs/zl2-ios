@@ -65,6 +65,8 @@ actor VersionInstaller {
                  instanceName: String = "default",
                  includeAssets: Bool = true,
                  onProgress: @Sendable @escaping (InstallProgress) -> Void) async throws {
+        var failCount = 0
+        var failedLibs: [String] = []
         let mcDir = Self.instanceDir(instanceName).appendingPathComponent(".minecraft", isDirectory: true)
         let versionDir = mcDir.appendingPathComponent("versions/\(versionID)", isDirectory: true)
         try fm.createDirectory(at: versionDir, withIntermediateDirectories: true)
@@ -90,7 +92,8 @@ actor VersionInstaller {
             throw InstallError.noDownloads
         }
         let jarPath = versionDir.appendingPathComponent("\(versionID).jar")
-        if !fm.fileExists(atPath: jarPath.path) {
+        let jarSize = (try? fm.attributesOfItem(atPath: jarPath.path)[.size] as? Int) ?? 0
+        if !fm.fileExists(atPath: jarPath.path) || jarSize < 1024 {
             onProgress(.init(phase: .jar, completed: 0, total: 1, message: "下载 \(versionID).jar"))
             try await download(clientURL, to: jarPath)
             onProgress(.init(phase: .jar, completed: 1, total: 1, message: "jar 完成"))
@@ -113,7 +116,12 @@ actor VersionInstaller {
             onProgress(.init(phase: .libraries, completed: 0, total: total, message: "依赖库 \(total) 个"))
             for (src, dst) in tasks {
                 try fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
-                do { try await download(src, to: dst) } catch { /* 单个失败不阻断 */ }
+                do {
+                    try await download(src, to: dst)
+                } catch {
+                    failCount += 1
+                    failedLibs.append(src.lastPathComponent)
+                }
                 done += 1
                 if done % 3 == 0 || done == total {
                     onProgress(.init(phase: .libraries, completed: done, total: total, message: "依赖库 \(done)/\(total)"))
@@ -130,11 +138,64 @@ actor VersionInstaller {
             if !fm.fileExists(atPath: indexPath.path) {
                 try await download(idxURL, to: indexPath)
             }
-            // 资源对象数量很大（几千个），这里只下载索引，对象在首次启动时按需拉取
+            // 下载资源对象（objects/<前2位>/<hash>）
+            if let data = try? Data(contentsOf: indexPath),
+               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let objects = obj["objects"] as? [String: [String: Any]] {
+                let objRoot = mcDir.appendingPathComponent("assets/objects", isDirectory: true)
+                // 只下需要的（按 uses 判断太复杂，这里全下，已存在的跳过）
+                var pending: [(String, Int)] = []
+                for (_, meta) in objects {
+                    guard let hash = meta["hash"] as? String,
+                          let size = meta["size"] as? Int else { continue }
+                    let dst = objRoot.appendingPathComponent("\(hash.prefix(2))/\(hash)")
+                    if fm.fileExists(atPath: dst.path) { continue }
+                    pending.append((hash, size))
+                }
+                if !pending.isEmpty {
+                    let total = pending.count
+                    var done = 0
+                    var assetFail = 0
+                    onProgress(.init(phase: .assets, completed: 0, total: total,
+                                     message: "资源文件 \(total) 个"))
+                    // 并发 8 路下载
+                    await withTaskGroup(of: Bool.self) { group in
+                        var idx = 0
+                        let concurrency = 8
+                        while idx < min(concurrency, total) {
+                            let (hash, _) = pending[idx]
+                            group.addTask { await Self.downloadAsset(hash: hash, root: objRoot, session: session, fm: fm) }
+                            idx += 1
+                        }
+                        while let ok = await group.next() {
+                            done += 1
+                            if !ok { assetFail += 1 }
+                            if idx < total {
+                                let (hash, _) = pending[idx]
+                                group.addTask { await Self.downloadAsset(hash: hash, root: objRoot, session: session, fm: fm) }
+                                idx += 1
+                            }
+                            if done % 20 == 0 || done == total {
+                                onProgress(.init(phase: .assets, completed: done, total: total,
+                                                 message: "资源文件 \(done)/\(total)"))
+                            }
+                        }
+                    }
+                    if assetFail > 0 {
+                        onProgress(.init(phase: .assets, completed: total, total: total,
+                                         message: "资源完成，\(assetFail) 个失败（可重试）"))
+                    }
+                }
+            }
             onProgress(.init(phase: .assets, completed: 1, total: 1, message: "资源索引就绪"))
         }
 
-        onProgress(.init(phase: .done, completed: 1, total: 1, message: "\(versionID) 安装完成"))
+        if failCount > 0 {
+            onProgress(.init(phase: .done, completed: 1, total: 1,
+                             message: "\(versionID) 安装完成，但有 \(failCount) 个依赖库失败"))
+        } else {
+            onProgress(.init(phase: .done, completed: 1, total: 1, message: "\(versionID) 安装完成"))
+        }
     }
 
     // MARK: 下载单文件（带重试）
