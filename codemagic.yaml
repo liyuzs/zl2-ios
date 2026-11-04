@@ -85,16 +85,22 @@ workflows:
             build > /tmp/xcbuild.log 2>&1
           RC=$?
           echo "xcodebuild exit=$RC"
-          # 把错误写进构建摘要（这样能从 GitHub 读取）
+          mkdir -p out
           ERRORS=$(grep -E "error:" /tmp/xcbuild.log | sort -u | head -40)
           if [ -n "$ERRORS" ]; then
-            echo "## ❌ 编译错误（共 $(echo "$ERRORS" | wc -l) 条）" >> "$CM_BUILD_SUMMARY"
-            echo '```' >> "$CM_BUILD_SUMMARY"
-            echo "$ERRORS" >> "$CM_BUILD_SUMMARY"
-            echo '```' >> "$CM_BUILD_SUMMARY"
+            printf '%s\n' "$ERRORS" > out/compile-errors.txt
             echo "=== ERRORS BEGIN ==="
-            echo "$ERRORS"
+            printf '%s\n' "$ERRORS"
             echo "=== ERRORS END ==="
+            # 尝试把错误文件推回仓库（如果运行器有写权限），供远程直接读取
+            if [ -n "$ERRORS" ]; then
+              git config user.email "ci@codemagic.local" 2>/dev/null
+              git config user.name "codemagic-ci" 2>/dev/null
+              git checkout -q -B build-errors 2>/dev/null || true
+              git add -f out/compile-errors.txt 2>/dev/null
+              git commit -qm "build errors snapshot" 2>/dev/null || true
+              git push -q origin HEAD:refs/heads/build-errors 2>/dev/null || echo "（推回仓库失败，属预期，错误已在 out/compile-errors.txt）"
+            fi
           fi
           if [ $RC -ne 0 ]; then
             tail -60 /tmp/xcbuild.log
@@ -280,3 +286,4 @@ workflows:
       - out/screenshot-home.png
       - out/demo.mp4
       - out/app-log.txt
+      - out/compile-errors.txt
