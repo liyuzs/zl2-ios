@@ -175,3 +175,117 @@ struct ZLPulseDot: View {
         }
     }
 }
+
+// MARK: - 骨架屏（列表加载中不再空白）
+
+struct ZLSkeletonRow: View {
+    var height: CGFloat = 58
+    var corner: CGFloat = 12
+    @State private var phase: CGFloat = -1
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: corner, style: .continuous)
+            .fill(ZLTheme.surfaceAlt)
+            .frame(height: height)
+            .overlay(
+                GeometryReader { geo in
+                    LinearGradient(
+                        colors: [.clear, ZLTheme.surface.opacity(0.75), .clear],
+                        startPoint: .leading, endPoint: .trailing)
+                    .frame(width: geo.size.width * 0.6)
+                    .offset(x: phase * geo.size.width)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+            )
+            .onAppear {
+                withAnimation(.linear(duration: 1.25).repeatForever(autoreverses: false)) {
+                    phase = 1.2
+                }
+            }
+    }
+}
+
+/// 一组骨架行
+struct ZLSkeletonList: View {
+    var count: Int = 4
+    var height: CGFloat = 58
+    var body: some View {
+        VStack(spacing: 8) {
+            ForEach(0..<count, id: \.self) { _ in
+                ZLSkeletonRow(height: height)
+            }
+        }
+    }
+}
+
+// MARK: - 列表项依次淡入
+
+struct ZLStaggerIn: ViewModifier {
+    var index: Int
+    var distance: CGFloat = 10
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : distance)
+            .onAppear {
+                // 最多错开 12 项，避免长列表等太久
+                let delay = Double(min(index, 12)) * 0.035
+                withAnimation(.easeOut(duration: 0.28).delay(delay)) { shown = true }
+            }
+    }
+}
+
+extension View {
+    func staggerIn(_ index: Int, distance: CGFloat = 10) -> some View {
+        modifier(ZLStaggerIn(index: index, distance: distance))
+    }
+}
+
+// MARK: - 轻提示（Toast）
+
+/// 全局轻提示，各页面用 .zlToast(...) 挂载
+struct ZLToastView: View {
+    var text: String
+    var body: some View {
+        Text(text)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                Capsule().fill(Color.black.opacity(0.82))
+                    .shadow(color: .black.opacity(0.2), radius: 10, y: 4)
+            )
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+}
+
+// MARK: - 长按快捷菜单（版本卡片等）
+
+/// 用 .contextMenu 实现的原生长按菜单，比自绘更符合 iOS 习惯。
+/// 这里只提供文案常量，避免各处写重复字面量。
+enum ZLQuickActions {
+    static let play = "启动"
+    static let settings = "版本设置"
+    static let files = "浏览文件"
+    static let copyID = "复制版本 ID"
+    static let delete = "删除"
+    static let refresh = "刷新"
+}
+
+// MARK: - 进度数字（等宽，滚动时不跳）
+
+struct ZLPercentText: View {
+    var value: Double        // 0...1
+    var size: CGFloat = 12
+
+    var body: some View {
+        Text(String(format: "%.0f%%", max(0, min(1, value)) * 100))
+            .font(.system(size: size, weight: .medium, design: .monospaced))
+            .monospacedDigit()
+            .foregroundStyle(ZLTheme.textSecond)
+            .contentTransition(.numericText())
+    }
+}

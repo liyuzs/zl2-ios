@@ -12,6 +12,7 @@ struct HomeScreen: View {
     @State private var titleTaps = 0
     @State private var eggText: String?
     @State private var eggToken = 0
+    @State private var didGreet = false
 
     var onMultiplayer: () -> Void = {}
     var onDownload: () -> Void = {}
@@ -81,6 +82,19 @@ struct HomeScreen: View {
         }
         .sheet(isPresented: $showTaskMenu) {
             ZLTaskMenu(onClose: { showTaskMenu = false })
+        }
+        .onAppear {
+            // 深夜第一次进来自动打个招呼（小彩蛋）
+            if !didGreet, let g = ZLEasterEgg.lateNightGreeting {
+                didGreet = true
+                eggToken += 1
+                withAnimation(.spring(response: 0.36, dampingFraction: 0.8)) { eggText = g }
+                let token = eggToken
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
+                    guard eggToken == token else { return }
+                    withAnimation(.easeOut(duration: 0.25)) { eggText = nil }
+                }
+            }
         }
     }
 
@@ -167,6 +181,27 @@ struct HomeScreen: View {
             .padding(12)
             .background(ZLTheme.surfaceAlt)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .contextMenu {
+                Button {
+                    ZLHaptic.medium()
+                    launching = true
+                } label: { Label(ZLQuickActions.play, systemImage: "play.fill") }
+
+                Button {
+                    ZLHaptic.light()
+                    onVersionSettings()
+                } label: { Label(ZLQuickActions.settings, systemImage: "gearshape") }
+
+                Button {
+                    ZLHaptic.light()
+                    onFileManager()
+                } label: { Label(ZLQuickActions.files, systemImage: "folder") }
+
+                Button {
+                    let id = selectedVersion.components(separatedBy: " ").first ?? selectedVersion
+                    ZLClipboard.copy(id, label: "版本 ID")
+                } label: { Label(ZLQuickActions.copyID, systemImage: "doc.on.doc") }
+            }
 
             // 启动
             ZLGoldButton(title: "启动游戏", icon: "play.fill") {

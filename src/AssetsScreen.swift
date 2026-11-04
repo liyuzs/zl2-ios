@@ -318,12 +318,13 @@ struct AssetsScreen: View {
         ScrollView {
             VStack(spacing: 10) {
                 if loading {
-                    HStack(spacing: 8) {
-                        ProgressView().tint(ZLTheme.primary)
-                        Text("正在从 Modrinth 搜索…").font(.system(size: 13))
-                            .foregroundStyle(ZLTheme.textSecond)
+                    // 骨架屏：比转圈更稳，列表不会跳动
+                    VStack(spacing: 10) {
+                        ForEach(0..<5, id: \.self) { _ in
+                            ZLSkeletonRow(height: 76, corner: 14)
+                        }
                     }
-                    .frame(maxWidth: .infinity).padding(.vertical, 24)
+                    .padding(.top, 2)
                 } else if let e = loadError {
                     VStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -372,8 +373,8 @@ struct AssetsScreen: View {
                             .font(.system(size: 10))
                             .foregroundStyle(ZLTheme.textSecond.opacity(0.8))
                     }
-                    ForEach(hits) { h in
-                        hitRow(h)
+                    ForEach(Array(hits.enumerated()), id: \.element.id) { idx, h in
+                        hitRow(h).staggerIn(idx)
                     }
                 }
             }
