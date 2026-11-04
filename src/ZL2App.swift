@@ -353,12 +353,31 @@ struct MultiplayerScreen: View {
                     .tint(ZLTheme.primary)
                 }
                 if lan.servers.isEmpty {
-                    Text(lan.running ? "正在监听 4445 端口…" : "开启后自动发现同一 WiFi 下的游戏")
-                        .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+                    if lan.running {
+                        HStack(spacing: 8) {
+                            ZLPulseDot(color: ZLTheme.success)
+                            Text("正在扫描同一 WiFi 下的游戏…")
+                                .font(.system(size: 11))
+                                .foregroundStyle(ZLTheme.textSecond)
+                        }
+                        .padding(.vertical, 4)
+                    } else {
+                        ZLEmptyState(
+                            icon: "wifi",
+                            title: "还没有发现局域网游戏",
+                            detail: "在电脑或其他设备上开「对局域网开放」，
+然后打开上面的开关"
+                        )
+                    }
+                    if let err = lan.lastError {
+                        Text(err)
+                            .font(.system(size: 10))
+                            .foregroundStyle(ZLTheme.danger)
+                    }
                 } else {
                     ForEach(lan.servers) { s in
                         Button {
-                            UIPasteboard.general.string = "\(s.address):\(s.port)"
+                            ZLClipboard.copy("\(s.address):\(s.port)", label: "服务器地址")
                         } label: {
                             HStack(spacing: 8) {
                                 Circle().fill(ZLTheme.success).frame(width: 6, height: 6)

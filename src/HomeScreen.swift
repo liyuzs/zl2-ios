@@ -8,6 +8,10 @@ struct HomeScreen: View {
 
     @State private var launching = false
     @State private var selectedVersion = "1.20.1 Fabric 0.19.2"
+    // 彩蛋：连点标题
+    @State private var titleTaps = 0
+    @State private var eggText: String?
+    @State private var eggToken = 0
 
     var onMultiplayer: () -> Void = {}
     var onDownload: () -> Void = {}
@@ -27,6 +31,7 @@ struct HomeScreen: View {
                         .font(.system(size: 14, weight: .regular))
                         .foregroundStyle(ZLTheme.textSecond)
                         .padding(.leading, ZLTheme.screenPadding)
+                        .onTapGesture { titleTap() }
 
                     Spacer()
 
@@ -53,6 +58,22 @@ struct HomeScreen: View {
                     .padding(.bottom, 14)
             }
         }
+        .overlay(alignment: .top) {
+            if let eggText {
+                Text(eggText)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        Capsule().fill(ZLTheme.primaryDeep)
+                            .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+                    )
+                    .padding(.top, 56)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .id(eggToken)
+            }
+        }
         .fullScreenCover(isPresented: $launching) {
             LaunchScreen(versionName: selectedVersion,
                          versionID: "1.20.1",
@@ -63,8 +84,30 @@ struct HomeScreen: View {
         }
     }
 
+    // MARK: - 彩蛋
+
+    private func titleTap() {
+        titleTaps += 1
+        ZLHaptic.selection()
+        guard let msg = ZLEasterEgg.message(for: titleTaps) else { return }
+        eggToken += 1
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) { eggText = msg }
+        ZLHaptic.light()
+        // 3 秒后自动收起
+        let token = eggToken
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            guard eggToken == token else { return }
+            withAnimation(.easeOut(duration: 0.2)) { eggText = nil }
+            // 一轮结束，重置计数
+            if titleTaps >= ZLEasterEgg.clicks.count { titleTaps = 0 }
+        }
+    }
+
     private func topButton(_ icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            ZLHaptic.light()
+            action()
+        } label: {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .regular))
                 .foregroundStyle(ZLTheme.textSecond)
@@ -129,6 +172,7 @@ struct HomeScreen: View {
             ZLGoldButton(title: "启动游戏", icon: "play.fill") {
                 launching = true
             }
+            .breathingGlow(ZLTheme.primary)
         }
         .padding(18)
         .background(ZLTheme.surface)
