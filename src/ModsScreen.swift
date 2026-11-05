@@ -27,8 +27,21 @@ struct ModsScreen: View {
     }
 
     // 依赖缺失提醒（ZL2 里最容易踩的坑）
+    // 关键：要真的比对「依赖的 modId 是否已安装」，不能只看有没有声明依赖
     private var summary: some View {
-        let missing = mods.filter { $0.enabled && !$0.dependencies.isEmpty }
+        let installedIDs = Set(mods.compactMap { $0.modId?.lowercased() })
+        // 游戏/加载器自带的依赖，不需要装成模组
+        let builtin: Set<String> = ["minecraft", "java", "forge", "fabricloader",
+                                    "fabric", "quilt_loader", "neoforge", "cloth-config"]
+        let missing = mods.filter { mod in
+            guard mod.enabled, !mod.dependencies.isEmpty else { return false }
+            // 只要有一条依赖不在已安装集合里，就算缺失
+            return mod.dependencies.contains { dep in
+                let d = dep.lowercased()
+                if builtin.contains(d) { return false }
+                return !installedIDs.contains(d)
+            }
+        }
         return Group {
             if missing.isEmpty {
                 EmptyView()
@@ -40,8 +53,14 @@ struct ModsScreen: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("请确认前置依赖已安装")
                                 .font(.system(size: 13, weight: .semibold))
-                            Text(missing.prefix(2).map { "\($0.name) 需要 \($0.dependencies.joined(separator: "、"))" }
-                                .joined(separator: "\n"))
+                            Text(missing.prefix(3).map { m in
+                                let owned = Set(mods.compactMap { $0.modId?.lowercased() })
+                                let lack = m.dependencies.filter {
+                                    let d = $0.lowercased()
+                                    return !builtin.contains(d) && !owned.contains(d)
+                                }
+                                return "\(m.name) 缺少：\(lack.joined(separator: "、"))"
+                            }.joined(separator: "\n"))
                                 .font(.system(size: 11))
                                 .foregroundStyle(ZLTheme.textSecond)
                         }
