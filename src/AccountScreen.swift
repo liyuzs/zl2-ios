@@ -102,6 +102,10 @@ struct AccountScreen: View {
     @State private var showLocalLogin = false
     @State private var showAuthlibLogin = false
     @State private var addAccountKind: ZLAddAccountKind = .microsoft
+    // 皮肤站登录状态
+    @State private var authlibBusy = false
+    @State private var authlibError: String?
+    @State private var authlibSuccess: String?
 
     private var accountCards: some View {
         VStack(spacing: 10) {
@@ -161,11 +165,71 @@ struct AccountScreen: View {
                 addOfflineAccount(named: name, uuid: uuid)
             }
         }
+        .overlay(alignment: .top) {
+            // 皮肤站登录的进度 / 结果提示
+            if authlibBusy || authlibError != nil || authlibSuccess != nil {
+                HStack(spacing: 8) {
+                    if authlibBusy {
+                        ProgressView().scaleEffect(0.7)
+                        Text("正在登录皮肤站…")
+                    } else if let e = authlibError {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundStyle(ZLTheme.danger)
+                        Text(e).lineLimit(2)
+                    } else if let ok = authlibSuccess {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(ZLTheme.success)
+                        Text(ok)
+                    }
+                }
+                .font(.system(size: 12))
+                .foregroundStyle(ZLTheme.textPrimary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .background(Capsule().fill(ZLTheme.surface))
+                .padding(.top, 8)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .onTapGesture { authlibError = nil; authlibSuccess = nil }
+            }
+        }
         .sheet(isPresented: $showAuthlibLogin) {
-            AuthlibLoginSheet { server, email, _ in
-                // 外置认证：先按离线创建，后续补 Yggdrasil 验证
-                _ = try? AccountStore.shared.addOffline(name: email)
-                UserDefaults.standard.set(server, forKey: "zl.authlib.server")
+            AuthlibLoginSheet { server, email, password in
+                // 真正的 Yggdrasil 认证：登录 → 拿角色名和皮肤
+                guard let norm = ZLYggdrasilClient.normalize(server) else {
+                    authlibBusy = false
+                    authlibError = "皮肤站地址不对"
+                    return
+                }
+                authlibBusy = true
+                authlibError = nil
+                Task {
+                    do {
+                        let client = ZLYggdrasilClient(server: norm)
+                        let profile = try await client.login(email: email, password: password)
+
+                        // 用皮肤站的角色名创建账号
+                        _ = try? AccountStore.shared.addOffline(name: profile.name)
+                        UserDefaults.standard.set(norm, forKey: "zl.authlib.server")
+                        UserDefaults.standard.set(profile.id, forKey: "zl.authlib.uuid")
+
+                        // 下载皮肤，离线模式也能显示
+                        if let skinURL = profile.skinURL {
+                            let dir = VersionRepository.shared.mcRoot
+                                .appendingPathComponent("custom_skin", isDirectory: true)
+                            _ = await ZLYggdrasilClient.downloadSkin(skinURL, to: dir)
+                        }
+
+                        await MainActor.run {
+                            authlibBusy = false
+                            authlibSuccess = "已登录：\(profile.name)"
+                        }
+                    } catch {
+                        await MainActor.run {
+                            authlibBusy = false
+                            authlibError = ZLFriendlyError.text(error)
+                        }
+                    }
+                }
             }
         }
     }
