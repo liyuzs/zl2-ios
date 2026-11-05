@@ -23,7 +23,8 @@ struct LogViewScreen: View {
     @State private var files: [ZLLogFile] = []
     @State private var selected: URL?
     @State private var lines: [String] = []
-    @State private var autoRefresh = true
+    // 初始值跟随设置里的「打开时自动刷新日志」
+    @State private var autoRefresh = (getPrefObject("showLogAutomatic") as? NSNumber)?.boolValue ?? true
     @State private var autoScroll = true
     @State private var onlyProblems = false
     @State private var truncated = false
@@ -38,6 +39,12 @@ struct LogViewScreen: View {
     private let maxLines = 3000
 
     private let timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
+
+    /// 日志正文字号（设置里的 logTextSize，默认 15，限制 5~20）
+    private var logFontSize: CGFloat {
+        let v = (getPrefObject("logTextSize") as? NSNumber)?.intValue ?? 15
+        return CGFloat(max(5, min(20, v)))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -221,7 +228,7 @@ struct LogViewScreen: View {
                         LazyVStack(alignment: .leading, spacing: 1) {
                             ForEach(displayLines.indices, id: \.self) { index in
                                 Text(displayLines[index])
-                                    .font(.system(size: 10.5, design: .monospaced))
+                                    .font(.system(size: logFontSize, design: .monospaced))
                                     .foregroundStyle(color(for: displayLines[index]))
                                     .textSelection(.enabled)
                                     .frame(maxWidth: .infinity, alignment: .leading)
