@@ -156,6 +156,8 @@ actor VersionInstaller {
             if shouldCancel?() == true { throw CancellationError() }
             report(.libraries, 0, "依赖库 \(total) 个")
             for (src, dst, expectSHA) in tasks {
+                // 每次循环都查取消，否则点了取消还在下几百个库
+                if shouldCancel?() == true { throw CancellationError() }
                 try fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
                 do {
                     try await download(src, to: dst)
@@ -213,7 +215,10 @@ actor VersionInstaller {
                         let concurrency = 8
                         while idx < min(concurrency, total) {
                             let (hash, _) = pending[idx]
-                            group.addTask { await Self.downloadAsset(hash: hash, root: objRoot, session: self.session, fm: self.fm) }
+                            group.addTask {
+                                if self.shouldCancel?() == true { return false }
+                                return await Self.downloadAsset(hash: hash, root: objRoot, session: self.session, fm: self.fm)
+                            }
                             idx += 1
                         }
                         while let ok = await group.next() {
@@ -221,7 +226,10 @@ actor VersionInstaller {
                             if !ok { assetFail += 1 }
                             if idx < total {
                                 let (hash, _) = pending[idx]
-                                group.addTask { await Self.downloadAsset(hash: hash, root: objRoot, session: self.session, fm: self.fm) }
+                                group.addTask {
+                                if self.shouldCancel?() == true { return false }
+                                return await Self.downloadAsset(hash: hash, root: objRoot, session: self.session, fm: self.fm)
+                            }
                                 idx += 1
                             }
                             if done % 20 == 0 || done == total {
