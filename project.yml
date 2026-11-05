@@ -59,7 +59,9 @@ targets:
         # 允许用户通过「文件」App 把整合包 / 模组放进 Documents，再用文件选择器导入
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
-        UILaunchScreen: {}
+        # 启动画面：用和 App 首屏一致的深色，避免白屏闪一下
+        UILaunchScreen:
+          UIColorName: LaunchBackground
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         UISupportedInterfaceOrientations:
