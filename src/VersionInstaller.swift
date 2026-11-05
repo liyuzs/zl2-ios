@@ -64,12 +64,17 @@ actor VersionInstaller {
     func install(versionID: String,
                  instanceName: String = VersionRepository.shared.instanceName,
                  includeAssets: Bool = true,
+                 shouldCancel: (@Sendable () -> Bool)? = nil,
                  onProgress: @Sendable @escaping (InstallProgress) -> Void) async throws {
         var failCount = 0
         var failedLibs: [String] = []
 
         // 全局进度：把各阶段内部进度折算成 0~100，避免进度条来回跳
         func report(_ phase: InstallProgress.Phase, _ frac: Double, _ msg: String) {
+            // 用户点了取消就中断
+            if shouldCancel?() == true {
+                onProgress(InstallProgress(phase: phase, completed: -1, total: 1, message: "已取消"))
+            }
             let lo: Double, hi: Double
             switch phase {
             case .metadata:  (lo, hi) = (0.00, 0.05)
@@ -86,6 +91,8 @@ actor VersionInstaller {
         let versionDir = mcDir.appendingPathComponent("versions/\(versionID)", isDirectory: true)
         try fm.createDirectory(at: versionDir, withIntermediateDirectories: true)
 
+        try Task.checkCancellation()
+        if shouldCancel?() == true { throw CancellationError() }
         report(.metadata, 0, "获取 \(versionID) 元数据")
 
         // 1) 版本详情 JSON
@@ -124,6 +131,7 @@ actor VersionInstaller {
         let jarPath = versionDir.appendingPathComponent("\(versionID).jar")
         let jarSize = (try? fm.attributesOfItem(atPath: jarPath.path)[.size] as? Int) ?? 0
         if !fm.fileExists(atPath: jarPath.path) || jarSize < 1024 {
+            if shouldCancel?() == true { throw CancellationError() }
             report(.jar, 0, "下载 \(versionID).jar")
             try await download(clientURL, to: jarPath)
             report(.jar, Double(1) / Double(max(1, 1)), "jar 完成")
@@ -143,6 +151,7 @@ actor VersionInstaller {
         if !tasks.isEmpty {
             let total = tasks.count
             var done = 0
+            if shouldCancel?() == true { throw CancellationError() }
             report(.libraries, 0, "依赖库 \(total) 个")
             for (src, dst) in tasks {
                 try fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -161,6 +170,7 @@ actor VersionInstaller {
 
         // 4) assets
         if includeAssets, let assetIndex = detail.assetIndex, let idxURL = assetIndex.url {
+            if shouldCancel?() == true { throw CancellationError() }
             report(.assets, Double(0) / Double(max(1, 1)), "获取资源索引")
             let indexPath = mcDir.appendingPathComponent("assets/indexes/\(assetIndex.id).json",
                                                          isDirectory: false)

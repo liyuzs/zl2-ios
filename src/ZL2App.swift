@@ -184,7 +184,10 @@ struct RootView: View {
                                 let taskID = await ZLTaskCenter.shared.add("安装 \(sel.customName)")
                                 let installer = VersionInstaller()
                                 do {
-                                    try await installer.install(versionID: gv) { p in
+                                    try await installer.install(
+                                        versionID: gv,
+                                        shouldCancel: { ZLCancelFlag.shared.isCancelled(taskID) }
+                                    ) { p in
                                         let total = max(p.total, 1)
                                         let frac = Double(p.completed) / Double(total)
                                         Task { @MainActor in
@@ -227,6 +230,7 @@ struct RootView: View {
                                     }
                                     await ZLTaskCenter.shared.update(taskID,
                                         detail: "安装完成", state: .done)
+                                    ZLTaskCenter.shared.finish(taskID)
                                 } catch {
                                     await ZLTaskCenter.shared.update(taskID,
                                         detail: error.localizedDescription, state: .failed)

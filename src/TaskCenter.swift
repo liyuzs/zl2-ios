@@ -61,11 +61,19 @@ final class ZLTaskCenter: ObservableObject {
     }
 
     func cancel(_ id: UUID) {
+        ZLCancelFlag.shared.mark(id)
         update(id, state: .cancelled)
     }
 
+    /// 任务结束时清理标记，避免集合无限增长
+    func finish(_ id: UUID) {
+        ZLCancelFlag.shared.clear(id)
+    }
+
     func clearFinished() {
+        let removed = Set(tasks.filter { !$0.state.isActive }.map { $0.id })
         tasks.removeAll { !$0.state.isActive }
+        for id in removed { ZLCancelFlag.shared.clear(id) }
     }
 
     /// 只清掉失败的，保留还在跑和已完成的
@@ -224,5 +232,31 @@ struct ZLTaskMenu: View {
                 }
             }
         }
+    }
+}
+
+
+// MARK: - 取消标记（非 MainActor，供后台下载循环查询）
+
+/// 任务取消标记。用锁保护，任何线程都能安全读写。
+final class ZLCancelFlag: @unchecked Sendable {
+    static let shared = ZLCancelFlag()
+
+    private let lock = NSLock()
+    private var ids: Set<UUID> = []
+
+    func mark(_ id: UUID) {
+        lock.lock(); defer { lock.unlock() }
+        ids.insert(id)
+    }
+
+    func clear(_ id: UUID) {
+        lock.lock(); defer { lock.unlock() }
+        ids.remove(id)
+    }
+
+    func isCancelled(_ id: UUID) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return ids.contains(id)
     }
 }
