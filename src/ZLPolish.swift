@@ -129,12 +129,6 @@ enum ZLEasterEgg {
         return clicks.indices.contains(i) ? clicks[i] : nil
     }
 
-    /// 深夜问候（22 点后 / 6 点前）
-    static var lateNightGreeting: String? {
-        let h = Calendar.current.component(.hour, from: Date())
-        guard h >= 22 || h < 6 else { return nil }
-        return "这么晚了还在折腾啊"
-    }
 }
 
 // MARK: - 复制到剪贴板 + 提示
@@ -450,16 +444,15 @@ struct ZLHeartPop: View {
 // MARK: - 可爱彩蛋 3：按时间变化的问候
 
 enum ZLCuteGreeting {
-    /// 根据当前时间返回一句可爱的问候
+    /// 按当前时间说一句简单的问候
     static var now: String {
         let h = Calendar.current.component(.hour, from: Date())
         switch h {
-        case 5..<9:   return "早上好呀 ☀️ 今天也要元气满满"
-        case 9..<12:  return "上午好 🌤 玩会儿游戏放松一下"
-        case 12..<14: return "中午了，记得吃饭 🍚"
-        case 14..<18: return "下午好 ☕️ 来挖点矿？"
-        case 18..<22: return "晚上好 🌙 今晚玩哪个版本"
-        default:      return "这么晚还不睡吗 🐣"
+        case 5..<11:  return "早上好"
+        case 11..<13: return "中午好"
+        case 13..<18: return "下午好"
+        case 18..<23: return "晚上好"
+        default:      return "夜深了"
         }
     }
 }
