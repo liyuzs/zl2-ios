@@ -595,10 +595,26 @@ enum SampleData {
                 .init(title: "Chocapic13", subtitle: "Bliss 修改版", author: "Chocapic13", downloads: "4200万", tags: ["光影"], version: "v2.1.2"),
             ]
         case .saves:
-            return [
-                .init(title: "新的世界", subtitle: "生存存档 · 1.20.1", author: "我", downloads: "—", tags: ["生存"], version: "1.20.1"),
-                .init(title: "Silent Hills", subtitle: "恐怖地图 PT 补丁", author: "社区", downloads: "5.6万", tags: ["恐怖", "地图"], version: "1.17.1"),
-            ]
+            // 读真实存档目录，不再显示假示例
+            let dir = VersionRepository.shared.mcRoot
+                .appendingPathComponent("saves", isDirectory: true)
+            let fm = FileManager.default
+            guard let names = try? fm.contentsOfDirectory(atPath: dir.path) else { return [] }
+            return names
+                .filter { !$0.hasPrefix(".") }
+                .compactMap { name -> AssetItem? in
+                    let p = dir.appendingPathComponent(name)
+                    var isDir: ObjCBool = false
+                    guard fm.fileExists(atPath: p.path, isDirectory: &isDir), isDir.boolValue else { return nil }
+                    // 从 level.dat 拿不到版本就显示「—」，不编造
+                    return .init(title: name,
+                                 subtitle: "世界存档",
+                                 author: "本地",
+                                 downloads: "—",
+                                 tags: ["存档"],
+                                 version: "—")
+                }
+                .sorted { $0.title < $1.title }
         case .favorite:
             return [
                 .init(title: "Waystones", subtitle: "已收藏 · 模组", author: "BlayTheNinth", downloads: "4.2亿", tags: ["收藏"], version: "14.0.2"),
