@@ -296,7 +296,7 @@ struct SettingsScreen: View {
         cardGroup(rows: [
             toggle("versionIsolation",
                    ZLStrings.settings_game_version_isolation_title,
-                   ZLStrings.settings_game_version_isolation_summary),
+                   ZLStrings.settings_game_version_isolation_summary + "（当前版本暂未支持）"),
             toggle("skipGameIntegrityCheck",
                    ZLStrings.settings_game_skip_game_integrity_check_title,
                    ZLStrings.settings_game_skip_game_integrity_check_summary),
