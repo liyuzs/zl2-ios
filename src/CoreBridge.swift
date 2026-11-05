@@ -75,11 +75,11 @@ enum CoreBridge {
 
         // === 性能优化 ===
         // 0) 用户自定义 JVM 参数：核心从 AME_EXTRA_JVM_ARGS 读取
-        let extraJV = (getPrefObject("jvmArgs") as? String) ?? ""
+        let extraJV = UserDefaults.standard.string(forKey: "jvmArgs") ?? ""
         setenv("AME_EXTRA_JVM_ARGS", extraJV.trimmingCharacters(in: .whitespacesAndNewlines), 1)
 
         // 1) 渲染器：读用户设置，留空则用 auto（Metal/ANGLE）
-        let userRenderer = (getPrefObject("renderer") as? String) ?? ""
+        let userRenderer = UserDefaults.standard.string(forKey: "renderer") ?? ""
         setenv("RENDERER", userRenderer.isEmpty ? "auto" : userRenderer, 1)
         // 2) JIT 常驻（性能关键：避免反复 attach 造成卡顿）
         if getPrefObject("debug.debug_always_attached_jit") == nil {
@@ -90,7 +90,7 @@ enum CoreBridge {
             setPrefObject("general.cosmetica", false)
         }
         // 4) 内存分配：优先用设置页的 ramAllocation，没设过才按物理内存推算
-        let userRam = (getPrefObject("ramAllocation") as? NSNumber)?.intValue ?? 0
+        let userRam = UserDefaults.standard.object(forKey: "ramAllocation") as? Int ?? 0
         if userRam > 0 {
             // 用户明确设了，就用他的（同时同步给核心用的 key）
             setPrefObject("general.allocated_memory", userRam)
@@ -144,13 +144,13 @@ enum CoreBridge {
     /// 按「分辨率缩放」设置和屏幕尺寸算出渲染宽高
     /// 安卓的 resolutionRatio 是百分比（25~300），即渲染分辨率 = 屏幕分辨率 × 比例
     static func renderSize() -> (width: Int, height: Int) {
-        let ratio = (getPrefObject("resolutionRatio") as? NSNumber)?.intValue ?? 100
-        let rule = (getPrefObject("resolutionRule") as? String) ?? "ResolutionRule.PERCENTAGE"
+        let ratio = UserDefaults.standard.object(forKey: "resolutionRatio") as? Int ?? 100
+        let rule = UserDefaults.standard.string(forKey: "resolutionRule") ?? "ResolutionRule.PERCENTAGE"
 
         // 自定义分辨率（用户直接填了宽高）
         if rule.contains("CUSTOM") {
-            let w = (getPrefObject("customResolutionWidth") as? NSNumber)?.intValue ?? 0
-            let h = (getPrefObject("customResolutionHeight") as? NSNumber)?.intValue ?? 0
+            let w = UserDefaults.standard.object(forKey: "customResolutionWidth") as? Int ?? 0
+            let h = UserDefaults.standard.object(forKey: "customResolutionHeight") as? Int ?? 0
             if w > 0 && h > 0 { return (w, h) }
         }
 
@@ -188,8 +188,8 @@ enum CoreBridge {
         let width = w0
         let height = h0
         // Java 版本：用户关了自动选择且填了运行时就照办，否则按版本自动判断
-        let autoPick = ((getPrefObject("autoPickJavaRuntime") as? NSNumber)?.boolValue) ?? true
-        let manual = (getPrefObject("javaRuntime") as? String) ?? ""
+        let autoPick = UserDefaults.standard.object(forKey: "autoPickJavaRuntime") as? Bool ?? true
+        let manual = UserDefaults.standard.string(forKey: "javaRuntime") ?? ""
         let manualVer = Int(manual.trimmingCharacters(in: .whitespaces))
         let minJava: Int
         if !autoPick, let mv = manualVer, mv > 0 {

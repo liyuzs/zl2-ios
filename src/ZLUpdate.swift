@@ -311,7 +311,7 @@ enum ZLLogRetention {
     /// 删除超过保留天数的日志文件。App 启动时调一次即可。
     @discardableResult
     static func cleanup() -> Int {
-        let days = (getPrefObject("launcherLogRetentionDays") as? NSNumber)?.intValue ?? 7
+        let days = UserDefaults.standard.object(forKey: "launcherLogRetentionDays") as? Int ?? 7
         guard days > 0 else { return 0 }
 
         let fm = FileManager.default

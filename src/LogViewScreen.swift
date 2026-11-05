@@ -24,7 +24,7 @@ struct LogViewScreen: View {
     @State private var selected: URL?
     @State private var lines: [String] = []
     // 初始值跟随设置里的「打开时自动刷新日志」
-    @State private var autoRefresh = (getPrefObject("showLogAutomatic") as? NSNumber)?.boolValue ?? true
+    @State private var autoRefresh = UserDefaults.standard.object(forKey: "showLogAutomatic") as? Bool ?? true
     @State private var autoScroll = true
     @State private var onlyProblems = false
     @State private var truncated = false
@@ -42,7 +42,7 @@ struct LogViewScreen: View {
 
     /// 日志正文字号（设置里的 logTextSize，默认 15，限制 5~20）
     private var logFontSize: CGFloat {
-        let v = (getPrefObject("logTextSize") as? NSNumber)?.intValue ?? 15
+        let v = UserDefaults.standard.object(forKey: "logTextSize") as? Int ?? 15
         return CGFloat(max(5, min(20, v)))
     }
 
