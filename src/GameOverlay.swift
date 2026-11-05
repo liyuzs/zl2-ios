@@ -1,3 +1,18 @@
+// ⚠️ 为什么 iOS 版里这个文件没有入口（2026-11 查明）
+//
+// 核心的 launchJVM（core/JavaLauncher.m）启动后只调 UIKit_returnToSplitView()，
+// 不创建任何 UIViewController。带完整游戏菜单的 JavaGUIViewController 只被 CORE 自带的
+// LauncherNavigationController 使用；而本 App 走 SwiftUI 直接调 launchJVM，绕过了它。
+//
+// 所以游戏画面起来后，SwiftUI 层没有可靠的"游戏视图"可以挂覆盖层：
+//   · 挂 LaunchScreen 的 overlay → 启动页会一直盖住游戏（试过，已回滚）
+//   · 挂 RootView 的 overlay     → 层级在 NavigationStack 外，盖不到游戏画面
+//
+// 要真正启用，必须改核心：在 launchJVM 之后由 ObjC 侧把悬浮层加到游戏 VC 的 view 上。
+// 那是 core/ 的改动，不在纯 SwiftUI 修复的范围内。
+//
+// 结论：本文件是可用的备用实现，核心改造前不挂载。
+
 // ZL2-iOS · 游戏内覆盖层（性能悬浮球 / 帧率 / 内存 / 菜单入口）
 //
 // 逐项对齐 ZL2 安卓源码：
