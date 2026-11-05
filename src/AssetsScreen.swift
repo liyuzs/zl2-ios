@@ -101,7 +101,9 @@ struct AssetsScreen: View {
     // 轻提示（复制链接等）
     @State private var toast: String?
 
-    private let platforms = ["未选择", "Windows", "Linux", "macOS", "Android", "iOS"]
+    /// Modrinth 没有"操作系统"这个维度，iOS 也不需要选。
+    /// 真正有用的区分是"客户端 mod / 服务端 mod"。
+    private let platforms = ["不限", "仅客户端可用"]
     /// 版本列表：已安装的版本优先，再补几个常用的
     private var mcVersions: [String] {
         var list = ["未选择"]
@@ -282,7 +284,7 @@ struct AssetsScreen: View {
                     ZLChip(title: kind.sources[i], selected: source == i) { source = i }
                 }
                 Spacer(minLength: 6)
-                filterMenu(title: "平台", options: platforms, selection: $platform)
+                filterMenu(title: "用途", options: platforms, selection: $platform)
                 filterMenu(title: "版本", options: mcVersions, selection: $gameVersion)
                 filterMenu(title: "加载器", options: loaders, selection: $modLoader)
                 filterMenu(title: "排序", options: kind.sorts, selection: $sort)
@@ -335,7 +337,7 @@ struct AssetsScreen: View {
         loadError = nil
         do {
             let gv = safeVersion(gameVersion)
-            let ld = modLoader > 0 ? loaders[modLoader] : nil
+            let ld = safeLoader(modLoader)
             let cats = category > 0 && category - 1 < kind.categories.count ? [kind.categories[category - 1]] : []
             let r = try await ModrinthAPI.shared.search(
                 query: query,
@@ -343,6 +345,7 @@ struct AssetsScreen: View {
                 gameVersion: gv,
                 loader: ld,
                 categories: cats,
+                clientSideOnly: platform == 1,
                 sortIndex: sortIndex,
                 limit: 20)
             hits = r.hits

@@ -97,6 +97,7 @@ actor ModrinthAPI {
                 gameVersion: String? = nil,
                 loader: String? = nil,
                 categories: [String] = [],
+                clientSideOnly: Bool = false,
                 sortIndex: String = "relevance",
                 offset: Int = 0,
                 limit: Int = 20) async throws -> ModrinthSearchResult {
@@ -110,6 +111,10 @@ actor ModrinthAPI {
         }
         if !categories.isEmpty {
             facets.append(categories.map { "categories:\($0)" })
+        }
+        // 只要客户端能用的模组（服务端专属的装了没用）
+        if clientSideOnly {
+            facets.append(["client_side:required", "client_side:optional"])
         }
 
         var comps = URLComponents(string: "\(base)/search")!
