@@ -94,7 +94,7 @@ struct HomeScreen: View {
         }
         .fullScreenCover(isPresented: $launching) {
             LaunchScreen(versionName: selectedVersion,
-                         versionID: "1.20.1",
+                         versionID: selectedVersion,
                          isPresented: Binding(get: { launching }, set: { if !$0 { launching = false } }))
         }
         .sheet(isPresented: $showTaskMenu) {
@@ -292,10 +292,14 @@ struct HomeScreen: View {
             }
 
             // 启动
-            ZLGoldButton(title: "启动游戏", icon: "play.fill") {
+            // 没装版本时禁用，避免点了必然失败
+            ZLGoldButton(title: hasInstalledVersion ? "启动游戏" : "先去下载版本",
+                         icon: hasInstalledVersion ? "play.fill" : "arrow.down.circle",
+                         enabled: hasInstalledVersion) {
+                guard hasInstalledVersion else { return }
                 launching = true
             }
-            .breathingGlow(ZLTheme.primary)
+            .breathingGlow(hasInstalledVersion ? ZLTheme.primary : ZLTheme.textSecond)
         }
         .padding(18)
         .background(ZLTheme.surface)
@@ -330,6 +334,11 @@ struct HomeScreen: View {
     }
 
     /// 从已安装版本里选一个作为首页显示/启动用的版本
+    /// 是否真的装了版本（首页显示名不是占位文案）
+    private var hasInstalledVersion: Bool {
+        !selectedVersion.isEmpty && !selectedVersion.hasPrefix("还没有")
+    }
+
     private func refreshInstalledVersion() {
         let list = VersionRepository.shared.listVersions()
         guard !list.isEmpty else {

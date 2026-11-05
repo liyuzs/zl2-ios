@@ -77,8 +77,13 @@ struct CraftLauncherShortcuts: AppShortcutsProvider {
 enum ZLSharedStore {
     static let suiteName = "group.com.liyuzs.craftlauncher"
 
+    /// 优先用 App Group（有付费开发者账号时），否则回退到 App 自己的存储。
+    /// 免费签名不支持 App Groups，回退后数据只在 App 内可见（小组件读不到，但不会崩）。
     private static var defaults: UserDefaults? {
-        UserDefaults(suiteName: suiteName)
+        if let shared = UserDefaults(suiteName: suiteName) {
+            return shared
+        }
+        return UserDefaults.standard
     }
 
     /// 同步当前状态给小组件
@@ -89,6 +94,7 @@ enum ZLSharedStore {
         if let t = lastPlayed {
             d.set(t, forKey: "widget.lastPlayed")
         }
+        // 有装小组件时刷新；没有时会静默跳过，不会崩
         WidgetCenter.shared.reloadAllTimelines()
     }
 
