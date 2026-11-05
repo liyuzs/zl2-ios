@@ -287,16 +287,16 @@ struct VersionListScreen: View {
 
             Button {
                 ZLHaptic.light()
-                if let i = pinned.firstIndex(of: version.id) {
+                if let i = pinned.firstIndex(of: v.id) {
                     pinned.remove(at: i)
                 } else {
-                    pinned.insert(version.id, at: 0)
+                    pinned.insert(v.id, at: 0)
                 }
                 // 持久化
                 UserDefaults.standard.set(pinned, forKey: "zl.pinned.versions")
                 reload()
             } label: {
-                Image(systemName: pinned.contains(version.id) ? "pin.fill" : "pin")
+                Image(systemName: pinned.contains(v.id) ? "pin.fill" : "pin")
                     .font(.system(size: 15))
                     .foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 38, height: 34)

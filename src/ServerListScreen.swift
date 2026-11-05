@@ -161,8 +161,11 @@ struct ServerListScreen: View {
                 ServerEditSheet(server: e) { updated in
                     if let i = servers.firstIndex(where: { $0.id == updated.id }) {
                         servers[i] = updated
-                        save()
+                    } else {
+                        // 新服务器：原来只有 if 分支，导致新加的永远存不进去
+                        servers.append(updated)
                     }
+                    save()
                     showEdit = false
                 }
             }

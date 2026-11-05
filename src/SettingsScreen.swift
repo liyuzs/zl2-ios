@@ -958,7 +958,15 @@ struct SettingsScreen: View {
     private func textField(_ def: ZLSettingDef, placeholder: String, numeric: Bool) -> some View {
         TextField(placeholder, text: Binding(
             get: { store.string(def) },
-            set: { store.set(def, $0) }
+            set: { v in
+                if numeric {
+                    // 数字项必须存成 Int，否则 CoreBridge 用 as? Int 读不到（分辨率就是这么失效的）
+                    let digits = v.filter { $0.isNumber || $0 == "-" }
+                    store.set(def, Int(digits) ?? 0)
+                } else {
+                    store.set(def, v)
+                }
+            }
         ))
         .textFieldStyle(.plain)
         .font(.system(size: 12, design: numeric ? .monospaced : .default))

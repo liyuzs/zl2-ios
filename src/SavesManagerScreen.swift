@@ -547,6 +547,57 @@ struct SavesManagerScreen: View {
             withAnimation(.easeOut(duration: 0.2)) { toast = nil }
         }
     }
+
+    // MARK: 备份恢复
+
+    /// 找一个存档最新的备份目录（命名规则：<原名>-备份-<yyyyMMdd-HHmmss>）
+    private func latestBackup(for w: ZLWorldInfo) -> URL? {
+        let fm = FileManager.default
+        guard let all = try? fm.contentsOfDirectory(at: savesDir,
+                                                    includingPropertiesForKeys: [.contentModificationDateKey]) else {
+            return nil
+        }
+        let prefix = "\(w.folderName)-备份-"
+        let matches = all.filter { $0.lastPathComponent.hasPrefix(prefix) }
+        return matches.max { a, b in
+            let da = (try? a.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            let db = (try? b.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            return da < db
+        }
+    }
+
+    /// 从备份目录名里抽出时间，用于菜单文字
+    private func backupTimeText(_ url: URL) -> String {
+        let name = url.lastPathComponent
+        guard let r = name.range(of: "-备份-") else { return "备份" }
+        return String(name[r.upperBound...])
+    }
+
+    /// 把备份内容覆盖回原存档目录
+    private func restore(_ w: ZLWorldInfo, from backupURL: URL) {
+        let fm = FileManager.default
+        let park = savesDir.appendingPathComponent("\(w.folderName)-恢复前-\(Int(Date().timeIntervalSince1970))")
+        var parked = false
+        do {
+            // 先把当前存档挪到一边，避免覆盖失败丢数据
+            if fm.fileExists(atPath: w.path.path) {
+                try fm.moveItem(at: w.path, to: park)
+                parked = true
+            }
+            // 备份复制回来
+            try fm.copyItem(at: backupURL, to: w.path)
+            try? fm.removeItem(at: park)
+            ZLInteraction.haptic(.medium)
+            showToast("已恢复到 \(backupTimeText(backupURL))")
+        } catch {
+            // 失败必须把原存档挪回去，否则存档就从列表里消失了
+            if parked {
+                try? fm.moveItem(at: park, to: w.path)
+            }
+            showToast("恢复失败：\(ZLFriendlyError.text(error))")
+        }
+        reload()
+    }
 }
 
 // MARK: - 世界详情
@@ -799,49 +850,4 @@ extension Array {
         indices.contains(index) ? self[index] : nil
     }
 
-    // MARK: 备份恢复
-
-    /// 找一个存档最新的备份目录（命名规则：<原名>-备份-<yyyyMMdd-HHmmss>）
-    private func latestBackup(for w: ZLWorldInfo) -> URL? {
-        let fm = FileManager.default
-        guard let all = try? fm.contentsOfDirectory(at: savesDir,
-                                                    includingPropertiesForKeys: [.contentModificationDateKey]) else {
-            return nil
-        }
-        let prefix = "\(w.folderName)-备份-"
-        let matches = all.filter { $0.lastPathComponent.hasPrefix(prefix) }
-        return matches.max { a, b in
-            let da = (try? a.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-            let db = (try? b.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-            return da < db
-        }
-    }
-
-    /// 从备份目录名里抽出时间，用于菜单文字
-    private func backupTimeText(_ url: URL) -> String {
-        let name = url.lastPathComponent
-        guard let r = name.range(of: "-备份-") else { return "备份" }
-        return String(name[r.upperBound...])
-    }
-
-    /// 把备份内容覆盖回原存档目录
-    private func restore(_ w: ZLWorldInfo, from backupURL: URL) {
-        let fm = FileManager.default
-        do {
-            // 先把当前存档挪到一边，避免覆盖失败丢数据
-            let park = savesDir.appendingPathComponent("\(w.folderName)-恢复前-\(Int(Date().timeIntervalSince1970))")
-            if fm.fileExists(atPath: w.path.path) {
-                try fm.moveItem(at: w.path, to: park)
-            }
-            // 备份复制回来
-            try fm.copyItem(at: backupURL, to: w.path)
-            // 成功后再删掉临时目录
-            try? fm.removeItem(at: park)
-            ZLInteraction.haptic(.medium)
-            showToast("已恢复到 \(backupTimeText(backupURL))")
-        } catch {
-            showToast("恢复失败：\(ZLFriendlyError.text(error))")
-        }
-        reload()
-    }
 }
