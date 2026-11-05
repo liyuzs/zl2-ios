@@ -308,7 +308,7 @@ struct GameDirsScreen: View {
 struct CleanFilesScreen: View {
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
-    @State private var phase = 0   // 0 未开始 1 扫描中 2 完成
+    @State private var phase = 0   // 0 未开始 1 扫描中 2 预览(待确认) 3 完成
     @State private var removed = 0
     @State private var freed = "0 MB"
 
@@ -335,6 +335,20 @@ struct CleanFilesScreen: View {
                     }
 
                     if phase == 2 {
+                        // 预览：告诉用户会删多少，等他确认
+                        ZLCard {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("扫描结果").font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(ZLTheme.textPrimary)
+                                Text("可清理 \(removed) 个文件，可释放 \(freed)")
+                                    .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+                                Text("确认无误后再点下面的按钮，删除不可撤销")
+                                    .font(.system(size: 11)).foregroundStyle(ZLTheme.warning)
+                            }
+                        }
+                    }
+
+                    if phase == 3 {
                         ZLCard {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("清理完成").font(.system(size: 15, weight: .semibold))
@@ -345,14 +359,27 @@ struct CleanFilesScreen: View {
                         }
                     }
 
-                    ZLGoldButton(title: phase == 1 ? "扫描中…" : (phase == 2 ? "再次清理" : "开始扫描并清理"),
-                                 icon: phase == 1 ? "clock" : "trash",
+                    // 三段式：扫描（预览）→ 确认删除 → 完成
+                    ZLGoldButton(title: phase == 1 ? "扫描中…" : (phase == 0 ? "开始扫描" : (phase == 2 ? "确认清理" : "再次扫描")),
+                                 icon: phase == 1 ? "clock" : (phase == 2 ? "trash" : "magnifyingglass"),
                                  enabled: phase != 1) {
                         Task {
-                            phase = 1
                             let repo = VersionRepository.shared
+                            if phase == 2 {
+                                // 用户看过预览后确认，才真正删除
+                                phase = 1
+                                let r = await Task.detached(priority: .userInitiated) {
+                                    repo.cleanUnusedFiles(dryRun: false)
+                                }.value
+                                removed = r.removedFiles
+                                freed = ByteCountFormatter.string(fromByteCount: r.freedBytes, countStyle: .file)
+                                phase = 3
+                                return
+                            }
+                            // 先干跑，只统计不删
+                            phase = 1
                             let r = await Task.detached(priority: .userInitiated) {
-                                repo.cleanUnusedFiles(dryRun: false)
+                                repo.cleanUnusedFiles(dryRun: true)
                             }.value
                             removed = r.removedFiles
                             freed = ByteCountFormatter.string(fromByteCount: r.freedBytes, countStyle: .file)
