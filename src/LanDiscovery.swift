@@ -40,6 +40,9 @@ enum LanDiscoveryError: LocalizedError {
 /// 监听 Minecraft 局域网广播
 @MainActor
 final class LanDiscovery: ObservableObject {
+    /// 线程安全的运行标记：后台接收循环读这个，不要用 DispatchQueue.main.sync（会死锁）
+    private let runningFlag = ZLAtomicFlag()
+
     @Published private(set) var servers: [LanServer] = []
     @Published private(set) var running = false
     @Published private(set) var lastError: String?
@@ -54,6 +57,7 @@ final class LanDiscovery: ObservableObject {
     private let port: UInt16 = 4445
 
     func start() {
+        runningFlag.value = true
         guard !running else { return }
         lastError = nil
 
@@ -120,6 +124,7 @@ final class LanDiscovery: ObservableObject {
     }
 
     func stop() {
+        runningFlag.value = false
         running = false
         if fd >= 0 {
             close(fd)
@@ -146,10 +151,7 @@ final class LanDiscovery: ObservableObject {
             if n <= 0 {
                 if errno == EAGAIN || errno == EWOULDBLOCK {
                     // 每秒醒一次，检查是否还需要继续
-                    let stillRunning: Bool = DispatchQueue.main.sync { [weak self] in
-                        self?.running ?? false
-                    }
-                    if !stillRunning { break }
+                    if !runningFlag.value { break }
                     continue
                 }
                 break
@@ -185,5 +187,20 @@ final class LanDiscovery: ObservableObject {
         guard let s = text.range(of: "[\(tag)]"),
               let e = text.range(of: "[/\(tag)]") else { return nil }
         return String(text[s.upperBound..<e.lowerBound])
+    }
+}
+
+
+// MARK: - 线程安全的布尔标记
+
+/// 用锁保护的布尔值，任何线程都能安全读写。
+/// 用它替代 DispatchQueue.main.sync，避免后台线程把主线程卡死。
+final class ZLAtomicFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored = false
+
+    var value: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return stored }
+        set { lock.lock(); defer { lock.unlock() }; stored = newValue }
     }
 }
