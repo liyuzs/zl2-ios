@@ -668,17 +668,21 @@ public struct MojangAPI: @unchecked Sendable {
     public static var preferredManifestURL: URL {
         let raw = (getPrefObject("gameDownloadSource") as? String) ?? ""
         let lower = raw.lowercased()
-        // 只有明确选了镜像才走 BMCLAPI；默认仍是官方
-        if lower.contains("bmcl") || lower.contains("mirror") || lower.contains("镜像") {
-            return mirrorManifestURL
+        // OFFICIAL 才强制走官方；AUTO（默认）和 MIRROR 都走国内镜像
+        if lower.contains("official") || lower.contains("官方") {
+            return defaultManifestURL
         }
-        return defaultManifestURL
+        if raw.isEmpty { return defaultManifestURL }
+        return mirrorManifestURL
     }
 
     /// 是否启用了国内镜像
     public static var mirrorEnabled: Bool {
         let raw = ((getPrefObject("gameDownloadSource") as? String) ?? "").lowercased()
-        return raw.contains("bmcl") || raw.contains("mirror") || raw.contains("镜像")
+        // OFFICIAL 走官方；AUTO（默认）和 MIRROR 都走镜像
+        if raw.contains("official") || raw.contains("官方") { return false }
+        if raw.isEmpty { return false }
+        return true
     }
 
     /// 把 Mojang 官方下载地址改写成 BMCLAPI 镜像地址。
