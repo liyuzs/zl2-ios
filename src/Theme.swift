@@ -78,6 +78,9 @@ extension Color {
 struct ZLCard<Content: View>: View {
     var padding: CGFloat = 16
     var alt: Bool = false
+    /// 加一层缓慢扫过的光泽（玻璃质感）。默认关，只在视觉重点卡片上开，
+    /// 否则同屏几十个卡片一起扫会掉帧。
+    var sheen: Bool = false
     @ViewBuilder var content: () -> Content
 
     var body: some View {
@@ -87,7 +90,8 @@ struct ZLCard<Content: View>: View {
             .zlGlass(cornerRadius: ZLTheme.cardRadius,
                      tint: ZLTheme.primary,
                      tintOpacity: alt ? 0.10 : 0.05,
-                     shadow: true)
+                     shadow: true,
+                     sheen: sheen)
     }
 }
 

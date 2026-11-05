@@ -6,6 +6,8 @@
 // strokeBorder / clipShape / shadow）；没有用 MeshGradient、也没有用 iOS 26 的
 // .glassEffect —— 本机没有 Xcode，宁可少一个效果，也不冒 CI 编译失败的风险。
 import SwiftUI
+import Combine
+import CoreMotion
 
 // MARK: - 动态背景（光斑缓慢漂移）
 
@@ -167,6 +169,9 @@ struct ZLGlassBackground: View {
             // 6. 可选的慢速扫光（默认关，开了才跑动画）
             if sheen {
                 ZLGlassSheen()
+                // 6.5 随设备倾斜移动的高光 —— 只有开了 sheen 的重点卡片才挂，
+                // 否则同屏几十个卡片一起听陀螺仪，白耗电。
+                ZLTiltHighlight()
             }
         }
         .clipShape(shape)
@@ -281,5 +286,68 @@ struct ZLGlassCard<Content: View>: View {
                      tintOpacity: tintOpacity,
                      shadow: true,
                      sheen: sheen)
+    }
+}
+
+// MARK: - 设备倾斜视差（iOS 独有）
+
+/// 监听重力方向，让玻璃上的光斑随手机倾斜轻微移动。
+/// 只在有视图订阅时才启动，避免后台耗电。
+@MainActor
+final class ZLGravityObserver: ObservableObject {
+    static let shared = ZLGravityObserver()
+
+    /// 归一化到 -1...1 的倾斜量
+    @Published private(set) var tilt: CGSize = .zero
+
+    private let motion = CMMotionManager()
+    private var subscribers = 0
+
+    private init() {}
+
+    func start() {
+        subscribers += 1
+        guard subscribers == 1, motion.isDeviceMotionAvailable else { return }
+        motion.deviceMotionUpdateInterval = 1.0 / 15.0   // 15Hz 足够，省电
+        motion.startDeviceMotionUpdates(to: .main) { [weak self] dm, _ in
+            guard let self, let g = dm?.gravity else { return }
+            // 竖屏握持时 gravity.y ≈ -1，横屏时 gravity.x ≈ ±1
+            // 取 x/y 分量当作光斑偏移方向，限制在 ±1
+            self.tilt = CGSize(width: max(-1, min(1, g.x * 1.4)),
+                               height: max(-1, min(1, g.y * 1.4)))
+        }
+    }
+
+    func stop() {
+        subscribers = max(0, subscribers - 1)
+        guard subscribers == 0, motion.isDeviceMotionActive else { return }
+        motion.stopDeviceMotionUpdates()
+        tilt = .zero
+    }
+}
+
+/// 一层随倾斜移动的高光，叠在毛玻璃上。减弱动态效果时自动静止。
+struct ZLTiltHighlight: View {
+    var intensity: Double = 0.10
+    var radius: CGFloat = 140
+
+    @ObservedObject private var gravity = ZLGravityObserver.shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        GeometryReader { geo in
+            let t = reduceMotion ? CGSize.zero : gravity.tilt
+            RadialGradient(
+                colors: [Color.white.opacity(intensity), Color.white.opacity(0)],
+                center: UnitPoint(
+                    x: 0.5 + t.width * 0.35,
+                    y: 0.5 + t.height * 0.35),
+                startRadius: 0,
+                endRadius: radius)
+                .animation(.easeOut(duration: 0.25), value: t)
+        }
+        .allowsHitTesting(false)
+        .onAppear { gravity.start() }
+        .onDisappear { gravity.stop() }
     }
 }
