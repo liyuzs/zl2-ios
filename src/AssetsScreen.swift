@@ -616,10 +616,17 @@ enum SampleData {
                 }
                 .sorted { $0.title < $1.title }
         case .favorite:
-            return [
-                .init(title: "Waystones", subtitle: "已收藏 · 模组", author: "BlayTheNinth", downloads: "4.2亿", tags: ["收藏"], version: "14.0.2"),
-                .init(title: "BSL Shaders", subtitle: "已收藏 · 光影", author: "capttatsu", downloads: "1.2亿", tags: ["收藏"], version: "v10.11"),
-            ]
+            // 收藏从本地存储读，没有就空着（不再显示假条目）
+            let raw = UserDefaults.standard.string(forKey: "zl.assets.favorites") ?? ""
+            let ids = raw.split(separator: "\n").map(String.init).filter { !$0.isEmpty }
+            return ids.map { id in
+                AssetItem(title: id,
+                          subtitle: "已收藏",
+                          author: "—",
+                          downloads: "—",
+                          tags: ["收藏"],
+                          version: "—")
+            }
         }
     }
 }

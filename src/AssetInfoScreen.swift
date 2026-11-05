@@ -23,6 +23,24 @@ struct AssetInfoScreen: View {
     @State private var installedVersion: String?
     @State private var noteText: String?
 
+    @State private var isFavorite = false
+
+    /// 收藏 / 取消收藏（存在 UserDefaults，收藏页会读）
+    private func toggleFavorite() {
+        var ids = Set((UserDefaults.standard.string(forKey: "zl.assets.favorites") ?? "")
+            .split(separator: "\n").map(String.init))
+        if ids.contains(hit.id) {
+            ids.remove(hit.id)
+            isFavorite = false
+            ZLHaptic.light()
+        } else {
+            ids.insert(hit.id)
+            isFavorite = true
+            ZLHaptic.success()
+        }
+        UserDefaults.standard.set(ids.sorted().joined(separator: "\n"), forKey: "zl.assets.favorites")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             ZLTopBar(title: "资源详情", onBack: onBack, onHome: onHome)
@@ -37,6 +55,12 @@ struct AssetInfoScreen: View {
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
         .task { await load() }
+        .onAppear {
+            // 进来时同步真实收藏状态，否则按钮永远显示未收藏
+            let ids = Set((UserDefaults.standard.string(forKey: "zl.assets.favorites") ?? "")
+                .split(separator: "\n").map(String.init))
+            isFavorite = ids.contains(hit.id)
+        }
     }
 
     // MARK: - 主体
@@ -342,6 +366,17 @@ struct AssetInfoScreen: View {
                     ZLTag(text: "已下载", color: ZLTheme.success)
                 }
                 Spacer(minLength: 6)
+                // 收藏按钮（本地存 project id）
+                Button {
+                    toggleFavorite()
+                } label: {
+                    Image(systemName: isFavorite ? "heart.fill" : "heart")
+                        .font(.system(size: 13))
+                        .foregroundStyle(isFavorite ? ZLTheme.danger : ZLTheme.textSecond)
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(.plain)
+
                 if busy {
                     ProgressView().tint(ZLTheme.primary).scaleEffect(0.8)
                 } else {
