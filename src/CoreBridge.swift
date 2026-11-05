@@ -102,12 +102,21 @@ enum CoreBridge {
         // 配置 Java 运行时映射：
         // "0" = 当前 profile 的默认选择；版本号 → "internal" 表示用 bundle 内 java_runtimes/java-<ver>-openjdk
         let homes: [String: Any] = [
-            "0": ["1_17_newer": "17", "1_16_5_older": "8", "execute_jar": "17"],
-            "17": "internal",
+            "0": ["1_17_newer": "21", "1_16_5_older": "8", "execute_jar": "17"],
             "8": "internal",
+            "17": "internal",
+            "21": "internal",
+            "25": "internal",
         ]
         // 只在没有配置时写默认（避免抹掉用户在 JRE 管理界面里的选择）
-        if getPrefObject("java.java_homes") == nil {
+        if let existing = getPrefObject("java.java_homes") as? [String: Any] {
+            // 补齐缺失的版本（老配置里可能只有 8/17）
+            var merged = existing
+            for (k, v) in homes where merged[k] == nil {
+                merged[k] = v
+            }
+            setPrefObject("java.java_homes", merged)
+        } else {
             setPrefObject("java.java_homes", homes)
         }
         #endif

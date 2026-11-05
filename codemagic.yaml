@@ -121,8 +121,12 @@ workflows:
           done
           cp -R core/build/*.dylib "$APP/Frameworks/" 2>/dev/null || true
 
-          # JRE 17 / 21 / 25（按 MC 版本自动选；MC 26+ 需要 25）
-          for JV in 17 21 25; do
+          # JRE 8 / 17 / 21 / 25（按 MC 版本自动选）
+          # 8  → MC 1.12 及以下
+          # 17 → MC 1.13 ~ 1.20.4
+          # 21 → MC 1.20.5 ~ 1.21.x
+          # 25 → MC 22+
+          for JV in 8 17 21 25; do
             mkdir -p "$APP/java_runtimes/java-${JV}-openjdk"
             curl -L --fail --retry 3 -o "/tmp/jre${JV}.zip" \
               "https://assets.angelauramc.dev/openjdk/ios-arm64/jre${JV}-ios-aarch64.zip"
@@ -132,7 +136,9 @@ workflows:
             echo "JRE $JV done"
           done
 
-          ls "$APP/java_runtimes/java-17-openjdk/lib/libjli.dylib"
+          for JV in 8 17 21 25; do
+            ls "$APP/java_runtimes/java-${JV}-openjdk/lib/libjli.dylib" || echo "警告：JRE $JV 缺失"
+          done
           du -sh "$APP"
 
       - name: 生成 IPA
