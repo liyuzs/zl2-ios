@@ -48,6 +48,9 @@ enum AppRoute: Hashable {
 struct RootView: View {
     @StateObject private var themeManager = ThemeManager.shared
     @State private var path: [AppRoute] = []
+    // 启动时静默检查更新
+    @State private var updateInfo: ZLUpdateInfo?
+    @State private var showUpdateTip = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -60,6 +63,52 @@ struct RootView: View {
             )
             .zlGuide(.home)
             .navigationBarHidden(true)
+            .overlay(alignment: .top) {
+                if showUpdateTip, let info = updateInfo {
+                    Button {
+                        ZLHaptic.light()
+                        if let u = URL(string: info.releaseURL) { UIApplication.shared.open(u) }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.down.circle.fill")
+                                .font(.system(size: 14))
+                            Text("有新版本 v\(info.version)")
+                                .font(.system(size: 12, weight: .medium))
+                            Spacer()
+                            Text("查看").font(.system(size: 11))
+                            Button {
+                                ZLHaptic.light()
+                                withAnimation(ZLSpring.page) { showUpdateTip = false }
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .padding(4)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .background(
+                            Capsule().fill(ZLTheme.primaryDeep)
+                                .shadow(color: .black.opacity(0.2), radius: 10, y: 4)
+                        )
+                        .padding(.top, 8)
+                        .padding(.horizontal, 16)
+                    }
+                    .buttonStyle(ZLQPressStyle(scale: 0.96))
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .task {
+                // 启动后静默检查一次（不打扰，有新版才提示）
+                let checker = ZLUpdateChecker()
+                await checker.check()
+                if case .available(let info) = checker.state {
+                    updateInfo = info
+                    withAnimation(ZLSpring.bouncy.delay(0.4)) { showUpdateTip = true }
+                }
+            }
             .navigationDestination(for: AppRoute.self) { route in
                 switch route {
                 case .multiplayer:
@@ -505,11 +554,14 @@ struct AboutScreen: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
+                // 版本与更新（含反馈入口）
+                ZLUpdateCard()
+
                 ZLCard {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("关于").font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(ZLTheme.textPrimary)
-                        row("应用", "ZL2-iOS（非官方复刻）")
+                        row("应用", "CraftLauncher（非官方 iOS 移植版）")
                         row("界面", "SwiftUI 复刻 Zalith Launcher 2")
                         row("启动核心", CoreBridge.isCoreLinked ? "Amethyst 已链接" : "未接入")
                     }
