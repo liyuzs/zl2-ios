@@ -469,6 +469,7 @@ struct MultiplayerRoomScreen: View {
     @State private var code = ""
     @State private var joinMessage: String?
     @State private var roomCode = "—"
+    @State private var hostMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {

@@ -124,6 +124,8 @@ struct ModsScreen: View {
 struct ModItem: Identifiable {
     let id = UUID()
     var name: String
+    /// Modrinth/CurseForge 的项目 ID，用于依赖比对和更新检测（可为空）
+    var modId: String? = nil
     var version: String
     var loader: String
     var dependencies: [String]
