@@ -723,7 +723,7 @@ struct SettingsScreen: View {
 
     private func picker(_ key: String, _ title: String, _ summary: String?,
                         options: [ZLOption]) -> ZLSettingRow {
-        ZLSettingRow(key: key, title: title, summary: summary, kind: .picker(options))
+        ZLSettingRow(key: key, title: markUnsupported(key, title), summary: summary, kind: .picker(options))
     }
 
     private func text(_ key: String, _ title: String, _ summary: String?,
