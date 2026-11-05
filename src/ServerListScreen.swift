@@ -497,7 +497,9 @@ enum MinecraftPing {
                 }
             }
             group.addTask {
-                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                // timeout 传负数会让 UInt64 转换崩掉，夹一下
+                let safe = max(0.5, timeout)
+                try? await Task.sleep(nanoseconds: UInt64(safe * 1_000_000_000))
                 return nil
             }
             let first = await group.next() ?? nil
