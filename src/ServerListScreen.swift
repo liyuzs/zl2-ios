@@ -486,25 +486,30 @@ enum MinecraftPing {
         let hostname = String(first)
         let port = parts.count > 1 ? (UInt16(parts[1]) ?? 25565) : 25565
 
-        // 原来 syncPing 的 timeout 参数根本没用，CFStream 不设读超时会永久阻塞，
-        // 那一行永远是骨架条，还每次泄漏一个线程。这里用 race 强制超时。
-        return await withTaskGroup(of: ZLServerPingResult?.self) { group in
-            group.addTask {
-                await withCheckedContinuation { cont in
-                    DispatchQueue.global().async {
-                        cont.resume(returning: syncPing(host: hostname, port: port, timeout: timeout))
-                    }
-                }
+        // ⚠️ 用 withTaskGroup 做 race 是错的：body 返回后会隐式等待所有子任务，
+        // cancelAll() 只是置取消标记，而 CFStream 的 read 根本不可取消 —— ping 依然永不返回。
+        // 正确做法：continuation + 两个 GCD 任务抢先 resume（加锁保证只 resume 一次）。
+        return await withCheckedContinuation { (cont: CheckedContinuation<ZLServerPingResult?, Never>) in
+            let lock = NSLock()
+            var finished = false
+
+            func finish(_ v: ZLServerPingResult?) {
+                lock.lock()
+                if finished { lock.unlock(); return }
+                finished = true
+                lock.unlock()
+                cont.resume(returning: v)   // 只有第一个到的人能 resume
             }
-            group.addTask {
-                // timeout 传负数会让 UInt64 转换崩掉，夹一下
-                let safe = max(0.5, timeout)
-                try? await Task.sleep(nanoseconds: UInt64(safe * 1_000_000_000))
-                return nil
+
+            // 真正的网络探测（可能永远卡住，但不影响 UI）
+            DispatchQueue.global(qos: .utility).async {
+                finish(syncPing(host: hostname, port: port, timeout: timeout))
             }
-            let first = await group.next() ?? nil
-            group.cancelAll()
-            return first
+            // 到点强制返回 nil
+            let safe = max(0.5, timeout)
+            DispatchQueue.global().asyncAfter(deadline: .now() + safe) {
+                finish(nil)
+            }
         }
     }
 

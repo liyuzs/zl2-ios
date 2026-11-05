@@ -231,9 +231,11 @@ actor VersionInstaller {
                             if idx < total {
                                 let (hash, _) = pending[idx]
                                 group.addTask {
-                                if self.shouldCancel?() == true { return false }
-                                return await Self.downloadAsset(hash: hash, root: objRoot, session: self.session, fm: self.fm)
-                            }
+                                    // 用捕获的局部变量，不能碰 actor 的 self（会编译不过）
+                                    if cancel?.() == true { return false }
+                                    return await Self.downloadAsset(hash: hash, root: objRoot,
+                                                                    session: sess, fm: fileMgr)
+                                }
                                 idx += 1
                             }
                             if done % 20 == 0 || done == total {
