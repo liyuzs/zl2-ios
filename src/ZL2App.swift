@@ -275,6 +275,26 @@ struct RootView: View {
                                             await ZLTaskCenter.shared.update(installTask,
                                                 detail: "已安装 \(result.versionID)（\(result.libraryCount) 个库）",
                                                 state: .done)
+
+                                            // 用户勾了 Fabric API 就得真装上（原来这个选择完全没用）
+                                            if !sel.apiVersion.isEmpty {
+                                                let apiTask = await ZLTaskCenter.shared.add("Fabric API \(sel.apiVersion)")
+                                                do {
+                                                    try await ZLFabricAPIInstaller.install(
+                                                        gameVersion: gv,
+                                                        apiVersion: sel.apiVersion
+                                                    ) { msg, p in
+                                                        Task { @MainActor in
+                                                            ZLTaskCenter.shared.update(apiTask, progress: p, detail: msg)
+                                                        }
+                                                    }
+                                                    await ZLTaskCenter.shared.update(apiTask, detail: "Fabric API 已装到 mods/", state: .done)
+                                                    ZLTaskCenter.shared.finish(apiTask)
+                                                } catch {
+                                                    await ZLTaskCenter.shared.update(apiTask,
+                                                        detail: ZLFriendlyError.text(error), state: .failed)
+                                                }
+                                            }
                                         } catch {
                                             await ZLTaskCenter.shared.update(installTask,
                                                 detail: ZLFriendlyError.text(error), state: .failed)

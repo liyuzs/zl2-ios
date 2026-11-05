@@ -330,3 +330,50 @@ enum ZLModUpdater {
         }
     }
 }
+
+
+// MARK: - Fabric API 安装（用户勾了就真装）
+
+enum ZLFabricAPIInstaller {
+    /// 把指定版本的 Fabric API 下载到当前游戏目录的 mods/
+    static func install(gameVersion: String,
+                        apiVersion: String,
+                        onProgress: @escaping (String, Double) -> Void) async throws {
+        onProgress("查找 Fabric API…", 0.1)
+
+        // 1) 在 Modrinth 上找 fabric-api 这个项目
+        let search = try await ModrinthAPI.shared.search(query: "fabric-api", type: .mod, limit: 5)
+        guard let project = search.hits.first(where: { $0.slug == "fabric-api" })
+                ?? search.hits.first else {
+            throw ModrinthError.invalidURL
+        }
+
+        // 2) 拉它适配当前游戏版本的发行
+        onProgress("匹配版本…", 0.3)
+        let versions = try await ModrinthAPI.shared.versions(
+            projectID: project.id,
+            gameVersion: gameVersion,
+            loader: "fabric"
+        )
+        let target = versions.first(where: { $0.versionNumber == apiVersion }) ?? versions.first
+        guard let v = target,
+              let file = v.files.first(where: \.primary) ?? v.files.first else {
+            throw ModrinthError.invalidURL
+        }
+
+        // 3) 下载到 mods/
+        onProgress("下载 \(file.filename)…", 0.6)
+        let modsDir = VersionRepository.shared.mcRoot.appendingPathComponent("mods", isDirectory: true)
+        try FileManager.default.createDirectory(at: modsDir, withIntermediateDirectories: true)
+        let dst = modsDir.appendingPathComponent(file.filename)
+
+        var req = URLRequest(url: file.url, timeoutInterval: 60)
+        req.setValue("ZL2-iOS/1.0", forHTTPHeaderField: "User-Agent")
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw ModrinthError.invalidURL
+        }
+        try data.write(to: dst)
+        onProgress("已保存到 mods/\(file.filename)", 1.0)
+    }
+}
