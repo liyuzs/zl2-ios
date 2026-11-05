@@ -374,7 +374,7 @@ struct AssetsScreen: View {
                             .foregroundStyle(ZLTheme.textSecond.opacity(0.8))
                     }
                     ForEach(Array(hits.enumerated()), id: \.element.id) { idx, h in
-                        hitRow(h).staggerIn(idx)
+                        hitRow(h).popIn(delay: Double(min(idx, 10)) * 0.035)
                     }
                 }
             }

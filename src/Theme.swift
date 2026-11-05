@@ -111,7 +111,7 @@ struct ZLGoldButton: View {
             )
             .clipShape(Capsule())
         }
-        .buttonStyle(ZLPressStyle(scale: 0.975, haptic: true))
+        .buttonStyle(ZLQPressStyle(scale: 0.955, haptic: true))
         .disabled(!enabled)
     }
 }

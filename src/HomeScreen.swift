@@ -69,6 +69,7 @@ struct HomeScreen: View {
                 Spacer()
                 panel
                     .frame(width: 340)
+                    .popIn(delay: 0.05)
                     .padding(.trailing, ZLTheme.screenPadding)
                     .padding(.top, 66)
                     .padding(.bottom, 14)
@@ -193,7 +194,7 @@ struct HomeScreen: View {
                 .frame(width: 38, height: 32)
                 .background(Color.clear)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ZLQPressStyle(scale: 0.88))
     }
 
     // MARK: 右侧面板（真机：一张大圆角白卡包住账户+版本+启动）

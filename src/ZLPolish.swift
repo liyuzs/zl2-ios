@@ -475,3 +475,103 @@ enum ZLLoadingTips {
         tips.randomElement() ?? "加载中…"
     }
 }
+
+// MARK: - Q弹动画曲线
+
+/// 统一的弹性动画。response 越小越"干脆"，dampingFraction 越小越"弹"。
+enum ZLSpring {
+    /// 轻按反馈：干净利落
+    static let tap     = Animation.spring(response: 0.22, dampingFraction: 0.72)
+    /// 卡片出现：有一点弹
+    static let appear  = Animation.spring(response: 0.34, dampingFraction: 0.66)
+    /// 强调动作：弹得明显
+    static let bouncy  = Animation.spring(response: 0.42, dampingFraction: 0.52)
+    /// 页面切换：柔和顺滑
+    static let page    = Animation.spring(response: 0.38, dampingFraction: 0.82)
+    /// 数值变化：不弹，只顺滑
+    static let smooth  = Animation.easeInOut(duration: 0.28)
+}
+
+// MARK: - Q弹按下（替代普通缩放）
+
+struct ZLQPressStyle: ButtonStyle {
+    var scale: CGFloat = 0.94
+    var haptic: Bool = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scale : 1)
+            .animation(ZLSpring.bouncy, value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { pressed in
+                if pressed && haptic { ZLHaptic.soft() }
+            }
+    }
+}
+
+// MARK: - Q弹出现（缩放 + 弹性）
+
+struct ZLPopIn: ViewModifier {
+    var delay: Double = 0
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(shown ? 1 : 0.86)
+            .opacity(shown ? 1 : 0)
+            .animation(ZLSpring.bouncy.delay(delay), value: shown)
+            .onAppear { shown = true }
+    }
+}
+
+extension View {
+    /// 出现时 Q 弹一下
+    func popIn(delay: Double = 0) -> some View {
+        modifier(ZLPopIn(delay: delay))
+    }
+}
+
+// MARK: - Q弹数字（进度百分比滚动）
+
+struct ZLQNumber: View {
+    var value: Double            // 0...1
+    var size: CGFloat = 13
+
+    var body: some View {
+        Text(String(format: "%.0f%%", max(0, min(1, value)) * 100))
+            .font(.system(size: size, weight: .semibold, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(ZLTheme.textPrimary)
+            .contentTransition(.numericText())
+            .animation(ZLSpring.smooth, value: value)
+    }
+}
+
+// MARK: - Q弹卡片（按下会缩一下）
+
+struct ZLQCard<Content: View>: View {
+    var content: Content
+    var action: (() -> Void)?
+
+    init(action: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
+        self.action = action
+        self.content = content()
+    }
+
+    @State private var pressed = false
+
+    var body: some View {
+        content
+            .scaleEffect(pressed ? 0.975 : 1)
+            .animation(ZLSpring.tap, value: pressed)
+            .onTapGesture {
+                guard action != nil else { return }
+                ZLHaptic.light()
+                action?()
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in pressed = true }
+                    .onEnded { _ in pressed = false }
+            )
+    }
+}
