@@ -33,6 +33,9 @@ struct ModsManagerScreen: View {
     var onHome: () -> Void = {}
 
     @State private var mods: [ZLModInfo] = []
+    /// 有更新的模组：modId → 最新版本号
+    @State private var updates: [String: String] = [:]
+    @State private var updating = false
     @State private var sort: ZLModsSort = .fileName
     @State private var ascending = true
     @State private var search = ""
@@ -55,6 +58,13 @@ struct ModsManagerScreen: View {
             // 工具栏
             HStack(spacing: 8) {
                 Button { reload() } label: { toolChip("刷新", "arrow.clockwise") }
+                Button {
+                    ZLHaptic.light()
+                    checkUpdates()
+                } label: {
+                    toolChip(updating ? "检查中…" : "查更新", "arrow.triangle.2.circlepath")
+                }
+                .disabled(updating)
                     .buttonStyle(.plain)
                 Button { sort = sort == .fileName ? .modified : .fileName } label: {
                     toolChip("排序：\(sort.rawValue)", "arrow.up.arrow.down")
@@ -217,6 +227,13 @@ struct ModsManagerScreen: View {
                             .lineLimit(1)
                     }
                     Spacer(minLength: 6)
+                    if let id = m.modId, let latest = updates[id] {
+                        Text("新版 \(latest)")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Capsule().fill(ZLTheme.primary))
+                    }
                     ZLCardStatusBadge(enabled: m.enabled)
                 }
 
@@ -634,5 +651,37 @@ enum ZipReader {
     private static func readU32(_ d: Data, at i: Int) -> Int {
         guard i + 4 <= d.count else { return 0 }
         return Int(d[i]) | (Int(d[i + 1]) << 8) | (Int(d[i + 2]) << 16) | (Int(d[i + 3]) << 24)
+    }
+
+    // MARK: 检查更新
+
+    private func checkUpdates() {
+        updating = true
+        updates.removeAll()
+        let snapshot = mods
+        Task {
+            let api = ModrinthAPI()
+            var found: [String: String] = [:]
+            for m in snapshot {
+                guard let id = m.modId, !id.isEmpty else { continue }
+                let (has, latest) = await ZLModUpdater.checkUpdate(
+                    modID: id,
+                    currentVersion: m.modVersion,
+                    gameVersion: nil,
+                    loader: m.loader?.lowercased(),
+                    api: api
+                )
+                if has, let v = latest { found[id] = v }
+            }
+            await MainActor.run {
+                updates = found
+                updating = false
+                if found.isEmpty {
+                    showToast("全部模组都是最新版")
+                } else {
+                    showToast("\(found.count) 个模组有新版本")
+                }
+            }
+        }
     }
 }

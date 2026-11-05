@@ -292,3 +292,36 @@ extension ModrinthAPI {
         )
     }
 }
+
+// MARK: - 模组更新检测
+
+enum ZLModUpdater {
+    /// 检查一个模组在 Modrinth 上有没有更新版本。
+    /// 返回 (是否有新版, 最新版本号)；查不到就返回 (false, nil)。
+    static func checkUpdate(modID: String,
+                            currentVersion: String?,
+                            gameVersion: String?,
+                            loader: String?,
+                            api: ModrinthAPI = ModrinthAPI()) async -> (Bool, String?) {
+        guard !modID.isEmpty else { return (false, nil) }
+        do {
+            let list = try await api.versions(projectID: modID,
+                                              gameVersion: gameVersion,
+                                              loader: loader)
+            guard let latest = list.first else { return (false, nil) }
+            let latestNo = latest.versionNumber
+            guard let cur = currentVersion, !cur.isEmpty else {
+                // 本地读不到版本号，只报有新版
+                return (true, latestNo)
+            }
+            // 版本号相同就不算更新
+            if cur.trimmingCharacters(in: .whitespaces).lowercased()
+                == latestNo.trimmingCharacters(in: .whitespaces).lowercased() {
+                return (false, latestNo)
+            }
+            return (true, latestNo)
+        } catch {
+            return (false, nil)
+        }
+    }
+}
