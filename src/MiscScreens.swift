@@ -344,7 +344,17 @@ struct CrashLogScreen: View {
                 ZLGoldButton(title: "复制日志", icon: "doc.on.doc") {
                     UIPasteboard.general.string = logs.joined(separator: "\n")
                 }
-                ZLGoldButton(title: "分享", icon: "square.and.arrow.up") { }
+                ShareLink(item: logs.joined(separator: "\n")) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "square.and.arrow.up").font(.system(size: 13))
+                        Text("分享").font(.system(size: 14, weight: .semibold))
+                    }
+                    .foregroundStyle(ZLTheme.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(ZLTheme.surface)
+                    .clipShape(Capsule())
+                }
             }
             .padding(.horizontal, ZLTheme.screenPadding)
             .padding(.bottom, ZLTheme.screenPadding)

@@ -37,6 +37,8 @@ struct VersionListScreen: View {
     @State private var loadError: String?
     /// 版本元信息缓存，避免每次界面刷新都读磁盘
     @State private var metaCache: [String: String] = [:]
+    /// 置顶的版本 ID（持久化在 UserDefaults）
+    @State private var pinned: [String] = UserDefaults.standard.stringArray(forKey: "zl.pinned.versions") ?? []
 
     private let filters = ["全部", "原版", "可安装模组"]
 
@@ -283,8 +285,19 @@ struct VersionListScreen: View {
             }
             Spacer()
 
-            Button { } label: {
-                Image(systemName: "pin").font(.system(size: 15))
+            Button {
+                ZLHaptic.light()
+                if let i = pinned.firstIndex(of: version.id) {
+                    pinned.remove(at: i)
+                } else {
+                    pinned.insert(version.id, at: 0)
+                }
+                // 持久化
+                UserDefaults.standard.set(pinned, forKey: "zl.pinned.versions")
+                reload()
+            } label: {
+                Image(systemName: pinned.contains(version.id) ? "pin.fill" : "pin")
+                    .font(.system(size: 15))
                     .foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 38, height: 34)
                     .background(ZLTheme.surfaceAlt)
@@ -340,11 +353,18 @@ struct VersionListScreen: View {
 
     // MARK: 数据
     private var current: [VersionRepository.InstalledVersion] {
+        let base: [VersionRepository.InstalledVersion]
         switch filter {
-        case 1: return versions.filter { !$0.id.lowercased().contains("fabric") && !$0.id.lowercased().contains("forge") }
-        case 2: return versions.filter { $0.id.lowercased().contains("fabric") || $0.id.lowercased().contains("forge") }
-        default: return versions
+        case 1: base = versions.filter { !$0.id.lowercased().contains("fabric") && !$0.id.lowercased().contains("forge") }
+        case 2: base = versions.filter { $0.id.lowercased().contains("fabric") || $0.id.lowercased().contains("forge") }
+        default: base = versions
         }
+        // 置顶的排最前，其余保持原顺序
+        guard !pinned.isEmpty else { return base }
+        let pinnedSet = Set(pinned)
+        let top = pinned.compactMap { id in base.first { $0.id == id } }
+        let rest = base.filter { !pinnedSet.contains($0.id) }
+        return top + rest
     }
 
     private func count(for i: Int) -> Int {
