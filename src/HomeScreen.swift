@@ -19,6 +19,9 @@ struct HomeScreen: View {
     @State private var versionTaps = 0
     @State private var secretIdx = 0
     @State private var blankTaps = 0
+    // 可爱彩蛋
+    @State private var starPoints: [CGPoint] = []
+    @State private var hearts: [UUID] = []
 
     var onMultiplayer: () -> Void = {}
     var onDownload: () -> Void = {}
@@ -32,7 +35,12 @@ struct HomeScreen: View {
             ZLTheme.background
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
-                .onTapGesture { blankTap() }
+                .gesture(
+                    SpatialTapGesture().onEnded { v in
+                        starPoints.append(v.location)
+                        blankTap()
+                    }
+                )
 
             // 顶部：标题 + 右侧图标
             VStack(spacing: 0) {
@@ -73,6 +81,23 @@ struct HomeScreen: View {
                     .padding(.bottom, 14)
             }
         }
+        .overlay {
+            ZStack {
+                ForEach(Array(starPoints.enumerated()), id: \.offset) { idx, pt in
+                    ZLStarBurst(center: pt) {
+                        if starPoints.indices.contains(idx) {
+                            starPoints.remove(at: idx)
+                        }
+                    }
+                }
+                // 头像爱心
+                ForEach(hearts, id: \.self) { _ in
+                    ZLHeartPop()
+                        .offset(y: -30)
+                }
+            }
+            .allowsHitTesting(false)
+        }
         .overlay(alignment: .top) {
             if let eggText {
                 Text(eggText)
@@ -106,9 +131,10 @@ struct HomeScreen: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                         showEgg(f, duration: 3.4)
                     }
-                } else if let g = ZLEasterEgg.lateNightGreeting {
+                } else {
+                    // 按时间说一句可爱的问候
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                        showEgg(g, duration: 3.2)
+                        showEgg(ZLCuteGreeting.now, duration: 3.0)
                     }
                 }
             }
@@ -207,6 +233,15 @@ struct HomeScreen: View {
                 skinAvatar
                     .frame(width: 96, height: 96)
                     .spinWhen($avatarSpinning)
+                    .onTapGesture {
+                        // 点一下冒爱心
+                        ZLHaptic.light()
+                        let id = UUID()
+                        hearts.append(id)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
+                            hearts.removeAll { $0 == id }
+                        }
+                    }
                     .onLongPressGesture(minimumDuration: 0.35) {
                         ZLHaptic.rigid()
                         avatarSpinning = true

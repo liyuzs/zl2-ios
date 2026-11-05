@@ -386,3 +386,99 @@ extension View {
         modifier(ZLBounceEffect(bouncing: bouncing))
     }
 }
+
+// MARK: - 可爱彩蛋 1：点哪里冒哪里的小星星
+
+struct ZLStarBurst: View {
+    var center: CGPoint
+    var onDone: () -> Void
+
+    @State private var spread: CGFloat = 0
+    @State private var fade: Double = 1
+
+    private let emojis = ["✨", "⭐️", "💫", "🌟"]
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<6, id: \.self) { i in
+                Text(emojis[i % emojis.count])
+                    .font(.system(size: 14))
+                    .position(
+                        x: center.x + cos(Double(i) * .pi / 3) * spread,
+                        y: center.y + sin(Double(i) * .pi / 3) * spread
+                    )
+                    .opacity(fade)
+            }
+        }
+        .allowsHitTesting(false)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.55)) {
+                spread = 42
+                fade = 0
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { onDone() }
+        }
+    }
+}
+
+// MARK: - 可爱彩蛋 2：爱心（点头像）
+
+struct ZLHeartPop: View {
+    @State private var rise: CGFloat = 0
+    @State private var fade: Double = 1
+    @State private var scale: CGFloat = 0.6
+
+    private let heart = "💛"
+
+    var body: some View {
+        Text(heart)
+            .font(.system(size: 20))
+            .scaleEffect(scale)
+            .opacity(fade)
+            .offset(y: rise)
+            .allowsHitTesting(false)
+            .onAppear {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { scale = 1.1 }
+                withAnimation(.easeOut(duration: 1.1)) {
+                    rise = -46
+                    fade = 0
+                }
+            }
+    }
+}
+
+// MARK: - 可爱彩蛋 3：按时间变化的问候
+
+enum ZLCuteGreeting {
+    /// 根据当前时间返回一句可爱的问候
+    static var now: String {
+        let h = Calendar.current.component(.hour, from: Date())
+        switch h {
+        case 5..<9:   return "早上好呀 ☀️ 今天也要元气满满"
+        case 9..<12:  return "上午好 🌤 玩会儿游戏放松一下"
+        case 12..<14: return "中午了，记得吃饭 🍚"
+        case 14..<18: return "下午好 ☕️ 来挖点矿？"
+        case 18..<22: return "晚上好 🌙 今晚玩哪个版本"
+        default:      return "这么晚还不睡吗 🐣"
+        }
+    }
+}
+
+// MARK: - 可爱彩蛋 4：加载时的小提示
+
+enum ZLLoadingTips {
+    static let tips = [
+        "正在搬方块…",
+        "苦力怕在门口等着呢…",
+        "正在给 Steve 穿衣服…",
+        "挖矿中，马上就好…",
+        "正在数羊… 一只羊，两只羊…",
+        "把红石接好了…",
+        "末影人在帮你搬东西…",
+        "正在给钻石剑附魔…"
+    ]
+
+    static var random: String {
+        tips.randomElement() ?? "加载中…"
+    }
+}

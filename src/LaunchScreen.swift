@@ -11,6 +11,8 @@ struct LaunchScreen: View {
 
     @State private var stage: Stage = .check
     @State private var progress: Double = 0
+    // 加载时随机显示一句可爱提示
+    @State private var cuteTip = ZLLoadingTips.random
     @State private var logs: [String] = []
     @State private var failed = false
     @State private var coreLinked = false
@@ -46,6 +48,12 @@ struct LaunchScreen: View {
                 Text(failed ? "启动失败" : stage.rawValue)
                     .font(.system(size: 12))
                     .foregroundStyle(failed ? ZLTheme.danger : ZLTheme.textSecond)
+                if !failed {
+                    Text(cuteTip)
+                        .font(.system(size: 10))
+                        .foregroundStyle(ZLTheme.textSecond.opacity(0.65))
+                        .transition(.opacity)
+                }
             }
             Spacer()
             Button { isPresented = false } label: {
