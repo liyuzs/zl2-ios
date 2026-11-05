@@ -1,5 +1,6 @@
 // ZL2-iOS · 剩余页面：搜索 / 导出 / 引导 / 崩溃日志 / 联机房间
 import SwiftUI
+import UIKit
 
 // MARK: - 资源搜索（跨类型聚合搜索）
 struct SearchScreen: View {
@@ -115,6 +116,9 @@ struct ExportScreen: View {
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
     @State private var selected: Set<String> = [".minecraft/versions", ".minecraft/mods"]
+    @State private var exporting = false
+    @State private var shareURL: URL?
+    @State private var message: String?
     private let options = [
         ("版本核心文件", ".minecraft/versions"),
         ("模组", ".minecraft/mods"),
@@ -159,13 +163,104 @@ struct ExportScreen: View {
                         .background(ZLTheme.surface)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
-                    ZLGoldButton(title: "导出并分享", icon: "square.and.arrow.up", enabled: !selected.isEmpty) { }
+                    ZLGoldButton(title: exporting ? "正在打包…" : "导出并分享",
+                                 icon: "square.and.arrow.up",
+                                 enabled: !selected.isEmpty && !exporting) {
+                        exportPack()
+                    }
                 }
                 .padding(ZLTheme.screenPadding)
             }
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
+        .sheet(item: Binding(
+            get: { shareURL.map { ShareBox(url: $0) } },
+            set: { if $0 == nil { shareURL = nil } }
+        )) { box in
+            ShareSheet(items: [box.url])
+        }
+        .overlay(alignment: .bottom) {
+            if let message {
+                Text(message)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(Capsule().fill(Color.black.opacity(0.82)))
+                    .padding(.bottom, 20)
+            }
+        }
+    }
+
+    /// 把选中的目录打包成 zip 并弹分享
+    private func exportPack() {
+        exporting = true
+        message = "正在打包，请稍候…"
+        DispatchQueue.global(qos: .userInitiated).async {
+            let fm = FileManager.default
+            let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let gameDir = docs.appendingPathComponent("instances/default/.minecraft", isDirectory: true)
+            let stamp = Int(Date().timeIntervalSince1970)
+            let outName = "整合包-\(stamp).zip"
+            let outURL = fm.temporaryDirectory.appendingPathComponent(outName)
+
+            do {
+                // 用一个临时目录组织结构，再整体压缩
+                let stage = fm.temporaryDirectory.appendingPathComponent("zl_export_\(stamp)")
+                try? fm.removeItem(at: stage)
+                try fm.createDirectory(at: stage, withIntermediateDirectories: true)
+
+                for rel in selected {
+                    let src = gameDir.appendingPathComponent(rel.replacingOccurrences(of: ".minecraft/", with: ""))
+                    guard fm.fileExists(atPath: src.path) else { continue }
+                    let dst = stage.appendingPathComponent(rel)
+                    try? fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    try? fm.copyItem(at: src, to: dst)
+                }
+
+                // NSFileCoordinator 的 forUploading 能直接产出 zip
+                var coordError: NSError?
+                var zipURL: URL?
+                NSFileCoordinator().coordinate(readingItemAt: stage, options: [.forUploading], error: &coordError) { tmp in
+                    zipURL = try? fm.copyItemToTemp(tmp, named: outName)
+                }
+                try? fm.removeItem(at: stage)
+
+                DispatchQueue.main.async {
+                    exporting = false
+                    if let z = zipURL {
+                        shareURL = z
+                        message = "打包完成"
+                    } else {
+                        message = "打包失败，请重试"
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { message = nil }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    exporting = false
+                    message = "打包失败：\(error.localizedDescription)"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) { message = nil }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - 导出用的小工具
+
+private struct ShareBox: Identifiable {
+    let url: URL
+    var id: String { url.path }
+}
+
+private extension FileManager {
+    /// 把临时文件拷到另一个带名字的临时路径（forUploading 给的是随机名）
+    func copyItemToTemp(_ src: URL, named name: String) throws -> URL {
+        let dst = temporaryDirectory.appendingPathComponent(name)
+        try? removeItem(at: dst)
+        try copyItem(at: src, to: dst)
+        return dst
     }
 }
 
@@ -455,4 +550,16 @@ struct SearchIDScreen: View {
         }
         loading = false
     }
+}
+
+// MARK: - 系统分享面板（SwiftUI 包装）
+
+struct ShareSheet: UIViewControllerRepresentable {
+    var items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
