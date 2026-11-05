@@ -43,7 +43,13 @@ struct SwitchGameDirIntent: AppIntent {
     var name: String
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        UserDefaults.standard.set(name, forKey: "zl.game.instance")
+        // 光写 UserDefaults 是不够的：VersionRepository / CoreBridge 都是内存单例，
+        // 不调 activate 的话要杀进程重启才生效。
+        let store = GameDirectoryStore.shared
+        guard store.instances.contains(where: { $0.name == name }) else {
+            return .result(dialog: "没有叫「\(name)」的游戏目录")
+        }
+        store.activate(name)
         UserDefaults.standard.set("versionList", forKey: "zl.pendingRoute")
         return .result(dialog: "已切换到 \(name)")
     }
