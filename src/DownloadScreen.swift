@@ -54,8 +54,9 @@ struct DownloadScreen: View {
     }
 
     // MARK: 真实版本清单
-    private func loadManifest() async {
-        guard liveVersions.isEmpty else { return }
+    private func loadManifest(force: Bool = false) async {
+        guard force || liveVersions.isEmpty else { return }
+        if force { liveVersions.removeAll() }
         loading = true
         loadError = nil
         do {
@@ -155,7 +156,10 @@ struct DownloadScreen: View {
             .background(ZLTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-            Button { } label: {
+            Button {
+                ZLHaptic.light()
+                Task { await loadManifest(force: true) }
+            } label: {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(ZLTheme.textPrimary)

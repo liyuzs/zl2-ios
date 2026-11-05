@@ -15,6 +15,7 @@ struct LaunchScreen: View {
     @State private var cuteTip = ZLLoadingTips.random
     @State private var logs: [String] = []
     @State private var failed = false
+    @State private var lastError: String?
     @State private var coreLinked = false
     @State private var runtimeReady = false
     @State private var versionReady = false
@@ -124,7 +125,48 @@ struct LaunchScreen: View {
     private var footer: some View {
         HStack(spacing: 10) {
             if failed {
-                ZLGoldButton(title: "查看自检", icon: "doc.text") { isPresented = false }
+                VStack(spacing: 10) {
+                    if let e = lastError {
+                        // 常见错误 → 给具体建议
+                        if e.contains("JRE") || e.contains("jli") {
+                            HStack(spacing: 6) {
+                                Image(systemName: "lightbulb").font(.system(size: 11))
+                                Text("多半是 Java 运行时没打进包里，试着重新装一次")
+                                    .font(.system(size: 11))
+                            }
+                            .foregroundStyle(ZLTheme.warning)
+                        } else if e.contains("JIT") {
+                            HStack(spacing: 6) {
+                                Image(systemName: "lightbulb").font(.system(size: 11))
+                                Text("请先用 StikDebug 给本应用开启 JIT")
+                                    .font(.system(size: 11))
+                            }
+                            .foregroundStyle(ZLTheme.warning)
+                        } else if e.contains("内存") || e.contains("memory") {
+                            HStack(spacing: 6) {
+                                Image(systemName: "lightbulb").font(.system(size: 11))
+                                Text("内存不够，去设置里把分配改小一点")
+                                    .font(.system(size: 11))
+                            }
+                            .foregroundStyle(ZLTheme.warning)
+                        }
+                    }
+                    HStack(spacing: 10) {
+                        ZLGoldButton(title: "查看日志", icon: "doc.text") { isPresented = false }
+                        Button {
+                            ZLClipboard.copy(lastError ?? "未知错误", label: "错误信息")
+                        } label: {
+                            Text("复制错误")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(ZLTheme.textSecond)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(ZLTheme.surface)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(ZLQPressStyle(scale: 0.94))
+                    }
+                }
             } else if coreLinked && runtimeReady {
                 ZLGoldButton(title: "尝试启动", icon: "play.fill", enabled: progress >= 1) {
                     Task { await attemptLaunch() }
@@ -192,6 +234,7 @@ struct LaunchScreen: View {
             logs.append("✓ 自检流程结束")
         } catch {
             failed = true
+            lastError = error.localizedDescription
             logs.append("✗ \(error.localizedDescription)")
         }
     }
