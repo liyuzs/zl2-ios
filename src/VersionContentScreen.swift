@@ -27,7 +27,7 @@ enum VersionContentKind: String, CaseIterable, Identifiable {
 }
 
 struct VersionContentScreen: View {
-    var versionName: String = "1.20.1 Fabric 0.19.2"
+    var versionName: String = ""   // 由调用方传真实版本 ID
     var initial: VersionContentKind = .overview
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
@@ -39,6 +39,8 @@ struct VersionContentScreen: View {
     @State private var showActions = false
     @State private var alertText = ""
     @State private var showAlert = false
+    @State private var showFolder = false
+    @State private var folderURL: URL?
     // 文件导入
     @State private var importing = false
     @State private var importTarget: String = "mods"
@@ -63,6 +65,31 @@ struct VersionContentScreen: View {
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
+        .sheet(isPresented: $showExport) {
+            ExportPackScreen(onBack: { showExport = false }, onHome: { showExport = false })
+        }
+        .alert("删除版本", isPresented: $showDeleteConfirm) {
+            Button("取消", role: .cancel) { }
+            Button("删除", role: .destructive) {
+                do {
+                    try VersionRepository.shared.deleteVersion(versionName)
+                    ZLHaptic.success()
+                    onBack()
+                } catch {
+                    alertText = ZLFriendlyError.text(error)
+                    showAlert = true
+                }
+            }
+        } message: {
+            Text("会删除 \(versionName) 的整个版本目录，不可恢复。")
+        }
+        .sheet(isPresented: $showFolder) {
+            if let u = folderURL {
+                FileManagerScreen(onBack: { showFolder = false },
+                                  onHome: { showFolder = false },
+                                  initialPath: u)
+            }
+        }
         .onAppear {
             kind = initial
             installed = VersionRepository.shared.listVersions()
@@ -177,11 +204,18 @@ struct VersionContentScreen: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("版本管理").font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(ZLTheme.textPrimary)
-                    manageRow("编辑描述", "text.alignleft") { }
-                    manageRow("重命名版本", "pencil") { }
-                    manageRow("导出整合包", "square.and.arrow.up") { }
+                    manageRow("重命名版本", "pencil") {
+                        actionVersion = versionName
+                        showActions = true
+                    }
+                    manageRow("导出整合包", "square.and.arrow.up") {
+                        showExport = true
+                    }
                     manageRow("运行日志", "doc.text") { showLog = true }
-                    manageRow("删除版本", "trash", danger: true) { }
+                    manageRow("删除版本", "trash", danger: true) {
+                        actionVersion = versionName
+                        showDeleteConfirm = true
+                    }
                 }
             }
 
@@ -237,10 +271,16 @@ struct VersionContentScreen: View {
     }
 
     private func openFolder(_ kind: String) {
-        if let url = VersionRepository.shared.folder(for: kind.replacingOccurrences(of: "文件夹", with: ""),
-                                                     versionID: versionName) {
-            _ = url
+        // 原来算出 URL 就直接丢掉了（_ = url），8 个快捷操作全无反应
+        guard let url = VersionRepository.shared.folder(
+            for: kind.replacingOccurrences(of: "文件夹", with: ""),
+            versionID: versionName) else {
+            alertText = "这个版本还没有「\(kind)」目录，进一次游戏会自动创建"
+            showAlert = true
+            return
         }
+        folderURL = url
+        showFolder = true
     }
 
     private func infoRow(_ k: String, _ v: String) -> some View {
