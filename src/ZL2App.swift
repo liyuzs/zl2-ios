@@ -178,11 +178,17 @@ struct RootView: View {
                                  onBack: { path.removeLast() },
                                  onHome: { path.removeAll() },
                                  onSettings: { path.append(.settings) })
-                case .versionContent(let kindName):
+                case .versionContent(let packed):
+                    // 格式："版本ID|分类名"，原来只传分类名，版本 ID 丢了
+                    let parts = packed.split(separator: "|", maxSplits: 1).map(String.init)
+                    let vid = parts.first ?? ""
+                    let kindName = parts.count > 1 ? parts[1] : "概览"
                     VersionContentScreen(
+                        versionName: vid,
                         initial: VersionContentKind(rawValue: kindName) ?? .overview,
                         onBack: { path.removeLast() },
-                        onHome: { path.removeAll() })
+                        onHome: { path.removeAll() },
+                        onOpen: { path.append($0) })
                 case .search:
                     SearchScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .exportPack:
@@ -308,7 +314,7 @@ struct RootView: View {
                         onMultiplayer: { path.append(.multiplayer) },
                         onDownload: { path.append(.download) },
                         onSettings: { path.append(.settings) },
-                        onOpenVersion: { _ in path.append(.versionContent("概览")) })
+                        onOpenVersion: { vid in path.append(.versionContent("\(vid)|概览")) })
                 }
             }
         }

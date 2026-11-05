@@ -31,6 +31,8 @@ struct VersionContentScreen: View {
     var initial: VersionContentKind = .overview
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
+    /// 跳转到真实管理页（模组/存档/资源包管理）
+    var onOpen: (AppRoute) -> Void = { _ in }
 
     @State private var kind: VersionContentKind = .overview
     @State private var enabledMods: Set<String> = ["JEI", "JourneyMap", "Waystones"]
@@ -166,9 +168,27 @@ struct VersionContentScreen: View {
     private var content: some View {
         switch kind {
         case .overview:  overview
-        case .mods:      modList
-        case .resources: fileList("资源包", ["Programmer Art", "VM 汉化资源包", "Mod Resources"], "zip")
-        case .saves:     fileList("存档", ["新的世界", "Silent Hills", "创造测试"], "folder")
+        case .mods:
+            VStack(spacing: 12) {
+                realPageHint("模组管理", icon: "puzzlepiece.fill") {
+                    onOpen(.modsManager(versionName))
+                }
+                modList
+            }
+        case .resources:
+            VStack(spacing: 12) {
+                realPageHint("资源包管理", icon: "paintbrush.fill") {
+                    onOpen(.resourceManager(versionName, 0))
+                }
+                fileList("资源包", ["Programmer Art", "VM 汉化资源包", "Mod Resources"], "zip")
+            }
+        case .saves:
+            VStack(spacing: 12) {
+                realPageHint("存档管理", icon: "folder.fill") {
+                    onOpen(.savesManager(versionName))
+                }
+                fileList("存档", ["新的世界", "Silent Hills", "创造测试"], "folder")
+            }
         case .screens:   screenshotGrid
         case .servers:   serverList
         case .shaders:   shaderList
@@ -281,6 +301,33 @@ struct VersionContentScreen: View {
         }
         folderURL = url
         showFolder = true
+    }
+
+    /// 「这里显示的是示例，真实内容在管理页」的入口条
+    private func realPageHint(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+        ZLCard {
+            HStack(spacing: 10) {
+                Image(systemName: icon).font(.system(size: 15))
+                    .foregroundStyle(ZLTheme.primary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("下面只是示例").font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(ZLTheme.textPrimary)
+                    Text("真实内容请在「\(title)」里查看和管理")
+                        .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+                }
+                Spacer()
+                Button {
+                    ZLHaptic.light()
+                    action()
+                } label: {
+                    Text("打开").font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(ZLTheme.primaryDeep)
+                        .padding(.horizontal, 10).frame(height: 26)
+                        .background(Capsule().fill(ZLTheme.primarySoft))
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     private func infoRow(_ k: String, _ v: String) -> some View {
