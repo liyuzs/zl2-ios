@@ -486,10 +486,23 @@ enum MinecraftPing {
         let hostname = String(first)
         let port = parts.count > 1 ? (UInt16(parts[1]) ?? 25565) : 25565
 
-        return await withCheckedContinuation { cont in
-            DispatchQueue.global().async {
-                cont.resume(returning: syncPing(host: hostname, port: port, timeout: timeout))
+        // 原来 syncPing 的 timeout 参数根本没用，CFStream 不设读超时会永久阻塞，
+        // 那一行永远是骨架条，还每次泄漏一个线程。这里用 race 强制超时。
+        return await withTaskGroup(of: ZLServerPingResult?.self) { group in
+            group.addTask {
+                await withCheckedContinuation { cont in
+                    DispatchQueue.global().async {
+                        cont.resume(returning: syncPing(host: hostname, port: port, timeout: timeout))
+                    }
+                }
             }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
         }
     }
 

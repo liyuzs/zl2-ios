@@ -488,11 +488,23 @@ struct MultiplayerRoomScreen: View {
                                 .font(.system(size: 28, weight: .bold, design: .monospaced))
                                 .foregroundStyle(ZLTheme.primaryDeep)
                                 .frame(maxWidth: .infinity)
+                            if let hostMessage {
+                                Text(hostMessage)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(ZLTheme.warning)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                                 .padding(.vertical, 10)
                                 .background(ZLTheme.primarySoft)
                                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             ZLGoldButton(title: "创建房间", icon: "person.badge.plus") {
-                                roomCode = String((0..<6).map { _ in "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".randomElement()! })
+                                // 原来生成的是 6 位随机串，和 ZLEasyTierRoom 要求的
+                                // U/XXXX-XXXX-XXXX-XXXX 格式对不上，谁拿去 join 都会失败。
+                                // 内核没接入之前不要假造可用的邀请码。
+                                roomCode = "未接入"
+                                hostMessage = "远程联机需要 EasyTier 内核，当前版本还没接入。\n局域网联机请用「多人游戏」页扫描。"
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 6) { hostMessage = nil }
                             }
                         } else {
                             Text("输入房主给的邀请码").font(.system(size: 12))
