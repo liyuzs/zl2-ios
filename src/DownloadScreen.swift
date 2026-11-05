@@ -24,12 +24,15 @@ struct DownloadScreen: View {
     private let catIcons = ["gamecontroller.fill", "shippingbox.fill", "puzzlepiece.fill", "paintbrush.fill"]
     private let filters = ["正式版", "快照版", "愚人节版", "远古版"]
 
+    /// 离线兜底列表：只用真实存在的版本，网络恢复后会被真实清单覆盖
     private let versions: [DLVersion] = [
-        .init(id: "26.3",    type: "正式版", date: "2026 年 09 月 15 日 19:23:02"),
-        .init(id: "26.2",    type: "正式版", date: "2026 年 06 月 16 日 20:03:33"),
-        .init(id: "26.1.2",  type: "正式版", date: "2026 年 04 月 09 日 18:12:23"),
-        .init(id: "1.20.1",  type: "正式版", date: "2023 年 06 月 12 日 15:20:00"),
-        .init(id: "1.12.2",  type: "正式版", date: "2017 年 09 月 18 日 12:00:00"),
+        .init(id: "1.21.5",  type: "正式版", date: "2025 年 03 月 25 日"),
+        .init(id: "1.21.4",  type: "正式版", date: "2024 年 12 月 03 日"),
+        .init(id: "1.20.6",  type: "正式版", date: "2024 年 04 月 29 日"),
+        .init(id: "1.20.1",  type: "正式版", date: "2023 年 06 月 12 日"),
+        .init(id: "1.19.2",  type: "正式版", date: "2022 年 08 月 05 日"),
+        .init(id: "1.16.5",  type: "正式版", date: "2021 年 01 月 15 日"),
+        .init(id: "1.12.2",  type: "正式版", date: "2017 年 09 月 18 日"),
     ]
 
     var body: some View {
