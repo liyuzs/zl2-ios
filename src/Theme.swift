@@ -72,7 +72,9 @@ extension Color {
     }
 }
 
-// MARK: - 卡片（真机：白底、大圆角、极浅阴影）
+// MARK: - 卡片（真机：米白磨砂玻璃、大圆角、柔和投影）
+// 全 App 的卡片都走这里：底板从纯色换成 .zlGlass（毛玻璃 + 主题 tint + specular 描边），
+// 布局尺寸、padding、圆角都没变，文字颜色仍是 ZLTheme 的 token，对比度不受影响。
 struct ZLCard<Content: View>: View {
     var padding: CGFloat = 16
     var alt: Bool = false
@@ -82,9 +84,10 @@ struct ZLCard<Content: View>: View {
         content()
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(alt ? ZLTheme.surfaceAlt : ZLTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: ZLTheme.cardRadius, style: .continuous))
-            .shadow(color: Color.black.opacity(0.045), radius: 10, x: 0, y: 3)
+            .zlGlass(cornerRadius: ZLTheme.cardRadius,
+                     tint: ZLTheme.primary,
+                     tintOpacity: alt ? 0.10 : 0.05,
+                     shadow: true)
     }
 }
 
@@ -130,6 +133,8 @@ struct ZLTopBar: View {
     var onDownload: (() -> Void)? = nil
     var onSettings: (() -> Void)? = nil
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         HStack(spacing: 10) {
             if showBack { topIcon("chevron.left") { onBack?() } }
@@ -155,6 +160,22 @@ struct ZLTopBar: View {
         }
         .padding(.horizontal, ZLTheme.screenPadding)
         .frame(height: 56)
+        // 顶栏加一层玻璃底（高度/内边距不变，只换底板）
+        .background(
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(ZLTheme.surface.opacity(colorScheme == .dark ? 0.82 : 0.62))
+                Rectangle().fill(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.16), Color.white.opacity(0)],
+                        startPoint: .top, endPoint: .bottom))
+            }
+        )
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(ZLTheme.stroke.opacity(0.22))
+                .frame(height: 0.5)
+        }
     }
 
     private func topIcon(_ name: String, highlighted: Bool = false, action: @escaping () -> Void) -> some View {
@@ -199,6 +220,18 @@ struct ZLSideRail<Item: Identifiable & Equatable>: View {
         }
         .padding(.vertical, 8)
         .frame(width: 92)
+        // 侧边栏整条加玻璃底（圆角面板），选中项的高亮仍然是主题色
+        .background(
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(ZLTheme.surface.opacity(0.55))
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(ZLTheme.stroke.opacity(0.18), lineWidth: 1)
+        )
     }
 }
 

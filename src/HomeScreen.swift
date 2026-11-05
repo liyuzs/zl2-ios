@@ -43,7 +43,8 @@ struct HomeScreen: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            ZLTheme.background
+            // 动态背景：纯色底 + 缓慢漂移的主题色光斑（静止时几乎零开销）
+            ZLBackdrop()
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { blankTap() }
@@ -291,8 +292,8 @@ struct HomeScreen: View {
                 .buttonStyle(.plain)
             }
             .padding(12)
-            .background(ZLTheme.surfaceAlt)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            // 面板里的版本小卡也走玻璃（淡淡的，不加投影，避免和外面那层打架）
+            .zlGlass(cornerRadius: 16, tint: ZLTheme.primary, tintOpacity: 0.07, shadow: false)
             .contextMenu {
                 Button {
                     ZLHaptic.medium()
@@ -326,9 +327,12 @@ struct HomeScreen: View {
             .breathingGlow(hasInstalledVersion ? ZLTheme.primary : ZLTheme.textSecond)
         }
         .padding(18)
-        .background(ZLTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 6)
+        // 右侧浮动面板：整块走玻璃（sheen: true 是唯一开着扫光的地方，周期 9s、强度很低）
+        .zlGlass(cornerRadius: 26,
+                 tint: ZLTheme.primary,
+                 tintOpacity: 0.05,
+                 shadow: true,
+                 sheen: true)
     }
 
     // 用色块拼一个像素皮肤头像（避免外部资源依赖）

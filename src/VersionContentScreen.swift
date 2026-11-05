@@ -48,6 +48,9 @@ struct VersionContentScreen: View {
     @State private var importTarget: String = "mods"
     @State private var importToast: String?
     @State private var showLog = false
+    // 这两个是第 10 轮加 A4 时漏声明的（body 里用了但没定义）
+    @State private var showExport = false
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         VStack(spacing: 0) {
