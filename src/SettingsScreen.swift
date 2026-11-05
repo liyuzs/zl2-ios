@@ -545,6 +545,10 @@ struct SettingsScreen: View {
         themeCard
 
         cardGroup(rows: [
+            // 视觉特效总开关：毛玻璃 / 扫光 / 倾斜高光都受它控制
+            toggle(ZLGlassPerf.key,
+                   "关闭视觉特效（省电、提帧）",
+                   "关掉毛玻璃模糊、卡片扫光和倾斜高光。游戏卡或发热时打开这个"),
             darkMode("launcherDarkMode",
                      ZLStrings.settings_launcher_dark_mode_title,
                      nil),

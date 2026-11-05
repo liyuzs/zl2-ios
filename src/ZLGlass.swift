@@ -136,8 +136,12 @@ struct ZLGlassBackground: View {
 
     var body: some View {
         ZStack {
-            // 1. 毛玻璃底
-            shape.fill(.ultraThinMaterial)
+            // 1. 毛玻璃底（用户关了特效就用纯色，省掉每帧实时模糊）
+            if ZLGlassPerf.reduceEffects {
+                shape.fill(ZLTheme.surface)
+            } else {
+                shape.fill(.ultraThinMaterial)
+            }
             // 2. 主题底色：保证深色模式/浅色模式下文字对比度都够
             shape.fill(ZLTheme.surface.opacity(surfaceOpacity))
             // 3. 极淡主题色 tint，左上浓、右下淡
@@ -207,8 +211,8 @@ struct ZLGlassSheen: View {
                         y: -geo.size.height * 0.6)
         }
         .onAppear {
-            // 开了"减弱动态效果"就不扫，别做无谓的动画
-            if reduceMotion { return }
+            // 系统"减弱动态效果"或用户在设置里关掉特效，都不扫
+            if reduceMotion || ZLGlassPerf.reduceEffects { return }
             withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) {
                 phase = 1.2
             }
@@ -293,7 +297,10 @@ struct ZLGlassCard<Content: View>: View {
 
 /// 监听重力方向，让玻璃上的光斑随手机倾斜轻微移动。
 /// 只在有视图订阅时才启动，避免后台耗电。
-@MainActor
+/// 注意：这里**不能**标 @MainActor —— SwiftUI 的 View 在 Swift 5.9 里不是
+/// MainActor 隔离的，在 View 里访问 @MainActor 单例的静态属性会报隔离错误。
+/// 因为 startDeviceMotionUpdates(to: .main) 的回调本来就在主队列，
+/// 去掉 @MainActor 也不会出现"后台改 @Published"的问题。
 final class ZLGravityObserver: ObservableObject {
     static let shared = ZLGravityObserver()
 
@@ -347,7 +354,22 @@ struct ZLTiltHighlight: View {
                 .animation(.easeOut(duration: 0.25), value: t)
         }
         .allowsHitTesting(false)
-        .onAppear { gravity.start() }
+        .onAppear {
+            if !ZLGlassPerf.reduceEffects { gravity.start() }
+        }
         .onDisappear { gravity.stop() }
+    }
+}
+
+
+// MARK: - 视觉特效总开关
+
+/// 用户可以在「设置 → 外观」里关掉全部玻璃特效（省电/提帧）。
+/// 三个组件都读这个值，关掉之后：毛玻璃退回纯色、扫光不跑、陀螺仪不启动。
+enum ZLGlassPerf {
+    static let key = "zl.perf.reduceEffects"
+
+    static var reduceEffects: Bool {
+        UserDefaults.standard.bool(forKey: key)
     }
 }
