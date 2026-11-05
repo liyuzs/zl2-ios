@@ -64,6 +64,17 @@ targets:
           UIColorName: LaunchBackground
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        # 长按 App 图标弹出的快捷菜单（iOS 独有）
+        UIApplicationShortcutItems:
+          - UIApplicationShortcutItemType: com.liyuzs.craftlauncher.launch
+            UIApplicationShortcutItemTitle: 启动游戏
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypePlay
+          - UIApplicationShortcutItemType: com.liyuzs.craftlauncher.download
+            UIApplicationShortcutItemTitle: 下载版本
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeDownload
+          - UIApplicationShortcutItemType: com.liyuzs.craftlauncher.settings
+            UIApplicationShortcutItemTitle: 设置
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeSettings
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight

@@ -3,11 +3,36 @@ import SwiftUI
 
 @main
 struct ZL2StyleApp: App {
+    // 处理长按图标弹出的快捷菜单（iOS 独有）
+    @UIApplicationDelegateAdaptor(ZLAppDelegate.self) private var delegate
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .preferredColorScheme(.light)
         }
+    }
+}
+
+/// 只负责接系统级入口：图标快捷菜单、Siri 指令落点
+final class ZLAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     performActionFor shortcutItem: UIApplicationShortcutItem,
+                     completionHandler: @escaping (Bool) -> Void) {
+        let d = UserDefaults.standard
+        switch shortcutItem.type {
+        case "com.liyuzs.craftlauncher.launch":
+            d.set(true, forKey: "zl.pendingLaunch")
+            d.set(Date().timeIntervalSince1970, forKey: "zl.pendingLaunchAt")
+        case "com.liyuzs.craftlauncher.download":
+            d.set("download", forKey: "zl.pendingRoute")
+        case "com.liyuzs.craftlauncher.settings":
+            d.set("settings", forKey: "zl.pendingRoute")
+        default:
+            completionHandler(false)
+            return
+        }
+        completionHandler(true)
     }
 }
 
