@@ -369,6 +369,8 @@ struct RootView: View {
 extension Notification.Name {
     /// ⌘R：请求当前页面刷新（能刷新的页面监听这个通知）
     static let zlRefreshRequested = Notification.Name("zl.refresh.requested")
+    /// Siri / 快捷指令 / 图标快捷菜单要求的自动启动
+    static let zlAutoLaunch = Notification.Name("zl.autoLaunch")
 }
 
 // MARK: - 陶瓦联机（依据真机：左侧标签页 + 右侧卡片）
