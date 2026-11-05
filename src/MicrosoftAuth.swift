@@ -17,6 +17,34 @@ struct MSAuthToken: Sendable {
     let accessToken: String
     let refreshToken: String?
     let expiresIn: Int
+
+    /// 用 refresh_token 换一个新的 access_token。
+    /// 微软的 access_token 默认 1 小时过期，不刷新的话每次都要重新登录。
+    func refreshed(refreshToken rt: String,
+                   session: URLSession = .shared) async throws -> MSAuthToken {
+        let url = URL(string: "https://login.microsoftonline.com/consumers/oauth2/v2.0/token")!
+        var req = URLRequest(url: url, timeoutInterval: 20)
+        req.httpMethod = "POST"
+        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        let body = [
+            "client_id=\(MicrosoftAuth.clientID)",
+            "grant_type=refresh_token",
+            "refresh_token=\(rt.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? rt)",
+        ].joined(separator: "&")
+        req.httpBody = body.data(using: .utf8)
+
+        let (data, resp) = try await session.data(for: req)
+        if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            throw MSAuthError.network("刷新失败 HTTP \(http.statusCode)")
+        }
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let token = json["access_token"] as? String else {
+            throw MSAuthError.network("刷新返回格式错误")
+        }
+        return MSAuthToken(accessToken: token,
+                           refreshToken: json["refresh_token"] as? String ?? rt,
+                           expiresIn: json["expires_in"] as? Int ?? 3600)
+    }
 }
 
 struct MinecraftProfile: Sendable {
