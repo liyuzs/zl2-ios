@@ -154,6 +154,10 @@ workflows:
       - name: 模拟器编译与截图
         ignore_failure: true
         script: |
+          # 跳过：这一步会把整个工程在模拟器 SDK 上再编译一遍（10~20 分钟），
+          # 对产出 IPA 没有任何帮助，只用于开发时看图。要恢复就把下面这行删掉。
+          echo "模拟器截图已跳过（节省构建时间）"
+          exit 0
           set +e
           mkdir -p out
           echo "=== 1. 模拟器编译 ==="
