@@ -106,16 +106,21 @@ struct AssetsScreen: View {
     /// Modrinth 没有"操作系统"这个维度，iOS 也不需要选。
     /// 真正有用的区分是"客户端 mod / 服务端 mod"。
     private let platforms = ["不限", "仅客户端可用"]
-    /// 版本列表：已安装的版本优先，再补几个常用的
-    private var mcVersions: [String] {
+    /// 版本列表缓存。原来是 computed，每次 body 求值都会调 listVersions()，
+    /// 而那个函数要对每个版本目录递归算大小 —— 搜索框每敲一个字就在主线程扫一遍。
+    @State private var cachedVersions: [String] = ["未选择"]
+
+    private var mcVersions: [String] { cachedVersions }
+
+    /// 只在 .task 里算一次
+    private func reloadVersionList() {
         var list = ["未选择"]
-        let installed = VersionRepository.shared.listVersions().map { $0.id }
-        list.append(contentsOf: installed)
+        list.append(contentsOf: VersionRepository.shared.listVersions().map { $0.id })
         for v in ["1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.1",
                   "1.19.2", "1.18.2", "1.16.5", "1.12.2"] where !list.contains(v) {
             list.append(v)
         }
-        return list
+        cachedVersions = list
     }
 
     /// 安全取加载器，防越界
@@ -125,9 +130,10 @@ struct AssetsScreen: View {
     }
 
     /// 从版本 ID 推断加载器（Fabric / Forge / NeoForge / Quilt）
+    /// 用缓存，不再每次 body 都扫一遍版本目录
     private var defaultLoader: String? {
-        if let first = VersionRepository.shared.listVersions().first {
-            let id = first.id.lowercased()
+        if cachedVersions.count > 1 {
+            let id = cachedVersions[1].lowercased()
             if id.contains("fabric") { return "fabric" }
             if id.contains("neoforge") { return "neoforge" }
             if id.contains("quilt") { return "quilt" }
@@ -206,7 +212,8 @@ struct AssetsScreen: View {
 
     /// 默认版本 = 用户当前在用的版本（解析不到就退回 1.20.1）
     private var defaultGameVersion: String {
-        if let first = VersionRepository.shared.listVersions().first { return first.id }
+        // cachedVersions[0] 是「未选择」，跳过
+        if cachedVersions.count > 1 { return cachedVersions[1] }
         return "1.20.1"
     }
     private let loaders = ["未选择", "Fabric", "Forge", "NeoForge", "Quilt"]
@@ -230,6 +237,7 @@ struct AssetsScreen: View {
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
         .task(id: "\(kind.rawValue)|\(query)|\(sort)|\(gameVersion)|\(modLoader)|\(category)") {
+            reloadVersionList()
             // 收藏与存档走本地，不打网络
             if kind == .favorite || kind == .saves {
                 localItems = localItemsForCurrentKind()
