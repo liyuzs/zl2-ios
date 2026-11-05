@@ -24,7 +24,7 @@ struct LogViewScreen: View {
     @State private var selected: URL?
     @State private var lines: [String] = []
     // 初始值跟随设置里的「打开时自动刷新日志」
-    @State private var autoRefresh = UserDefaults.standard.object(forKey: "showLogAutomatic") as? Bool ?? true
+    @State private var autoRefresh = UserDefaults.standard.object(forKey: "showLogAutomatic") as? Bool ?? false
     @State private var autoScroll = true
     @State private var onlyProblems = false
     @State private var truncated = false

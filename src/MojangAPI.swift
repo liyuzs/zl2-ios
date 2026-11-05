@@ -666,7 +666,7 @@ public struct MojangAPI: @unchecked Sendable {
     /// 按设置里的「下载源」选择，返回该用的版本清单地址。
     /// 设置项 key 是 `gameDownloadSource`（在设置页的镜像分组里）。
     public static var preferredManifestURL: URL {
-        let raw = UserDefaults.standard.string(forKey: "gameDownloadSource") ?? ""
+        let raw = UserDefaults.standard.string(forKey: "gameDownloadSource") ?? "MirrorSourceType.AUTO"
         let lower = raw.lowercased()
         // OFFICIAL 才强制走官方；AUTO（默认）和 MIRROR 都走国内镜像
         if lower.contains("official") || lower.contains("官方") {
@@ -678,10 +678,10 @@ public struct MojangAPI: @unchecked Sendable {
 
     /// 是否启用了国内镜像
     public static var mirrorEnabled: Bool {
-        let raw = (UserDefaults.standard.string(forKey: "gameDownloadSource") ?? "").lowercased()
+        let raw = (UserDefaults.standard.string(forKey: "gameDownloadSource") ?? "MirrorSourceType.AUTO").lowercased()
         // OFFICIAL 走官方；AUTO（默认）和 MIRROR 都走镜像
         if raw.contains("official") || raw.contains("官方") { return false }
-        if raw.isEmpty { return false }
+        if raw.isEmpty { return true }   // 空值等同 AUTO，走镜像
         return true
     }
 
