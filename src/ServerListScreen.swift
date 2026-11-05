@@ -474,8 +474,12 @@ final class ServerStore {
 enum MinecraftPing {
     /// 通过 Server List Ping 协议获取状态
     static func ping(host: String, timeout: TimeInterval = 3) async -> ZLServerPingResult? {
-        let parts = host.split(separator: ":", maxSplits: 1)
-        let hostname = String(parts[0])
+        // 空地址会让 parts 为空数组，直接取 [0] 会闪退
+        let trimmed = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let parts = trimmed.split(separator: ":", maxSplits: 1)
+        guard let first = parts.first else { return nil }
+        let hostname = String(first)
         let port = parts.count > 1 ? (UInt16(parts[1]) ?? 25565) : 25565
 
         return await withCheckedContinuation { cont in
