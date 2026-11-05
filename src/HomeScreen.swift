@@ -7,7 +7,8 @@ struct HomeScreen: View {
     @AppStorage("accountType") private var accountType = "LittleSkin"
 
     @State private var launching = false
-    @State private var selectedVersion = "1.20.1 Fabric 0.19.2"
+    // 真正的版本名由 onAppear 从已安装列表里取，不能写死
+    @State private var selectedVersion = ""
     // 彩蛋：连点标题
     @State private var titleTaps = 0
     @State private var eggText: String?
@@ -100,6 +101,8 @@ struct HomeScreen: View {
             ZLTaskMenu(onClose: { showTaskMenu = false })
         }
         .onAppear {
+            // 每次都从磁盘读一遍已安装版本（切过目录也能跟上）
+            refreshInstalledVersion()
             // 深夜第一次进来自动打个招呼（小彩蛋）
             if !didGreet {
                 didGreet = true
@@ -236,7 +239,7 @@ struct HomeScreen: View {
                     }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(selectedVersion)
+                    Text(selectedVersion.isEmpty ? "还没有安装版本" : selectedVersion)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(ZLTheme.textPrimary)
                         .lineLimit(1)
@@ -318,5 +321,21 @@ struct HomeScreen: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    /// 从已安装版本里选一个作为首页显示/启动用的版本
+    private func refreshInstalledVersion() {
+        let list = VersionRepository.shared.listVersions()
+        guard !list.isEmpty else {
+            selectedVersion = "还没有安装版本"
+            return
+        }
+        // 已有选中且仍然存在，就保留
+        if !selectedVersion.isEmpty,
+           list.contains(where: { selectedVersion.hasPrefix($0.id) }) {
+            return
+        }
+        // 否则取第一个（列表已按修改时间排序）
+        selectedVersion = list[0].id
     }
 }
