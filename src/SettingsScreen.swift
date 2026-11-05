@@ -706,13 +706,18 @@ struct SettingsScreen: View {
 
     // MARK: - 行构造
 
+    /// 没接进核心的设置项统一加标注，避免用户以为调了有用
+    private func markUnsupported(_ key: String, _ title: String) -> String {
+        ZLUnsupportedSettings.isUnsupported(key) ? title + "（当前版本暂不支持）" : title
+    }
+
     private func toggle(_ key: String, _ title: String, _ summary: String?) -> ZLSettingRow {
-        ZLSettingRow(key: key, title: title, summary: summary, kind: .toggle)
+        ZLSettingRow(key: key, title: markUnsupported(key, title), summary: summary, kind: .toggle)
     }
 
     private func slider(_ key: String, _ title: String, _ summary: String?,
                         unit: String, minValue: Int? = nil, maxValue: Int? = nil) -> ZLSettingRow {
-        ZLSettingRow(key: key, title: title, summary: summary,
+        ZLSettingRow(key: key, title: markUnsupported(key, title), summary: summary,
                      kind: .slider(unit: unit, minValue: minValue, maxValue: maxValue))
     }
 
@@ -1123,4 +1128,24 @@ private struct ZLHotspotEditor: View {
         .presentationDetents([.medium])
         .background(ZLTheme.background.ignoresSafeArea())
     }
+}
+
+
+// MARK: - 当前版本还没接进核心的设置项
+//
+// 这些开关会写进 UserDefaults，但核心代码里没有任何地方读它们。
+// 与其让用户以为调了有用，不如直接标出来。
+enum ZLUnsupportedSettings {
+    static let keys: Set<String> = [
+        "sfpewPluginLayer", "sfpewRelaxedContext", "vulkanDriver", "graphicsApi",
+        "gameFullScreen", "sustainedPerformance", "zinkPreferSystemDriver",
+        "vsyncInZink", "dumpShaders", "skipGameIntegrityCheck", "versionCustomInfo",
+        "nativeLibPlugins", "logBufferFlushInterval", "assetPlatformSource",
+        "launcherFestivalEffects", "launcherFullScreen", "launcherSwapAnimEnabled",
+        "launcherAnimateSpeedLevel", "launcherBackgroundOpacity",
+        "videoBackgroundVolume", "backgroundBlur", "backgroundBlurType",
+        "launcherLanguage", "launcherColorTheme",
+    ]
+
+    static func isUnsupported(_ key: String) -> Bool { keys.contains(key) }
 }
