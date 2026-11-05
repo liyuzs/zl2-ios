@@ -5,6 +5,7 @@
 //   <AME_HOME>/instances/<name>/.minecraft/versions/<id>/<id>.jar
 //   <AME_HOME>/instances/<name>/.minecraft/libraries/...
 import Foundation
+import CryptoKit
 
 // MARK: - 安装进度
 struct InstallProgress: Sendable {
@@ -140,23 +141,32 @@ actor VersionInstaller {
         // 3) libraries
         let libs = detail.libraries ?? []
         let libRoot = mcDir.appendingPathComponent("libraries", isDirectory: true)
-        var tasks: [(URL, URL)] = []
+        // (下载地址, 目标路径, 期望的 sha1)
+        var tasks: [(URL, URL, String?)] = []
         for lib in libs {
             // 只下主 artifact（跳过 natives/classifiers，iOS 不吃原生库）
             guard let artifact = lib.downloads?.artifact, let path = artifact.path else { continue }
             let dest = libRoot.appendingPathComponent(path)
             if fm.fileExists(atPath: dest.path) { continue }
-            tasks.append((artifact.url, dest))
+            tasks.append((artifact.url, dest, artifact.sha1))
         }
         if !tasks.isEmpty {
             let total = tasks.count
             var done = 0
             if shouldCancel?() == true { throw CancellationError() }
             report(.libraries, 0, "依赖库 \(total) 个")
-            for (src, dst) in tasks {
+            for (src, dst, expectSHA) in tasks {
                 try fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
                 do {
                     try await download(src, to: dst)
+                    // 校验完整性：损坏的库会让游戏在启动时莫名崩溃
+                    if let expect = expectSHA, !expect.isEmpty {
+                        let got = (try? Data(contentsOf: dst).zlSHA1Hex) ?? ""
+                        if got.lowercased() != expect.lowercased() {
+                            try? fm.removeItem(at: dst)
+                            throw InstallError.failed("校验失败 \(dst.lastPathComponent)")
+                        }
+                    }
                 } catch {
                     failCount += 1
                     failedLibs.append(src.lastPathComponent)
@@ -300,5 +310,14 @@ actor VersionInstaller {
             return o
         }
         return obj
+    }
+}
+
+// MARK: - 下载完整性校验
+
+extension Data {
+    /// 十六进制 SHA-1（Mojang 的 downloads.sha1 用的就是这个）
+    var zlSHA1Hex: String {
+        Insecure.SHA1.hash(data: self).map { String(format: "%02x", $0) }.joined()
     }
 }
