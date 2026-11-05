@@ -220,7 +220,7 @@ actor VersionInstaller {
                             let (hash, _) = pending[idx]
                             group.addTask {
                                 // shouldCancel 是入参，不在 actor 上，得捕获
-                                if cancel?.() == true { return false }
+                                if cancel?() == true { return false }
                                 return await Self.downloadAsset(hash: hash, root: objRoot, session: sess, fm: fileMgr)
                             }
                             idx += 1
@@ -232,7 +232,7 @@ actor VersionInstaller {
                                 let (hash, _) = pending[idx]
                                 group.addTask {
                                     // 用捕获的局部变量，不能碰 actor 的 self（会编译不过）
-                                    if cancel?.() == true { return false }
+                                    if cancel?() == true { return false }
                                     return await Self.downloadAsset(hash: hash, root: objRoot,
                                                                     session: sess, fm: fileMgr)
                                 }
