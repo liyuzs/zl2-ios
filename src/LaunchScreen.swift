@@ -10,8 +10,6 @@ struct LaunchScreen: View {
     @Binding var isPresented: Bool
 
     @State private var stage: Stage = .check
-    @State private var showGameOverlay = false
-    @State private var overlayMenu = false
     @State private var progress: Double = 0
     // 加载时随机显示一句可爱提示
     @State private var cuteTip = ZLLoadingTips.random
@@ -37,15 +35,6 @@ struct LaunchScreen: View {
             footer
         }
         .background(ZLTheme.background)
-        .overlay {
-            // 启动成功后把游戏内悬浮层挂上（FPS 球 / 控制按钮 / 游戏内菜单）
-            // 原来 GameOverlay 写了 700 行，全工程没有一处构造它
-            if showGameOverlay {
-                GameOverlay(isMenuPresented: $overlayMenu,
-                            onForceClose: { showGameOverlay = false },
-                            onShowToast: { _ in })
-            }
-        }
         .onAppear(perform: runCheck)
     }
 
@@ -242,7 +231,10 @@ struct LaunchScreen: View {
             }
             progress = 1
             stage = .done
-            showGameOverlay = true
+            // 核心接手渲染后，启动页必须退场，否则会一直盖在游戏画面上
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                isPresented = false
+            }
             logs.append("✓ 自检流程结束")
         } catch {
             failed = true
