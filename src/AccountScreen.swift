@@ -212,6 +212,9 @@ struct AccountScreen: View {
                         UserDefaults.standard.set(norm, forKey: "zl.authlib.server")
                         UserDefaults.standard.set(profile.id, forKey: "zl.authlib.uuid")
 
+                        // 挂上 authlib-injector（让它把皮肤站身份注进游戏）
+                        _ = await ZLAuthlibInjector.ensureDownloaded()
+
                         // 下载皮肤，离线模式也能显示
                         if let skinURL = profile.skinURL {
                             let dir = VersionRepository.shared.mcRoot

@@ -347,8 +347,18 @@ enum CoreBridge {
     /// 否则用户改了渲染器/内存/JVM 参数后不重启 App 就不会生效。
     static func applyUserSettings() {
         // 0) 自定义 JVM 参数
-        let extraJV = UserDefaults.standard.string(forKey: "jvmArgs") ?? ""
-        setenv("AME_EXTRA_JVM_ARGS", extraJV.trimmingCharacters(in: .whitespacesAndNewlines), 1)
+        var extraJV = UserDefaults.standard.string(forKey: "jvmArgs") ?? ""
+        extraJV = extraJV.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // 配置了皮肤站就挂 authlib-injector，皮肤/披风才能在游戏里显示
+        if let agent = ZLAuthlibInjector.javaAgentArgument() {
+            if extraJV.isEmpty {
+                extraJV = agent
+            } else if !extraJV.contains("authlib-injector") {
+                extraJV += " " + agent
+            }
+        }
+        setenv("AME_EXTRA_JVM_ARGS", extraJV, 1)
 
         // 1) 渲染器
         let userRenderer = UserDefaults.standard.string(forKey: "renderer") ?? ""

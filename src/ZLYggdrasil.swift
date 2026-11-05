@@ -132,3 +132,57 @@ struct ZLYggdrasilClient {
         }
     }
 }
+
+// MARK: - authlib-injector（让皮肤站在游戏里生效）
+
+enum ZLAuthlibInjector {
+    /// 官方发布地址（latest.json 里拿 jar 地址）
+    static let metaURL = "https://authlib-injector.yushi.moe/artifact/latest.json"
+
+    /// 本地 jar 路径
+    static var jarURL: URL {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return docs.appendingPathComponent("authlib-injector.jar")
+    }
+
+    static var isReady: Bool {
+        FileManager.default.fileExists(atPath: jarURL.path)
+    }
+
+    /// 下载 jar 到 Documents（只在没有时下）
+    @discardableResult
+    static func ensureDownloaded() async -> Bool {
+        if isReady { return true }
+        do {
+            // 1) 问最新版地址
+            var req = URLRequest(url: URL(string: metaURL)!, timeoutInterval: 20)
+            req.setValue("ZL2-iOS/1.0", forHTTPHeaderField: "User-Agent")
+            let (meta, _) = try await URLSession.shared.data(for: req)
+            guard let j = try JSONSerialization.jsonObject(with: meta) as? [String: Any],
+                  let s = j["download_url"] as? String,
+                  let url = URL(string: s) else { return false }
+
+            // 2) 下 jar
+            var r2 = URLRequest(url: url, timeoutInterval: 60)
+            r2.setValue("ZL2-iOS/1.0", forHTTPHeaderField: "User-Agent")
+            let (data, resp) = try await URLSession.shared.data(for: r2)
+            guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                  data.count > 100_000 else { return false }
+            try data.write(to: jarURL)
+            NSLog("[ZL2] authlib-injector 已下载：\(data.count) 字节")
+            return true
+        } catch {
+            NSLog("[ZL2] authlib-injector 下载失败：\(error.localizedDescription)")
+            return false
+        }
+    }
+
+    /// 生成要追加到 JVM 的 -javaagent 参数（没配置皮肤站时返回 nil）
+    static func javaAgentArgument() -> String? {
+        guard let server = UserDefaults.standard.string(forKey: "zl.authlib.server"),
+              !server.isEmpty, isReady else { return nil }
+        // 路径里有空格要加引号
+        let path = jarURL.path.contains(" ") ? "\"\(jarURL.path)\"" : jarURL.path
+        return "-javaagent:\(path)=\(server)"
+    }
+}
