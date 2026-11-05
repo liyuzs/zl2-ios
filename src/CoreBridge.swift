@@ -73,14 +73,10 @@ enum CoreBridge {
         try? fm.createDirectory(atPath: gameDir, withIntermediateDirectories: true)
         setenv("GAME_DIR", gameDir, 1)
 
-        // === 性能优化 ===
-        // 0) 用户自定义 JVM 参数：核心从 AME_EXTRA_JVM_ARGS 读取
-        let extraJV = UserDefaults.standard.string(forKey: "jvmArgs") ?? ""
-        setenv("AME_EXTRA_JVM_ARGS", extraJV.trimmingCharacters(in: .whitespacesAndNewlines), 1)
+        // 应用用户设置（每次启动游戏都要重新读，不能只做一次）
+        applyUserSettings()
 
-        // 1) 渲染器：读用户设置，留空则用 auto（Metal/ANGLE）
-        let userRenderer = UserDefaults.standard.string(forKey: "renderer") ?? ""
-        setenv("RENDERER", userRenderer.isEmpty ? "auto" : userRenderer, 1)
+        // 以下是一次性初始化
         // 2) JIT 常驻（性能关键：避免反复 attach 造成卡顿）
         if getPrefObject("debug.debug_always_attached_jit") == nil {
             setPrefObject("debug.debug_always_attached_jit", true)
@@ -172,6 +168,8 @@ enum CoreBridge {
                               width: Int = 0,
                               height: Int = 0) async throws {
         try bootstrap()
+        // 每次启动都重新读设置，改完设置不用重启 App
+        applyUserSettings()
         if let home = ProcessInfo.processInfo.environment["AME_HOME"] {
             writePerfOptionsIfNeeded(gameDir: (home as NSString).appendingPathComponent("instances/default/.minecraft"))
         }
@@ -216,6 +214,7 @@ enum CoreBridge {
                           width: Int = 1280,
                           height: Int = 720) async throws {
         try bootstrap()
+        applyUserSettings()
         if let home = ProcessInfo.processInfo.environment["AME_HOME"] {
             writePerfOptionsIfNeeded(gameDir: (home as NSString).appendingPathComponent("instances/default/.minecraft"))
         }
@@ -329,5 +328,26 @@ enum CoreBridge {
             }
         }
         return 17
+    }
+
+    /// 把用户设置写进环境变量。每次启动游戏前都要调一次，
+    /// 否则用户改了渲染器/内存/JVM 参数后不重启 App 就不会生效。
+    static func applyUserSettings() {
+        // 0) 自定义 JVM 参数
+        let extraJV = UserDefaults.standard.string(forKey: "jvmArgs") ?? ""
+        setenv("AME_EXTRA_JVM_ARGS", extraJV.trimmingCharacters(in: .whitespacesAndNewlines), 1)
+
+        // 1) 渲染器
+        let userRenderer = UserDefaults.standard.string(forKey: "renderer") ?? ""
+        setenv("RENDERER", userRenderer.isEmpty ? "auto" : userRenderer, 1)
+
+        // 2) 内存分配：用户设了就用他的，同时同步给核心
+        let userRam = UserDefaults.standard.object(forKey: "ramAllocation") as? Int ?? 0
+        if userRam > 0 {
+            setPrefObject("general.allocated_memory", userRam)
+        } else if getPrefObject("general.allocated_memory") == nil {
+            let ramMB = Int(ProcessInfo.processInfo.physicalMemory / 1024 / 1024)
+            setPrefObject("general.allocated_memory", max(512, min(2048, ramMB / 3)))
+        }
     }
 }
