@@ -749,11 +749,11 @@ struct SettingsScreen: View {
     }
 
     private func blur(_ key: String, _ title: String, _ summary: String?) -> ZLSettingRow {
-        ZLSettingRow(key: key, title: title, summary: summary, kind: .blur)
+        ZLSettingRow(key: key, title: markUnsupported(key, title), summary: summary, kind: .blur)
     }
 
     private func animateSpeed(_ key: String, _ title: String, _ summary: String?) -> ZLSettingRow {
-        ZLSettingRow(key: key, title: title, summary: summary, kind: .animateSpeed)
+        ZLSettingRow(key: key, title: markUnsupported(key, title), summary: summary, kind: .animateSpeed)
     }
 
     private func darkMode(_ key: String, _ title: String, _ summary: String?) -> ZLSettingRow {

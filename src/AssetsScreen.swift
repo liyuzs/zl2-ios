@@ -237,7 +237,6 @@ struct AssetsScreen: View {
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
         .task(id: "\(kind.rawValue)|\(query)|\(sort)|\(gameVersion)|\(modLoader)|\(category)") {
-            reloadVersionList()
             // 收藏与存档走本地，不打网络
             if kind == .favorite || kind == .saves {
                 localItems = localItemsForCurrentKind()
@@ -245,6 +244,9 @@ struct AssetsScreen: View {
             }
             await runSearch()
         }
+        // 独立 task，只在进页面时算一次版本列表（不能挂在带 id 的 task 里，
+        // 否则搜索框每敲一个字都会重扫一遍所有版本目录）
+        .task { reloadVersionList() }
         .sheet(item: $detailHit) { h in
             AssetInfoScreen(hit: h,
                             kind: kind,
