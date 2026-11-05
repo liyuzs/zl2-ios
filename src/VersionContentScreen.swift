@@ -201,8 +201,8 @@ struct VersionContentScreen: View {
     // MARK: 概览（真机结构：图标 + 版本管理 + 快捷操作）
     private var overview: some View {
         VStack(spacing: ZLTheme.cardGap) {
-            // 自定义图标 + 版本名
-            ZLCard {
+            // 自定义图标 + 版本名（视觉重点，开扫光 + 倾斜高光）
+            ZLCard(sheen: true) {
                 HStack(spacing: 14) {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(ZLTheme.primarySoft)
