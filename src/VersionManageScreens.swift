@@ -1,6 +1,7 @@
 // ZL2-iOS · 版本管理补充
 // 游戏目录管理 / 清理文件 / 复制重命名 / 三种格式导出
 import SwiftUI
+import UIKit
 
 // MARK: - 游戏目录管理
 // 真实的实例目录管理：每个目录 = <Documents>/instances/<名字>/.minecraft
@@ -408,6 +409,8 @@ struct ExportPackScreen: View {
     @State private var includeShaders = true
     @State private var includeConfig = true
     @State private var includeLauncher = false
+    @State private var exporting = false
+    @State private var exportMessage: String?
     @State private var name = "我的整合包"
     @State private var version = "1.0.0"
     @State private var author = ""
@@ -478,7 +481,15 @@ struct ExportPackScreen: View {
                         }
                     }
 
-                    ZLGoldButton(title: "开始导出", icon: "square.and.arrow.up") { }
+                    ZLGoldButton(title: exporting ? "打包中…" : "开始导出",
+                                 icon: exporting ? "clock" : "square.and.arrow.up",
+                                 enabled: !exporting) {
+                        startExport()
+                    }
+                    if let msg = exportMessage {
+                        Text(msg).font(.system(size: 12))
+                            .foregroundStyle(ZLTheme.textSecond)
+                    }
                 }
                 .padding(ZLTheme.screenPadding)
             }
@@ -506,6 +517,74 @@ struct ExportPackScreen: View {
                     .foregroundStyle(ZLTheme.textSecond)
             }
             Spacer()
+        }
+    }
+
+    /// 按用户勾选的 7 类目录打包
+    private func startExport() {
+        exporting = true
+        exportMessage = "正在打包…"
+        // 勾选项 → 实际目录
+        var rels: [String] = []
+        if includeMods           { rels.append("mods") }
+        if includeResourcePacks  { rels.append("resourcepacks") }
+        if includeShaders        { rels.append("shaderpacks") }
+        if includeSaves          { rels.append("saves") }
+        if includeConfig         { rels.append("config") }
+        if includeOptions        { rels.append("options.txt") }
+        if includeLauncher       { rels.append("launcher_profiles.json") }
+
+        let gameDir = VersionRepository.shared.mcRoot
+        DispatchQueue.global(qos: .userInitiated).async {
+            let fm = FileManager.default
+            let stamp = Int(Date().timeIntervalSince1970)
+            let outName = "整合包-\(stamp).zip"
+            let stage = fm.temporaryDirectory.appendingPathComponent("zl_export_\(stamp)")
+            try? fm.removeItem(at: stage)
+            try? fm.createDirectory(at: stage, withIntermediateDirectories: true)
+
+            var packed = 0
+            for rel in rels {
+                let src = gameDir.appendingPathComponent(rel)
+                guard fm.fileExists(atPath: src.path) else { continue }
+                let dst = stage.appendingPathComponent(rel)
+                try? fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
+                if (try? fm.copyItem(at: src, to: dst)) != nil { packed += 1 }
+            }
+
+            guard packed > 0 else {
+                try? fm.removeItem(at: stage)
+                DispatchQueue.main.async {
+                    exporting = false
+                    exportMessage = "没有可打包的内容，请先装点模组或存档"
+                }
+                return
+            }
+
+            var coordError: NSError?
+            var zipURL: URL?
+            NSFileCoordinator().coordinate(readingItemAt: stage, options: [.forUploading], error: &coordError) { tmp in
+                let dst = fm.temporaryDirectory.appendingPathComponent(outName)
+                try? fm.removeItem(at: dst)
+                zipURL = (try? fm.copyItem(at: tmp, to: dst)) != nil ? dst : nil
+            }
+            try? fm.removeItem(at: stage)
+
+            DispatchQueue.main.async {
+                exporting = false
+                if let z = zipURL {
+                    exportMessage = "已生成 \(z.lastPathComponent)（\(packed) 项）"
+                    ZLHaptic.success()
+                    // 弹系统分享，存到「文件」或 AirDrop
+                    let av = UIActivityViewController(activityItems: [z], applicationActivities: nil)
+                    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let root = scene.windows.first?.rootViewController {
+                        root.present(av, animated: true)
+                    }
+                } else {
+                    exportMessage = "打包失败，请重试"
+                }
+            }
         }
     }
 

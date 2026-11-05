@@ -2,6 +2,7 @@
 // 对齐 ZL2：控件层 / 按钮·文本框·摇杆 / 外观样式与样式收藏柜 / 摇杆详细配置 /
 //          控件复制（当前层·指定层）/ 控件层属性 / 布局 JSON 导入导出
 import SwiftUI
+import UIKit
 import Foundation
 
 // MARK: - 控件类型

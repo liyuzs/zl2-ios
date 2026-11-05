@@ -2,6 +2,7 @@
 // 参考：ZL2 的 TerracottaAndroidAPI.java
 // 说明：原生核心是预编译 .so（7.7MB），此处实现房间码校验与流程状态机
 import SwiftUI
+import UIKit
 
 // MARK: - 房间类型（对齐 RoomType）
 enum ZLRoomType: String, CaseIterable {

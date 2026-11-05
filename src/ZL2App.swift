@@ -1,5 +1,6 @@
 // ZL2-iOS · 应用入口 + 导航（依据真机：顶部导航栏切换页面）
 import SwiftUI
+import UIKit
 
 @main
 struct ZL2StyleApp: App {

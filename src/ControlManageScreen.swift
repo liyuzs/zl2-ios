@@ -1,6 +1,7 @@
 // ZL2-iOS · 控制管理（设置 → 控制设置 → 控制管理）
 // 真机：左侧布局列表 + 工具栏，右侧布局信息面板 + 分享/编辑
 import SwiftUI
+import UIKit
 
 struct ControlLayoutMeta: Identifiable, Codable, Equatable {
     var id = UUID()

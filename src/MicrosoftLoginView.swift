@@ -1,6 +1,7 @@
 // ZL2-iOS · 微软账号登录界面
 // 设备码流程：显示 code → 用户去网页确认 → 轮询 → 登录成功
 import SwiftUI
+import UIKit
 
 struct MicrosoftLoginView: View {
     @Environment(\.dismiss) private var dismiss
