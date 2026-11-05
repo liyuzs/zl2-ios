@@ -160,7 +160,7 @@ struct ZLTopBar: View {
         }
         .padding(.horizontal, ZLTheme.screenPadding)
         .frame(height: 56)
-        // 顶栏加一层玻璃底（高度/内边距不变，只换底板）
+        // 顶栏加一层玻璃底（高度/内边距不变，只换底板），往上盖住状态栏那条安全区
         .background(
             ZStack {
                 Rectangle().fill(.ultraThinMaterial)
@@ -170,6 +170,7 @@ struct ZLTopBar: View {
                         colors: [Color.white.opacity(0.16), Color.white.opacity(0)],
                         startPoint: .top, endPoint: .bottom))
             }
+            .ignoresSafeArea(edges: .top)
         )
         .overlay(alignment: .bottom) {
             Rectangle()
@@ -197,6 +198,7 @@ struct ZLSideRail<Item: Identifiable & Equatable>: View {
     let label: (Item) -> String
     let icon: (Item) -> String
     @Binding var selection: Item
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 6) {
@@ -224,7 +226,7 @@ struct ZLSideRail<Item: Identifiable & Equatable>: View {
         .background(
             ZStack {
                 Rectangle().fill(.ultraThinMaterial)
-                Rectangle().fill(ZLTheme.surface.opacity(0.55))
+                Rectangle().fill(ZLTheme.surface.opacity(colorScheme == .dark ? 0.80 : 0.55))
             }
         )
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
