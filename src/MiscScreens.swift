@@ -317,18 +317,44 @@ struct WelcomeScreen: View {
 struct CrashLogScreen: View {
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
-    @State private var logs: [String] = [
-        "[INFO] ZL2-iOS 启动",
-        "[INFO] 核心状态: \(CoreBridge.isCoreLinked ? "已链接" : "未链接")",
-        "[INFO] 运行时检查: \(CoreBridge.runtimeCheck() ? "通过" : "缺失")",
-        "[INFO] 等待用户操作…",
-    ]
+    @State private var logs: [String] = []
+    @State private var findings: [ZLCrashAnalyzer.Finding] = []
 
     var body: some View {
         VStack(spacing: 0) {
             ZLTopBar(title: "崩溃日志", onBack: onBack, onHome: onHome)
             ScrollView {
                 VStack(alignment: .leading, spacing: 3) {
+                    // 自动诊断结果
+                    if !findings.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("可能的原因").font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(ZLTheme.textPrimary)
+                            ForEach(Array(findings.enumerated()), id: \.offset) { _, f in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack(spacing: 5) {
+                                        Image(systemName: f.severity >= 3
+                                              ? "exclamationmark.octagon.fill"
+                                              : "exclamationmark.triangle.fill")
+                                            .font(.system(size: 11))
+                                            .foregroundStyle(f.severity >= 3 ? ZLTheme.danger : ZLTheme.warning)
+                                        Text(f.title).font(.system(size: 12, weight: .medium))
+                                            .foregroundStyle(ZLTheme.textPrimary)
+                                    }
+                                    Text(f.advice)
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(ZLTheme.textSecond)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(ZLTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .padding(.horizontal, ZLTheme.screenPadding)
+                        .padding(.top, ZLTheme.screenPadding)
+                    }
                     ForEach(logs.indices, id: \.self) { i in
                         Text(logs[i])
                             .font(.system(size: 11, design: .monospaced))
@@ -362,6 +388,22 @@ struct CrashLogScreen: View {
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
+        .onAppear { loadRealLog() }
+    }
+
+    /// 读真实的 ame.log 并自动诊断
+    private func loadRealLog() {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let path = docs.appendingPathComponent("ame.log")
+        guard let text = try? String(contentsOf: path, encoding: .utf8) else {
+            logs = ["[提示] 还没找到日志文件。",
+                    "先在首页启动一次游戏，日志会自动写到 Documents/ame.log。"]
+            findings = []
+            return
+        }
+        let all = text.components(separatedBy: "\n")
+        logs = Array(all.suffix(400))
+        findings = ZLCrashAnalyzer.analyze(text)
     }
 }
 

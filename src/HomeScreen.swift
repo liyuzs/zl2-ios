@@ -100,6 +100,12 @@ struct HomeScreen: View {
         .sheet(isPresented: $showTaskMenu) {
             ZLTaskMenu(onClose: { showTaskMenu = false })
         }
+        // Siri / 快捷指令要求自动启动
+        .onReceive(NotificationCenter.default.publisher(for: .zlAutoLaunch)) { _ in
+            guard !selectedVersion.isEmpty, !selectedVersion.hasPrefix("还没有") else { return }
+            ZLHaptic.success()
+            launching = true
+        }
         .onAppear {
             // 每次都从磁盘读一遍已安装版本（切过目录也能跟上）
             refreshInstalledVersion()

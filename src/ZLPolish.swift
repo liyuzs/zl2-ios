@@ -620,3 +620,79 @@ enum ZLFriendlyError {
         return raw
     }
 }
+
+// MARK: - 崩溃日志分析
+
+enum ZLCrashAnalyzer {
+    struct Finding {
+        let title: String     // 可能原因
+        let advice: String    // 怎么办
+        let severity: Int     // 1 提示 / 2 警告 / 3 严重
+    }
+
+    /// 扫一遍日志文本，返回命中的常见问题（按严重程度排序）
+    static func analyze(_ text: String) -> [Finding] {
+        var out: [Finding] = []
+        let t = text
+
+        func hit(_ patterns: [String]) -> Bool {
+            patterns.contains { t.range(of: $0, options: .caseInsensitive) != nil }
+        }
+
+        if hit(["OutOfMemoryError", "Java heap space", "GC overhead limit"]) {
+            out.append(.init(
+                title: "内存不足",
+                advice: "去 设置 → 游戏 → 内存分配，把数值调小一点（比如 1024MB），或者把视距调低。",
+                severity: 3))
+        }
+        if hit(["UnsatisfiedLinkError", "no lwjgl", "libGL", "failed to load native"]) {
+            out.append(.init(
+                title: "缺少图形库 / 原生库",
+                advice: "换个渲染器试试（设置 → 渲染 → 渲染器，改成 MTL_ANGLE 或 gl4es），或者重新安装这个版本。",
+                severity: 3))
+        }
+        if hit(["ClassNotFoundException", "NoClassDefFoundError", "invalid or corrupt jarfile"]) {
+            out.append(.init(
+                title: "core jar 损坏",
+                advice: "这个版本的 jar 下载不完整，删掉重装一次。",
+                severity: 3))
+        }
+        if hit(["ModResolutionException", "requires", "Missing or unsupported mandatory dependencies"]) {
+            out.append(.init(
+                title: "模组缺少前置",
+                advice: "去模组页看顶部的依赖提醒，把缺少的前置模组装上。",
+                severity: 3))
+        }
+        if hit(["NoSuchMethodError", "IncompatibleClassChangeError", "UnsupportedClassVersionError"]) {
+            out.append(.init(
+                title: "Java 版本不对 / 模组不兼容",
+                advice: "1.20.5 以上要 Java 21，1.20.4 以下要 Java 17。也可能是模组装错了游戏版本。",
+                severity: 3))
+        }
+        if hit(["GLFW error", "Failed to create GLFW window", "OpenGL", "EGL_BAD"]) {
+            out.append(.init(
+                title: "渲染初始化失败",
+                advice: "先开 JIT（用 StikDebug），再换个渲染器试。低端机建议 gl4es。",
+                severity: 2))
+        }
+        if hit(["Could not find or load main class", "Unrecognized option"]) {
+            out.append(.init(
+                title: "启动参数有问题",
+                advice: "检查 设置 → 游戏 → JVM 参数，是不是填了不支持的选项（清空试试）。",
+                severity: 2))
+        }
+        if hit(["SocketException", "Connection refused", "UnknownHostException"]) {
+            out.append(.init(
+                title: "联网失败",
+                advice: "登录 / 下载需要网络。检查网络，或者换个下载源（设置 → 镜像）。",
+                severity: 1))
+        }
+        if hit(["Permission denied", "Read-only file system"]) {
+            out.append(.init(
+                title: "文件权限问题",
+                advice: "这个位置不能写。换个游戏目录试试（版本列表 → 游戏目录）。",
+                severity: 2))
+        }
+        return out.sorted { $0.severity > $1.severity }
+    }
+}

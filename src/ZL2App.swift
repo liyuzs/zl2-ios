@@ -104,6 +104,22 @@ struct RootView: View {
                 // 启动时清一次过期日志（按设置里的保留天数）
                 ZLLogRetention.cleanup()
 
+                // 处理 Siri / 快捷指令留下的指令
+                if let route = ZLPendingAction.consumeRoute() {
+                    switch route {
+                    case "download": path.append(.download)
+                    case "versionList": path.append(.versionList)
+                    case "multiplayer": path.append(.multiplayer)
+                    default: break
+                    }
+                }
+                if ZLPendingAction.consumeLaunchFlag() {
+                    // 稍等一下让首页把版本读出来，再自动开始
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        NotificationCenter.default.post(name: .zlAutoLaunch, object: nil)
+                    }
+                }
+
                 // 启动后静默检查一次（不打扰，有新版才提示）
                 let checker = ZLUpdateChecker()
                 await checker.check()
