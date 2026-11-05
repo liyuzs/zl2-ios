@@ -35,6 +35,8 @@ struct VersionListScreen: View {
     @State private var toast: String?
     @State private var isLoading = true
     @State private var loadError: String?
+    /// 版本元信息缓存，避免每次界面刷新都读磁盘
+    @State private var metaCache: [String: String] = [:]
 
     private let filters = ["全部", "原版", "可安装模组"]
 
@@ -353,15 +355,19 @@ struct VersionListScreen: View {
         }
     }
 
+    /// 版本简介：优先走缓存，没缓存才读磁盘并写入缓存
     private func versionMeta(_ id: String) -> String? {
-        // 从版本 json 里读 mainClass 之类的简短信息
+        if let cached = metaCache[id] { return cached.isEmpty ? nil : cached }
         let p = VersionRepository.shared.versionsDir.appendingPathComponent("\(id)/\(id).json")
         guard let d = try? Data(contentsOf: p),
               let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { return nil }
         var parts: [String] = []
         if let t = o["type"] as? String { parts.append(t) }
         if let mc = o["mainClass"] as? String, mc.contains("fabric") { parts.append("Fabric") }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        let text = parts.joined(separator: " · ")
+        // 写入缓存（用异步避免修改状态时的警告）
+        DispatchQueue.main.async { metaCache[id] = text }
+        return text.isEmpty ? nil : text
     }
 
     @ViewBuilder
@@ -418,6 +424,7 @@ struct VersionListScreen: View {
     }
 
     private func reload() {
+        metaCache.removeAll()
         // listVersions() 内部把错误吞掉了，这里先探一下目录，好区分"空"和"读不了"
         let dir = VersionRepository.shared.versionsDir
         var isDir: ObjCBool = false
