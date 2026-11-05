@@ -22,6 +22,8 @@ struct SearchScreen: View {
                     TextField("搜索模组、整合包、光影…", text: $query)
                         .textFieldStyle(.plain)
                         .font(.system(size: 15))
+                        .submitLabel(.search)
+                        .onSubmit { runLiveSearch() }
                 }
                 .padding(.horizontal, 14)
                 .frame(height: 46)
@@ -40,11 +42,19 @@ struct SearchScreen: View {
             }
             .padding(.horizontal, ZLTheme.screenPadding)
             .padding(.bottom, 10)
+            .onChange(of: scope) { _ in
+                if !query.isEmpty { runLiveSearch() }
+            }
 
             ScrollView {
                 VStack(spacing: 10) {
                     if query.isEmpty {
                         emptyHint
+                    } else if let e = searchError {
+                        Text(e).font(.system(size: 12)).foregroundStyle(ZLTheme.danger)
+                            .padding()
+                    } else if searching {
+                        ProgressView().padding(30)
                     } else {
                         ForEach(results) { r in
                             resultRow(r)
@@ -73,7 +83,60 @@ struct SearchScreen: View {
         .padding(.top, 60)
     }
 
+    /// 真实搜索结果（Modrinth）
+    @State private var liveHits: [ModrinthHit] = []
+    @State private var searching = false
+    @State private var searchError: String?
+
+    /// 真正去 Modrinth 搜
+    private func runLiveSearch() {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else {
+            liveHits = []
+            searchError = nil
+            return
+        }
+        searching = true
+        searchError = nil
+        Task {
+            do {
+                // 按当前 scope 决定搜什么类型
+                let type: ModrinthProjectType? = {
+                    switch scope {
+                    case 1: return .mod
+                    case 2: return .modpack
+                    case 3: return .resourcepack
+                    case 4: return .shader
+                    default: return nil
+                    }
+                }()
+                let r = try await ModrinthAPI.shared.search(query: q, type: type, limit: 30)
+                await MainActor.run {
+                    liveHits = r.hits
+                    searching = false
+                }
+            } catch {
+                await MainActor.run {
+                    searchError = ZLFriendlyError.text(error)
+                    liveHits = []
+                    searching = false
+                }
+            }
+        }
+    }
+
     private var results: [AssetItem] {
+        // 有真实结果就用真实的
+        if !liveHits.isEmpty {
+            return liveHits.map { h in
+                AssetItem(title: h.title,
+                          subtitle: h.description,
+                          author: h.author,
+                          downloads: "\(h.downloads)",
+                          tags: h.categories,
+                          version: h.versions.first ?? "—")
+            }
+        }
         var all: [AssetItem] = []
         for k in [AssetKind.mod, .modpack, .resource, .shader] {
             all += SampleData.items(for: k).filter {
