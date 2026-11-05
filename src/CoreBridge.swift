@@ -171,7 +171,8 @@ enum CoreBridge {
         // 每次启动都重新读设置，改完设置不用重启 App
         applyUserSettings()
         if let home = ProcessInfo.processInfo.environment["AME_HOME"] {
-            writePerfOptionsIfNeeded(gameDir: (home as NSString).appendingPathComponent("instances/default/.minecraft"))
+            // 用当前实例目录，不能写死 default（切过游戏目录就打错地方了）
+            writePerfOptionsIfNeeded(gameDir: VersionRepository.shared.mcRoot.path)
         }
         // JIT 检测：没开 JIT 的话游戏会非常卡，提前告知
         if let jitNote = jitStatusNote() {
@@ -216,7 +217,8 @@ enum CoreBridge {
         try bootstrap()
         applyUserSettings()
         if let home = ProcessInfo.processInfo.environment["AME_HOME"] {
-            writePerfOptionsIfNeeded(gameDir: (home as NSString).appendingPathComponent("instances/default/.minecraft"))
+            // 用当前实例目录，不能写死 default（切过游戏目录就打错地方了）
+            writePerfOptionsIfNeeded(gameDir: VersionRepository.shared.mcRoot.path)
         }
         // JIT 检测：没开 JIT 的话游戏会非常卡，提前告知
         if let jitNote = jitStatusNote() {

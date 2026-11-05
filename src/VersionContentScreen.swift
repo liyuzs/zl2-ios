@@ -426,7 +426,8 @@ struct VersionContentScreen: View {
     private func handleImport(_ urls: [URL]) {
         let fm = FileManager.default
         let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let dir = docs.appendingPathComponent("instances/default/.minecraft/\(importTarget)", isDirectory: true)
+        _ = docs
+        let dir = VersionRepository.shared.mcRoot.appendingPathComponent(importTarget, isDirectory: true)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
         var ok = 0

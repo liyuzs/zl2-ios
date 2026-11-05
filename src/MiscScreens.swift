@@ -199,7 +199,8 @@ struct ExportScreen: View {
         DispatchQueue.global(qos: .userInitiated).async {
             let fm = FileManager.default
             let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
-            let gameDir = docs.appendingPathComponent("instances/default/.minecraft", isDirectory: true)
+            _ = docs  // 保留变量避免警告
+            let gameDir = VersionRepository.shared.mcRoot
             let stamp = Int(Date().timeIntervalSince1970)
             let outName = "整合包-\(stamp).zip"
             let outURL = fm.temporaryDirectory.appendingPathComponent(outName)
