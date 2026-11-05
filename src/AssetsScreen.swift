@@ -102,7 +102,29 @@ struct AssetsScreen: View {
     @State private var toast: String?
 
     private let platforms = ["未选择", "Windows", "Linux", "macOS", "Android", "iOS"]
-    private let mcVersions = ["未选择", "1.21.4", "1.20.1", "1.19.2", "1.16.5", "1.12.2"]
+    /// 版本列表：已安装的版本优先，再补几个常用的
+    private var mcVersions: [String] {
+        var list = ["未选择"]
+        let installed = VersionRepository.shared.listVersions().map { $0.id }
+        list.append(contentsOf: installed)
+        for v in ["1.21.5", "1.21.4", "1.21.1", "1.20.6", "1.20.1",
+                  "1.19.2", "1.18.2", "1.16.5", "1.12.2"] where !list.contains(v) {
+            list.append(v)
+        }
+        return list
+    }
+
+    /// 安全取版本，防越界
+    private func safeVersion(_ idx: Int) -> String? {
+        guard idx > 0, idx < mcVersions.count else { return nil }
+        return mcVersions[idx]
+    }
+
+    /// 默认版本 = 用户当前在用的版本（解析不到就退回 1.20.1）
+    private var defaultGameVersion: String {
+        if let first = VersionRepository.shared.listVersions().first { return first.id }
+        return "1.20.1"
+    }
     private let loaders = ["未选择", "Fabric", "Forge", "NeoForge", "Quilt"]
 
     var body: some View {
@@ -293,7 +315,7 @@ struct AssetsScreen: View {
         loading = true
         loadError = nil
         do {
-            let gv = gameVersion > 0 ? mcVersions[gameVersion] : nil
+            let gv = safeVersion(gameVersion)
             let ld = modLoader > 0 ? loaders[modLoader] : nil
             let cats = category > 0 && category - 1 < kind.categories.count ? [kind.categories[category - 1]] : []
             let r = try await ModrinthAPI.shared.search(
@@ -500,7 +522,7 @@ struct AssetsScreen: View {
         do {
             let vs = try await ModrinthAPI.shared.versions(
                 projectID: h.id,
-                gameVersion: gameVersion > 0 ? mcVersions[gameVersion] : "1.20.1",
+                gameVersion: safeVersion(gameVersion) ?? defaultGameVersion,
                 loader: modLoader > 0 ? loaders[modLoader] : nil)
             guard let v = vs.first, let f = v.files.first(where: \.primary) ?? v.files.first else {
                 loadError = "该项目没有可用文件"; return
