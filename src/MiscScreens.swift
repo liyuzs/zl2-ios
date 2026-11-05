@@ -490,15 +490,16 @@ struct MultiplayerRoomScreen: View {
                                 .foregroundStyle(ZLTheme.primaryDeep)
                                 .frame(maxWidth: .infinity)
                             if let hostMessage {
+                                // 注意：修饰符必须挂在 Text 上，不能挂在 if 语句上（SwiftUI 不允许）
                                 Text(hostMessage)
                                     .font(.system(size: 11))
                                     .foregroundStyle(ZLTheme.warning)
                                     .multilineTextAlignment(.leading)
                                     .fixedSize(horizontal: false, vertical: true)
+                                    .padding(.vertical, 10)
+                                    .background(ZLTheme.primarySoft)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
-                                .padding(.vertical, 10)
-                                .background(ZLTheme.primarySoft)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             ZLGoldButton(title: "创建房间", icon: "person.badge.plus") {
                                 // 原来生成的是 6 位随机串，和 ZLEasyTierRoom 要求的
                                 // U/XXXX-XXXX-XXXX-XXXX 格式对不上，谁拿去 join 都会失败。

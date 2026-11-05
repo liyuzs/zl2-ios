@@ -58,26 +58,26 @@ struct SwitchGameDirIntent: AppIntent {
 
 /// 让这些 Intent 出现在「快捷指令」App 里
 struct CraftLauncherShortcuts: AppShortcutsProvider {
-    // 注意：必须是「数组字面量」—— 少了外层 [ ] 和元素间逗号，
-    // getter 就变成两条语句且没有 return，编译直接失败（这个错从最初提交就存在）
+    // 关键：AppShortcutsProvider.appShortcuts 带 @AppShortcutsBuilder（result builder），
+    // 所以这里**不能**写数组字面量 [ ]、元素之间也**不能**写逗号 ——
+    // 直接并列写多个 AppShortcut(...) 就行，builder 会自动合并成数组。
+    // （之前误以为缺方括号，加了 [ ] 反而报 "cannot convert [AppShortcut] to AppShortcut"）
     static var appShortcuts: [AppShortcut] {
-        [
-            AppShortcut(
-                intent: LaunchGameIntent(),
-                phrases: [
-                    "用 \(.applicationName) 启动游戏",
-                    "打开 \(.applicationName) 开始玩"
-                ],
-                shortTitle: "启动游戏",
-                systemImageName: "play.circle.fill"
-            ),
-            AppShortcut(
-                intent: OpenDownloadIntent(),
-                phrases: ["用 \(.applicationName) 下载版本"],
-                shortTitle: "下载版本",
-                systemImageName: "arrow.down.circle.fill"
-            ),
-        ]
+        AppShortcut(
+            intent: LaunchGameIntent(),
+            phrases: [
+                "用 \(.applicationName) 启动游戏",
+                "打开 \(.applicationName) 开始玩"
+            ],
+            shortTitle: "启动游戏",
+            systemImageName: "play.circle.fill"
+        )
+        AppShortcut(
+            intent: OpenDownloadIntent(),
+            phrases: ["用 \(.applicationName) 下载版本"],
+            shortTitle: "下载版本",
+            systemImageName: "arrow.down.circle.fill"
+        )
     }
 }
 
