@@ -353,6 +353,12 @@ struct SavesManagerScreen: View {
             Button { backup(w) } label: {
                 Label("备份", systemImage: "externaldrive.badge.plus")
             }
+            // 有可用的备份时才显示恢复
+            if let bk = latestBackup(for: w) {
+                Button { restore(w, from: bk) } label: {
+                    Label("恢复到 \(backupTimeText(bk))", systemImage: "arrow.uturn.backward")
+                }
+            }
             Button { copyWorldName(w) } label: {
                 Label("复制名称", systemImage: "doc.on.doc")
             }
@@ -791,5 +797,51 @@ enum NBTReader {
 extension Array {
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
+    }
+
+    // MARK: 备份恢复
+
+    /// 找一个存档最新的备份目录（命名规则：<原名>-备份-<yyyyMMdd-HHmmss>）
+    private func latestBackup(for w: ZLWorldInfo) -> URL? {
+        let fm = FileManager.default
+        guard let all = try? fm.contentsOfDirectory(at: savesDir,
+                                                    includingPropertiesForKeys: [.contentModificationDateKey]) else {
+            return nil
+        }
+        let prefix = "\(w.folderName)-备份-"
+        let matches = all.filter { $0.lastPathComponent.hasPrefix(prefix) }
+        return matches.max { a, b in
+            let da = (try? a.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            let db = (try? b.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            return da < db
+        }
+    }
+
+    /// 从备份目录名里抽出时间，用于菜单文字
+    private func backupTimeText(_ url: URL) -> String {
+        let name = url.lastPathComponent
+        guard let r = name.range(of: "-备份-") else { return "备份" }
+        return String(name[r.upperBound...])
+    }
+
+    /// 把备份内容覆盖回原存档目录
+    private func restore(_ w: ZLWorldInfo, from backupURL: URL) {
+        let fm = FileManager.default
+        do {
+            // 先把当前存档挪到一边，避免覆盖失败丢数据
+            let park = savesDir.appendingPathComponent("\(w.folderName)-恢复前-\(Int(Date().timeIntervalSince1970))")
+            if fm.fileExists(atPath: w.path.path) {
+                try fm.moveItem(at: w.path, to: park)
+            }
+            // 备份复制回来
+            try fm.copyItem(at: backupURL, to: w.path)
+            // 成功后再删掉临时目录
+            try? fm.removeItem(at: park)
+            ZLInteraction.haptic(.medium)
+            showToast("已恢复到 \(backupTimeText(backupURL))")
+        } catch {
+            showToast("恢复失败：\(error.localizedDescription)")
+        }
+        reload()
     }
 }
