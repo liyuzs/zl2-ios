@@ -371,10 +371,13 @@ protocol AccountProviding: AnyObject {
 // MARK: - 账户存储（UserDefaults 持久化）
 
 /// 用 UserDefaults 存 JSON 数组。只存公开字段，token 也在里面（沙盒内，够用）。
-final class AccountStore: AccountProviding {
+final class AccountStore: ObservableObject, AccountProviding {
 
     /// 全局单例，界面默认用它
     static let shared = AccountStore()
+
+    /// 账号列表变化时通知界面刷新（原来改完不重绘）
+    @Published private(set) var accounts: [Account] = []
 
     private enum Keys {
         static let accounts = "zl2.account.accounts"
@@ -388,7 +391,6 @@ final class AccountStore: AccountProviding {
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    private(set) var accounts: [Account] = []
     private var currentID: UUID?
 
     init(defaults: UserDefaults = .standard) {

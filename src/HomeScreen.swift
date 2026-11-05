@@ -371,7 +371,7 @@ struct HomeScreen: View {
         }
         // 已有选中且仍然存在，就保留
         if !selectedVersion.isEmpty,
-           list.contains(where: { selectedVersion.hasPrefix($0.id) }) {
+           list.contains(where: { selectedVersion == $0.id }) {
             return
         }
         // 否则取第一个（列表已按修改时间排序）

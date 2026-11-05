@@ -184,8 +184,43 @@ final class VersionRepository {
             }
         }
 
-        // 3. 清理空目录
-        if !dryRun { pruneEmptyDirs(librariesDir) }
+        // 3. assets：只保留被某个 assetIndex 引用到的 object
+        let assetsDir = mcRoot.appendingPathComponent("assets", isDirectory: true)
+        let objectsDir = assetsDir.appendingPathComponent("objects", isDirectory: true)
+        // 先收集所有被引用的 sha1
+        var referencedHashes = Set<String>()
+        for rel in referencedAssets {
+            let idxURL = assetsDir.appendingPathComponent(rel)
+            guard let d = try? Data(contentsOf: idxURL),
+                  let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+                  let objs = o["objects"] as? [String: Any] else { continue }
+            for (_, v) in objs {
+                if let info = v as? [String: Any], let h = info["hash"] as? String {
+                    referencedHashes.insert(h)
+                }
+            }
+        }
+        if !referencedHashes.isEmpty, let en = fm.enumerator(at: objectsDir, includingPropertiesForKeys: [.fileSizeKey]) {
+            for case let f as URL in en {
+                guard !f.hasDirectoryPath else { continue }
+                // objects/ab/abcdef...  → 取文件名当 sha1
+                let hash = f.lastPathComponent
+                if referencedHashes.contains(hash) { continue }
+                let size = Int64((try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+                if !dryRun {
+                    do { try fm.removeItem(at: f); result.removedFiles += 1; result.freedBytes += size }
+                    catch { result.failed.append(hash) }
+                } else {
+                    result.removedFiles += 1; result.freedBytes += size
+                }
+            }
+        }
+
+        // 4. 清理空目录
+        if !dryRun {
+            pruneEmptyDirs(librariesDir)
+            pruneEmptyDirs(objectsDir)
+        }
         return result
     }
 

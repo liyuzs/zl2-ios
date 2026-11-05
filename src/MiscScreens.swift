@@ -137,14 +137,8 @@ struct SearchScreen: View {
                           version: h.versions.first ?? "—")
             }
         }
-        var all: [AssetItem] = []
-        for k in [AssetKind.mod, .modpack, .resource, .shader] {
-            all += SampleData.items(for: k).filter {
-                $0.title.localizedCaseInsensitiveContains(query) ||
-                $0.subtitle.localizedCaseInsensitiveContains(query)
-            }
-        }
-        return all
+        // 搜不到就是搜不到，不再回退到硬编码假数据
+        return []
     }
 
     private func resultRow(_ item: AssetItem) -> some View {
@@ -162,11 +156,8 @@ struct SearchScreen: View {
                     .lineLimit(1)
             }
             Spacer()
-            Button { } label: {
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.system(size: 20)).foregroundStyle(ZLTheme.primary)
-            }
-            .buttonStyle(.plain)
+            // 没有 project 上下文就不画假按钮
+            EmptyView()
         }
         .padding(12)
         .background(ZLTheme.surface)

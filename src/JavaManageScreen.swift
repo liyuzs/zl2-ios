@@ -184,16 +184,10 @@ struct JavaManageScreen: View {
     /// 扫描 bundle 里的 java_runtimes
     /// 打开 java_runtimes 目录（用系统的「文件」App 查看）
     private func openRuntimeFolder() {
-        let fm = FileManager.default
-        let home = ProcessInfo.processInfo.environment["AME_HOME"]
-            ?? (fm.urls(for: .documentDirectory, in: .userDomainMask).first?.path ?? "")
-        let dir = (home as NSString).appendingPathComponent("java_runtimes")
-        try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
-
-        // iOS 不能直接跳到指定目录，这里把路径复制到剪贴板并提示
-        ZLClipboard.copy(dir, label: "目录路径")
-        toastText = "路径已复制，可在「文件」App 里找到"
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { toastText = nil }
+        // JRE 实际在 App 包内，不是 Documents（原来指错了地方，用户找不到）
+        let path = Bundle.main.bundlePath + "/java_runtimes"
+        UIPasteboard.general.string = path
+        toastText = "路径已复制：\(path)"
     }
 
     private func scan() {

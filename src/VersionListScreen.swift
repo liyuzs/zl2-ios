@@ -355,8 +355,14 @@ struct VersionListScreen: View {
     private var current: [VersionRepository.InstalledVersion] {
         let base: [VersionRepository.InstalledVersion]
         switch filter {
-        case 1: base = versions.filter { !$0.id.lowercased().contains("fabric") && !$0.id.lowercased().contains("forge") }
-        case 2: base = versions.filter { $0.id.lowercased().contains("fabric") || $0.id.lowercased().contains("forge") }
+        case 1: base = versions.filter { v in
+            let l = v.id.lowercased()
+            return !l.contains("fabric") && !l.contains("forge") && !l.contains("quilt")
+        }
+        case 2: base = versions.filter { v in
+            let l = v.id.lowercased()
+            return l.contains("fabric") || l.contains("forge") || l.contains("quilt")
+        }
         default: base = versions
         }
         // 置顶的排最前，其余保持原顺序
