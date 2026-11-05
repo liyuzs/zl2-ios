@@ -328,7 +328,12 @@ struct ModsManagerScreen: View {
             try fm.createDirectory(at: modsDir, withIntermediateDirectories: true)
             let files = try fm.contentsOfDirectory(at: modsDir,
                                                    includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey])
-            mods = files.filter { $0.pathExtension.lowercased() == "jar" }.map { url in
+            // 注意：禁用的模组会被改名成 xxx.jar.disabled，扩展名变成 disabled，
+            // 所以要用完整文件名判断，否则禁用后模组会从列表里消失。
+            mods = files.filter { f in
+                let n = f.lastPathComponent.lowercased()
+                return n.hasSuffix(".jar") || n.hasSuffix(".jar.disabled")
+            }.map { url in
                 let attrs = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
                 let enabled = !url.lastPathComponent.hasSuffix(".disabled")
                 let info = ModJarParser.parse(url)

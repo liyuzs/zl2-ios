@@ -296,7 +296,12 @@ struct ResourceManagerScreen: View {
                 if kind == .screenshot {
                     return ["png", "jpg", "jpeg"].contains(f.pathExtension.lowercased())
                 }
-                return ["zip", "jar"].contains(f.pathExtension.lowercased()) ||
+                // 禁用的资源包/光影会被改名成 xxx.zip.disabled，扩展名不再是 zip，
+                // 用完整文件名判断，否则关掉之后就找不回来了。
+                let n = f.lastPathComponent.lowercased()
+                let packLike = n.hasSuffix(".zip") || n.hasSuffix(".zip.disabled")
+                    || n.hasSuffix(".jar") || n.hasSuffix(".jar.disabled")
+                return packLike ||
                        (try? f.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
             }.map { url in
                 let attrs = try? url.resourceValues(forKeys: [.fileSizeKey])

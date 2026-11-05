@@ -21,15 +21,34 @@ struct JavaManageScreen: View {
     @State private var importing = false
     @State private var isLoading = true
     @State private var loadError: String?
+    @State private var toastText: String?
 
     var body: some View {
         VStack(spacing: 0) {
             ZLTopBar(title: "Java 管理", onBack: onBack, onHome: onHome)
+                .overlay(alignment: .bottom) {
+                    if let toastText {
+                        Text(toastText)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(Color.black.opacity(0.8)))
+                            .transition(.opacity)
+                    }
+                }
+
 
             HStack(spacing: 10) {
-                actionButton("导入", "square.and.arrow.down") { importing = true }
-                actionButton("新建", "plus") { }
-                actionButton("打开 Jar 文件", "doc") { }
+                actionButton("导入 JRE", "square.and.arrow.down") {
+                    ZLHaptic.light()
+                    toastText = "JRE 需打包进 App（java_runtimes 目录），App 内无法直接导入"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) { toastText = nil }
+                }
+                actionButton("打开目录", "folder") {
+                    ZLHaptic.light()
+                    openRuntimeFolder()
+                }
                 Spacer()
                 Button { scan() } label: {
                     Image(systemName: "arrow.clockwise")
@@ -163,6 +182,20 @@ struct JavaManageScreen: View {
     }
 
     /// 扫描 bundle 里的 java_runtimes
+    /// 打开 java_runtimes 目录（用系统的「文件」App 查看）
+    private func openRuntimeFolder() {
+        let fm = FileManager.default
+        let home = ProcessInfo.processInfo.environment["AME_HOME"]
+            ?? (fm.urls(for: .documentDirectory, in: .userDomainMask).first?.path ?? "")
+        let dir = (home as NSString).appendingPathComponent("java_runtimes")
+        try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
+
+        // iOS 不能直接跳到指定目录，这里把路径复制到剪贴板并提示
+        ZLClipboard.copy(dir, label: "目录路径")
+        toastText = "路径已复制，可在「文件」App 里找到"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { toastText = nil }
+    }
+
     private func scan() {
         var found: [JavaRuntime] = []
         let bundle = Bundle.main.bundlePath
