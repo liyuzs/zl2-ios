@@ -49,7 +49,8 @@ struct SwitchGameDirIntent: AppIntent {
         guard store.instances.contains(where: { $0.id == name }) else {
             return .result(dialog: "没有叫「\(name)」的游戏目录")
         }
-        store.activate(name)
+        // activate 会改 @Published，必须在主线程
+        await MainActor.run { store.activate(name) }
         UserDefaults.standard.set("versionList", forKey: "zl.pendingRoute")
         return .result(dialog: "已切换到 \(name)")
     }
