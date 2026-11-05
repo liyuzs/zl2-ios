@@ -668,12 +668,13 @@ struct SearchIDScreen: View {
         do {
             // 复用 Modrinth 搜索：用 ID 当关键词，命中第一条即目标
             let r = try await ModrinthAPI.shared.search(query: projectID, type: nil, limit: 1)
-            if let first = r.hits.first, first.id == projectID || first.slug == projectID {
-                result = first
-            } else if let first = r.hits.first {
+            // 原来后面那个 else-if 会把「搜到的第一条」当成结果，
+            // 等于输错 ID 也会显示一个不相干项目。必须严格匹配。
+            if let first = r.hits.first(where: { $0.id == projectID || $0.slug == projectID }) {
                 result = first
             } else {
-                errorText = "未找到该项目"
+                result = nil
+                errorText = "没找到 ID 为「\(projectID)」的项目，检查一下有没有写错"
             }
         } catch {
             errorText = ZLFriendlyError.text(error)
