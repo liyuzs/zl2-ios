@@ -272,6 +272,8 @@ struct RootView: View {
         .tint(ZLTheme.primary)
         .environmentObject(themeManager)
         .preferredColorScheme(themeManager.darkMode ? .dark : .light)
+        // ZLTheme 是静态读取（不走 SwiftUI 观察），换主题时要强制重建视图树
+        .id("theme-\(themeManager.themeName)-\(themeManager.darkMode)")
         // 键盘快捷键挂在导航栈上：所有页面都能用（iPad / 外接键盘）
         .overlay(alignment: .topLeading) { keyboardShortcutHost }
     }

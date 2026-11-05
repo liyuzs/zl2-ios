@@ -243,11 +243,14 @@ enum CoreBridge {
     }
 
     /// 当前账户名（核心要把它写进 argv，传 nil 会崩）
+    /// 优先用账号系统里选中的账号，其次看旧的 UserDefaults 键，最后兜底 Player。
     static func currentUsername() -> String {
+        if let name = AccountStore.shared.current?.username, !name.isEmpty {
+            return name
+        }
         if let name = UserDefaults.standard.string(forKey: "zl.currentUsername"), !name.isEmpty {
             return name
         }
-        // 兜底：离线账户名
         return "Player"
     }
 
