@@ -481,6 +481,21 @@ struct ExportPackScreen: View {
                         }
                     }
 
+                    // 导出内容勾选（contentToggle 早写好了，但从没渲染出来，用户看不到）
+                    ZLCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("导出内容").font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(ZLTheme.textPrimary)
+                            contentToggle("选项与设置", "options.txt", $includeOptions)
+                            contentToggle("资源包", "resourcepacks", $includeResourcePacks)
+                            contentToggle("模组", "mods", $includeMods)
+                            contentToggle("存档", "saves", $includeSaves)
+                            contentToggle("光影包", "shaderpacks", $includeShaders)
+                            contentToggle("配置文件夹", "config", $includeConfig)
+                            contentToggle("启动器档案", "launcher_profiles.json", $includeLauncher)
+                        }
+                    }
+
                     ZLGoldButton(title: exporting ? "打包中…" : "开始导出",
                                  icon: exporting ? "clock" : "square.and.arrow.up",
                                  enabled: !exporting) {
