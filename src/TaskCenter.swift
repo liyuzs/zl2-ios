@@ -67,6 +67,11 @@ final class ZLTaskCenter: ObservableObject {
     func clearFinished() {
         tasks.removeAll { !$0.state.isActive }
     }
+
+    /// 只清掉失败的，保留还在跑和已完成的
+    func clearFailed() {
+        tasks.removeAll { $0.state == .failed }
+    }
 }
 
 // MARK: - 顶栏任务入口（进度条 + 图标）
@@ -121,18 +126,42 @@ struct ZLTaskMenu: View {
         NavigationStack {
             Group {
                 if center.tasks.isEmpty {
-                    VStack(spacing: 10) {
-                        Image(systemName: "checkmark.circle")
-                            .font(.system(size: 34))
-                            .foregroundStyle(ZLTheme.textSecond.opacity(0.35))
-                        Text("暂无任务").font(.system(size: 13))
-                            .foregroundStyle(ZLTheme.textSecond)
-                    }
+                    ZLEmptyState(
+                        icon: "checkmark.circle",
+                        title: "还没有任务",
+                        detail: "下载、安装、导出的时候，进度会集中出现在这里。\n这个面板关掉，任务也会继续跑")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
                         VStack(spacing: 8) {
-                            ForEach(center.tasks) { task in
+                            if failedCount > 0 {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(ZLTheme.warning)
+                                    Text("有 \(failedCount) 个任务失败了，可以清掉重新发起")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(ZLTheme.textSecond)
+                                    Spacer(minLength: 8)
+                                    Button {
+                                        ZLHaptic.light()
+                                        center.clearFailed()
+                                    } label: {
+                                        Text("清理失败的")
+                                            .font(.system(size: 11, weight: .medium))
+                                            .foregroundStyle(ZLTheme.primaryDeep)
+                                            .padding(.horizontal, 10).frame(height: 28)
+                                            .background(ZLTheme.primarySoft)
+                                            .clipShape(Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.horizontal, 4)
+                                .padding(.bottom, 2)
+                            }
+                            ForEach(Array(center.tasks.enumerated()), id: \.element.id) { idx, task in
                                 taskRow(task)
+                                    .popIn(delay: Double(min(idx, 8)) * 0.035)
                             }
                         }
                         .padding(12)
@@ -150,6 +179,10 @@ struct ZLTaskMenu: View {
                 }
             }
         }
+    }
+
+    private var failedCount: Int {
+        center.tasks.filter { $0.state == .failed }.count
     }
 
     private func taskRow(_ t: ZLTask) -> some View {

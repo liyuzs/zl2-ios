@@ -31,6 +31,8 @@ struct LogViewScreen: View {
     @State private var loadError: String?
     @State private var lastSize: Int64 = -1
     @State private var lastModified: Date?
+    /// 只有首屏用骨架；后面自动刷新不能闪
+    @State private var isLoading = true
 
     private let fm = FileManager.default
     private let maxLines = 3000
@@ -179,30 +181,40 @@ struct LogViewScreen: View {
 
     private var logArea: some View {
         Group {
-            if let e = loadError {
-                VStack(spacing: 8) {
-                    Image(systemName: "doc.text.magnifyingglass")
-                        .font(.system(size: 30))
-                        .foregroundStyle(ZLTheme.textSecond.opacity(0.4))
-                    Text(e).font(.system(size: 12))
-                        .foregroundStyle(ZLTheme.textSecond)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 30)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if isLoading {
+                // 首屏骨架：读末尾 4 MB + 拆成几千行要一会儿，比空白好
+                ZLSkeletonList(count: 8, height: 12)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            } else if let e = loadError {
+                ZLEmptyState(
+                    icon: "doc.text.magnifyingglass",
+                    title: "读不了日志",
+                    detail: e,
+                    actionTitle: "重试",
+                    action: { rescanAndLoad() })
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if displayLines.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: onlyProblems ? "checkmark.seal" : "doc.text")
-                        .font(.system(size: 30))
-                        .foregroundStyle(ZLTheme.textSecond.opacity(0.4))
-                    Text(onlyProblems ? "没有 ERROR / WARN 行" : "日志还是空的，启动一次游戏后这里就会有内容")
-                        .font(.system(size: 12))
-                        .foregroundStyle(ZLTheme.textSecond)
-                    Button("重新读取") { load(scroll: true) }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(ZLTheme.primaryDeep)
+                if onlyProblems {
+                    ZLEmptyState(
+                        icon: "checkmark.seal",
+                        title: "没有 ERROR / WARN 行",
+                        detail: "这次运行看起来挺干净。\n关掉「只看问题」可以看完整日志",
+                        actionTitle: "看完整日志",
+                        action: { onlyProblems = false })
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ZLEmptyState(
+                        icon: "doc.text",
+                        title: files.isEmpty ? "还没有日志文件" : "日志还是空的",
+                        detail: files.isEmpty
+                            ? "启动一次游戏，latest.log 会自动出现在这里；\n崩溃报告和启动器日志也会一起列出来"
+                            : "这个文件现在是空的，游戏跑起来会一行行写进来。\n切回游戏玩一会儿，再点「重新读取」",
+                        actionTitle: "重新读取",
+                        action: { rescanAndLoad() })
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -218,6 +230,7 @@ struct LogViewScreen: View {
                         }
                         .padding(10)
                     }
+                    .popIn()
                     .background(ZLTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .padding(.horizontal, ZLTheme.screenPadding)
@@ -307,11 +320,18 @@ struct LogViewScreen: View {
     }
 
     private var fileChanged: Bool {
-        guard let url = selected,
-              let attrs = try? fm.attributesOfItem(atPath: url.path) else { return false }
+        // 还没选中文件时也要继续扫：否则游戏刚写出的 latest.log 永远发现不了
+        guard let url = selected else { return true }
+        guard let attrs = try? fm.attributesOfItem(atPath: url.path) else { return true }
         let size = (attrs[.size] as? NSNumber)?.int64Value ?? 0
         let mod = attrs[.modificationDate] as? Date
         return size != lastSize || mod != lastModified
+    }
+
+    /// 重新扫文件再读一次（重试用）
+    private func rescanAndLoad() {
+        scanFiles()
+        load(scroll: true)
     }
 
     private func scanFiles() {
@@ -365,21 +385,27 @@ struct LogViewScreen: View {
 
     private func load(scroll: Bool) {
         guard let url = selected else {
-            loadError = "还没有日志文件。启动一次游戏，或到「版本列表 → 设置 → 运行日志」查看。"
+            // 没有日志文件不算错误，交给空状态说明下一步
+            loadError = nil
             lines = []
+            truncated = false
+            status = ""
+            isLoading = false
             return
         }
         guard let attrs = try? fm.attributesOfItem(atPath: url.path) else {
             loadError = "日志文件不存在：\(url.lastPathComponent)"
             lines = []
+            isLoading = false
             return
         }
         lastSize = (attrs[.size] as? NSNumber)?.int64Value ?? 0
         lastModified = attrs[.modificationDate] as? Date
 
         guard let text = readTail(url) else {
-            loadError = "无法读取日志文件"
+            loadError = "无法读取日志文件（可能被别的进程占用）"
             lines = []
+            isLoading = false
             return
         }
         var all = text.components(separatedBy: "\n")
@@ -392,6 +418,7 @@ struct LogViewScreen: View {
         let df = DateFormatter()
         df.dateFormat = "HH:mm:ss"
         status = lastModified.map { "更新于 \(df.string(from: $0))" } ?? ""
+        isLoading = false
     }
 
     /// 只读取文件末尾，避免超大日志把内存打满

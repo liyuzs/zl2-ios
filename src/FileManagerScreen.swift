@@ -35,6 +35,8 @@ struct FileManagerScreen: View {
     @State private var showNewFolder = false
     @State private var folderName = "新建文件夹"
     @State private var showProperty: FileEntry?
+    @State private var isLoading = true
+    @State private var loadError: String?
 
     private let fm = FileManager.default
     private var trashDir: URL {
@@ -164,68 +166,18 @@ struct FileManagerScreen: View {
     private var listView: some View {
         ScrollView {
             LazyVStack(spacing: 6) {
-                ForEach(entries) { e in
-                    HStack(spacing: 12) {
-                        Image(systemName: e.isDir ? "folder.fill" : fileIcon(e.name))
-                            .font(.system(size: 18))
-                            .foregroundStyle(e.isDir ? ZLTheme.primary : ZLTheme.textSecond)
-                            .frame(width: 34, height: 34)
-                            .background(ZLTheme.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(e.name).font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(ZLTheme.textPrimary).lineLimit(1)
-                            HStack(spacing: 8) {
-                                if !e.isDir {
-                                    Text(ByteCountFormatter.string(fromByteCount: e.size, countStyle: .file))
-                                        .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
-                                }
-                                if let m = e.modified {
-                                    Text(m.formatted(date: .numeric, time: .shortened))
-                                        .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
-                                }
-                            }
-                        }
-                        Spacer()
-                        if selection.contains(e.id) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(ZLTheme.primary)
-                        }
+                if isLoading {
+                    // 首屏骨架：读每个条目的属性（大小 / 修改时间）要一点时间
+                    ZLSkeletonList(count: 6, height: 54)
+                } else if let e = loadError {
+                    errorState(e)
+                } else if entries.isEmpty {
+                    emptyState
+                } else {
+                    ForEach(Array(entries.enumerated()), id: \.element.id) { idx, e in
+                        entryRow(e)
+                            .popIn(delay: Double(min(idx, 12)) * 0.03)
                     }
-                    .padding(10)
-                    .background(selection.contains(e.id) ? ZLTheme.primarySoft : ZLTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .onTapGesture {
-                        if e.isDir {
-                            history.append(current)
-                            current = e.url
-                            forward.removeAll()
-                            selection.removeAll()
-                            reload()
-                        } else {
-                            if selection.contains(e.id) { selection.remove(e.id) }
-                            else { selection.insert(e.id) }
-                        }
-                    }
-                    .contextMenu {
-                        if e.isDir {
-                            Button("进入") { history.append(current); current = e.url; reload() }
-                        }
-                        if !e.isDir {
-                            ShareLink(item: e.url) {
-                                Label("分享", systemImage: "square.and.arrow.up")
-                            }
-                        }
-                        Button("属性") { showProperty = e }
-                        Button("重命名") { renaming = e; newName = e.name }
-                        Button("删除到回收站", role: .destructive) { trash(e) }
-                    }
-                }
-                if entries.isEmpty {
-                    Text("空目录").font(.system(size: 13))
-                        .foregroundStyle(ZLTheme.textSecond)
-                        .padding(.top, 50)
                 }
             }
             .padding(.horizontal, ZLTheme.screenPadding)
@@ -233,6 +185,123 @@ struct FileManagerScreen: View {
         }
         // iOS 原生下拉刷新
         .refreshable { reload() }
+    }
+
+    private func entryRow(_ e: FileEntry) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: e.isDir ? "folder.fill" : fileIcon(e.name))
+                .font(.system(size: 18))
+                .foregroundStyle(e.isDir ? ZLTheme.primary : ZLTheme.textSecond)
+                .frame(width: 34, height: 34)
+                .background(ZLTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(e.name).font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(ZLTheme.textPrimary).lineLimit(1)
+                HStack(spacing: 8) {
+                    if !e.isDir {
+                        Text(ByteCountFormatter.string(fromByteCount: e.size, countStyle: .file))
+                            .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+                    }
+                    if let m = e.modified {
+                        Text(m.formatted(date: .numeric, time: .shortened))
+                            .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+                    }
+                }
+            }
+            Spacer()
+            if selection.contains(e.id) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(ZLTheme.primary)
+            }
+        }
+        .padding(10)
+        .background(selection.contains(e.id) ? ZLTheme.primarySoft : ZLTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .onTapGesture {
+            if e.isDir {
+                history.append(current)
+                current = e.url
+                forward.removeAll()
+                selection.removeAll()
+                reload()
+            } else {
+                if selection.contains(e.id) { selection.remove(e.id) }
+                else { selection.insert(e.id) }
+            }
+        }
+        .contextMenu {
+            if e.isDir {
+                Button("进入") { history.append(current); current = e.url; reload() }
+            }
+            if !e.isDir {
+                ShareLink(item: e.url) {
+                    Label("分享", systemImage: "square.and.arrow.up")
+                }
+            }
+            Button("属性") { showProperty = e }
+            Button("重命名") { renaming = e; newName = e.name }
+            Button("删除到回收站", role: .destructive) { trash(e) }
+        }
+    }
+
+    private var emptyState: some View {
+        ZLEmptyState(
+            icon: "folder",
+            title: "这个文件夹是空的",
+            detail: "点右上角「⋯」新建文件夹，\n或者从其他 App 把文件分享到 ZL2 里",
+            actionTitle: "新建文件夹",
+            action: { showNewFolder = true })
+    }
+
+    /// 目录打不开时给个说法（以前这里静默显示成"空目录"）
+    private func errorState(_ message: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 26, weight: .light))
+                .foregroundStyle(ZLTheme.warning)
+            Text("这个文件夹打不开")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(ZLTheme.textPrimary)
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundStyle(ZLTheme.textSecond)
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+            HStack(spacing: 10) {
+                Button {
+                    ZLHaptic.light()
+                    reload()
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .medium))
+                        Text("重试").font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundStyle(ZLTheme.primaryDeep)
+                    .padding(.horizontal, 14).frame(height: 34)
+                    .background(ZLTheme.primarySoft)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(ZLPressStyle())
+
+                Button {
+                    ZLHaptic.light()
+                    goUp()
+                } label: {
+                    Text("返回上一级")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(ZLTheme.textSecond)
+                        .padding(.horizontal, 14).frame(height: 34)
+                        .background(ZLTheme.surfaceAlt)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(ZLPressStyle())
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .padding(.horizontal, 24)
     }
 
     // 底部批量操作
@@ -273,27 +342,31 @@ struct FileManagerScreen: View {
     private func reload() {
         var opts: FileManager.DirectoryEnumerationOptions = [.skipsSubdirectoryDescendants]
         if !showHidden { opts.insert(.skipsHiddenFiles) }
-        guard let urls = try? fm.contentsOfDirectory(at: current,
-                                                     includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey],
-                                                     options: opts) else {
+        do {
+            let urls = try fm.contentsOfDirectory(at: current,
+                                                  includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey],
+                                                  options: opts)
+            var list: [FileEntry] = urls.compactMap { u in
+                let vals = try? u.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey])
+                let isDir = vals?.isDirectory ?? false
+                return FileEntry(url: u,
+                                 name: u.lastPathComponent,
+                                 isDir: isDir,
+                                 size: Int64(vals?.fileSize ?? 0),
+                                 modified: vals?.contentModificationDate)
+            }
+            list.sort { a, b in
+                if dirFirst && a.isDir != b.isDir { return a.isDir }
+                let r = a.name.localizedStandardCompare(b.name)
+                return ascending ? r == .orderedAscending : r == .orderedDescending
+            }
+            entries = list
+            loadError = nil
+        } catch {
             entries = []
-            return
+            loadError = "打不开「\(current.lastPathComponent)」：\(error.localizedDescription)"
         }
-        var list: [FileEntry] = urls.compactMap { u in
-            let vals = try? u.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey])
-            let isDir = vals?.isDirectory ?? false
-            return FileEntry(url: u,
-                             name: u.lastPathComponent,
-                             isDir: isDir,
-                             size: Int64(vals?.fileSize ?? 0),
-                             modified: vals?.contentModificationDate)
-        }
-        list.sort { a, b in
-            if dirFirst && a.isDir != b.isDir { return a.isDir }
-            let r = a.name.localizedStandardCompare(b.name)
-            return ascending ? r == .orderedAscending : r == .orderedDescending
-        }
-        entries = list
+        isLoading = false
     }
 
     private func goBack() {

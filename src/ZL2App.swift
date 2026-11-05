@@ -272,7 +272,7 @@ struct RootView: View {
     // MARK: - 键盘快捷键
     //
     // iOS 的 .keyboardShortcut 只对 Button 生效，不能直接加在 View 上。
-    // 所以这里藏一组零尺寸按钮，挂在 NavigationStack 外层，随页面常驻。
+    // 所以这里藏一组 1×1 的透明按钮，挂在 NavigationStack 外层，随页面常驻。
     private var keyboardShortcutHost: some View {
         Group {
             Button("下载") { push(.download) }
@@ -467,8 +467,7 @@ struct MultiplayerScreen: View {
                         ZLEmptyState(
                             icon: "wifi",
                             title: "还没有发现局域网游戏",
-                            detail: "在电脑或其他设备上开「对局域网开放」，
-然后打开上面的开关"
+                            detail: "在电脑或其他设备上开「对局域网开放」，然后打开上面的开关"
                         )
                     }
                     if let err = lan.lastError {

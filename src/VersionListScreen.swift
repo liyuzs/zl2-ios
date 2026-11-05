@@ -33,6 +33,8 @@ struct VersionListScreen: View {
     @State private var deleteTarget: String?
     @State private var browsing: VersionFolderRef?
     @State private var toast: String?
+    @State private var isLoading = true
+    @State private var loadError: String?
 
     private let filters = ["全部", "原版", "可安装模组"]
 
@@ -224,17 +226,18 @@ struct VersionListScreen: View {
 
             ScrollView {
                 VStack(spacing: 8) {
-                    if current.isEmpty {
-                        VStack(spacing: 8) {
-                            Image(systemName: "cube").font(.system(size: 30))
-                                .foregroundStyle(ZLTheme.textSecond.opacity(0.4))
-                            Text("没有安装版本").font(.system(size: 13))
-                                .foregroundStyle(ZLTheme.textSecond)
+                    if isLoading {
+                        // 首屏骨架：扫 versions 目录 + 统计每个版本的大小
+                        ZLSkeletonList(count: 4, height: 64)
+                    } else if let e = loadError {
+                        errorState(e)
+                    } else if current.isEmpty {
+                        emptyState
+                    } else {
+                        ForEach(Array(current.enumerated()), id: \.element.id) { idx, v in
+                            row(v)
+                                .popIn(delay: Double(min(idx, 10)) * 0.035)
                         }
-                        .frame(maxWidth: .infinity).padding(.vertical, 40)
-                    }
-                    ForEach(current, id: \.id) { v in
-                        row(v)
                     }
                 }
                 .padding(10)
@@ -361,8 +364,74 @@ struct VersionListScreen: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
+    @ViewBuilder
+    private var emptyState: some View {
+        if versions.isEmpty {
+            ZLEmptyState(
+                icon: "cube",
+                title: "还没有安装任何版本",
+                detail: "点上方「安装新游戏」下载一个版本；\n装好后会出现在这里，点齿轮可以调内存和 JVM 参数",
+                actionTitle: "安装新游戏",
+                action: { onDownload() })
+        } else {
+            ZLEmptyState(
+                icon: "line.3.horizontal.decrease",
+                title: "这一类里没有版本",
+                detail: "「\(filters[filter])」下面暂时没有已安装的版本，\n切回「全部」看看",
+                actionTitle: "看全部",
+                action: { filter = 0 })
+        }
+    }
+
+    /// versions 目录没了 / 读不了时，别再显示成"没有安装版本"
+    private func errorState(_ message: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 26, weight: .light))
+                .foregroundStyle(ZLTheme.warning)
+            Text("版本列表没能读出来")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(ZLTheme.textPrimary)
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundStyle(ZLTheme.textSecond)
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+            Button {
+                ZLInteraction.haptic(.light)
+                reload()
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .medium))
+                    Text("重试").font(.system(size: 12, weight: .medium))
+                }
+                .foregroundStyle(ZLTheme.primaryDeep)
+                .padding(.horizontal, 14).frame(height: 34)
+                .background(ZLTheme.primarySoft)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(ZLPressStyle())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 36)
+        .padding(.horizontal, 20)
+    }
+
     private func reload() {
-        versions = VersionRepository.shared.listVersions()
+        // listVersions() 内部把错误吞掉了，这里先探一下目录，好区分"空"和"读不了"
+        let dir = VersionRepository.shared.versionsDir
+        var isDir: ObjCBool = false
+        if !FileManager.default.fileExists(atPath: dir.path, isDirectory: &isDir) || !isDir.boolValue {
+            versions = []
+            loadError = "找不到 versions 目录（\(dir.lastPathComponent)），\n可能游戏目录被删了，重选一个游戏目录再试。"
+        } else if !FileManager.default.isReadableFile(atPath: dir.path) {
+            versions = []
+            loadError = "没有读取 versions 目录的权限。"
+        } else {
+            versions = VersionRepository.shared.listVersions()
+            loadError = nil
+        }
+        isLoading = false
     }
 
     // MARK: - iOS 交互动作
