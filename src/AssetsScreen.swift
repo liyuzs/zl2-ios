@@ -93,6 +93,8 @@ struct AssetsScreen: View {
     @State private var modLoader = 0
     // 真实搜索结果
     @State private var hits: [ModrinthHit] = []
+    /// 收藏/存档这种走本地的分类
+    @State private var localItems: [AssetItem] = []
     @State private var loading = false
     @State private var loadError: String?
     @State private var totalHits = 0
@@ -135,6 +137,67 @@ struct AssetsScreen: View {
         return nil
     }
 
+    /// 取收藏/存档的本地条目
+    /// 本地条目的一行（收藏/存档用）
+    private func localRow(_ item: AssetItem) -> some View {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(ZLTheme.primarySoft)
+                .frame(width: 46, height: 46)
+                .overlay(Image(systemName: kind.icon).foregroundStyle(ZLTheme.primary))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.title).font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(ZLTheme.textPrimary).lineLimit(1)
+                Text(item.subtitle).font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond).lineLimit(1)
+            }
+            Spacer()
+            if kind == .favorite {
+                Button {
+                    ZLHaptic.light()
+                    var ids = Set((UserDefaults.standard.string(forKey: "zl.assets.favorites") ?? "")
+                        .split(separator: "\n").map(String.init))
+                    ids.remove(item.title)
+                    UserDefaults.standard.set(ids.sorted().joined(separator: "\n"),
+                                              forKey: "zl.assets.favorites")
+                    localItems = localItemsForCurrentKind()
+                } label: {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 15)).foregroundStyle(ZLTheme.danger)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .background(ZLTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func localItemsForCurrentKind() -> [AssetItem] {
+        switch kind {
+        case .favorite:
+            let raw = UserDefaults.standard.string(forKey: "zl.assets.favorites") ?? ""
+            let ids = raw.split(separator: "\n").map(String.init).filter { !$0.isEmpty }
+            return ids.map { id in
+                AssetItem(title: id, subtitle: "已收藏", author: "—",
+                          downloads: "—", tags: ["收藏"], version: "—")
+            }
+        case .saves:
+            let dir = VersionRepository.shared.mcRoot.appendingPathComponent("saves", isDirectory: true)
+            let fm = FileManager.default
+            guard let names = try? fm.contentsOfDirectory(atPath: dir.path) else { return [] }
+            return names.filter { !$0.hasPrefix(".") }.compactMap { name in
+                var isDir: ObjCBool = false
+                let p = dir.appendingPathComponent(name)
+                guard fm.fileExists(atPath: p.path, isDirectory: &isDir), isDir.boolValue else { return nil }
+                return AssetItem(title: name, subtitle: "世界存档", author: "本地",
+                                 downloads: "—", tags: ["存档"], version: "—")
+            }.sorted { $0.title < $1.title }
+        default:
+            return []
+        }
+    }
+
     /// 安全取版本，防越界
     private func safeVersion(_ idx: Int) -> String? {
         guard idx > 0, idx < mcVersions.count else { return nil }
@@ -168,7 +231,10 @@ struct AssetsScreen: View {
         .navigationBarHidden(true)
         .task(id: "\(kind.rawValue)|\(query)|\(sort)|\(gameVersion)|\(modLoader)|\(category)") {
             // 收藏与存档走本地，不打网络
-            if kind == .favorite || kind == .saves { return }
+            if kind == .favorite || kind == .saves {
+                localItems = localItemsForCurrentKind()
+                return
+            }
             await runSearch()
         }
         .sheet(item: $detailHit) { h in
@@ -388,6 +454,22 @@ struct AssetsScreen: View {
                             .foregroundStyle(ZLTheme.primaryDeep)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 24)
+                } else if kind == .favorite || kind == .saves {
+                    // 本地分类：渲染收藏/存档，不再看 hits
+                    if localItems.isEmpty {
+                        VStack(spacing: 8) {
+                            Image(systemName: kind == .favorite ? "heart" : "folder")
+                                .font(.system(size: 30)).foregroundStyle(ZLTheme.textSecond)
+                            Text(kind == .favorite ? "还没有收藏任何东西"
+                                                   : "还没有存档，进游戏存一个吧")
+                                .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+                        }
+                        .frame(maxWidth: .infinity).padding(.vertical, 40)
+                    } else {
+                        ForEach(localItems) { item in
+                            localRow(item)
+                        }
+                    }
                 } else if hits.isEmpty {
                     VStack(spacing: 10) {
                         // 真机的"空"视觉：一条波浪线
