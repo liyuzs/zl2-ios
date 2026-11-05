@@ -160,7 +160,7 @@ struct LicenseScreen: View {
                                 .foregroundStyle(ZLTheme.primary)
                         )
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("ZL2-iOS").font(.system(size: 18, weight: .bold))
+                        Text("CraftLauncher").font(.system(size: 18, weight: .bold))
                             .foregroundStyle(ZLTheme.textPrimary)
                         Text("Zalith Launcher 2 的 iOS 非官方复刻")
                             .font(.system(size: 12))

@@ -660,6 +660,46 @@ public struct MojangAPI: @unchecked Sendable {
     /// 官方版本清单地址（常量字符串，不可能为 nil）。
     public static let defaultManifestURL = URL(string: "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")!
 
+    /// 国内镜像（BMCLAPI）。国内用户下载会快很多。
+    public static let mirrorManifestURL = URL(string: "https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json")!
+
+    /// 按设置里的「下载源」选择，返回该用的版本清单地址。
+    /// 设置项 key 是 `gameDownloadSource`（在设置页的镜像分组里）。
+    public static var preferredManifestURL: URL {
+        let raw = (getPrefObject("gameDownloadSource") as? String) ?? ""
+        let lower = raw.lowercased()
+        // 只有明确选了镜像才走 BMCLAPI；默认仍是官方
+        if lower.contains("bmcl") || lower.contains("mirror") || lower.contains("镜像") {
+            return mirrorManifestURL
+        }
+        return defaultManifestURL
+    }
+
+    /// 是否启用了国内镜像
+    public static var mirrorEnabled: Bool {
+        let raw = ((getPrefObject("gameDownloadSource") as? String) ?? "").lowercased()
+        return raw.contains("bmcl") || raw.contains("mirror") || raw.contains("镜像")
+    }
+
+    /// 把 Mojang 官方下载地址改写成 BMCLAPI 镜像地址。
+    /// 没开镜像时原样返回。库文件 / 资源文件这些大流量都会经过这里。
+    public static func mirrored(_ url: URL) -> URL {
+        guard mirrorEnabled else { return url }
+        let s = url.absoluteString
+        let rules: [(String, String)] = [
+            ("https://piston-meta.mojang.com", "https://bmclapi2.bangbang93.com"),
+            ("https://launchermeta.mojang.com", "https://bmclapi2.bangbang93.com"),
+            ("https://launcher.mojang.com", "https://bmclapi2.bangbang93.com"),
+            ("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com"),
+            ("https://resources.download.minecraft.net", "https://bmclapi2.bangbang93.com/assets"),
+            ("https://libraries.minecraft.net", "https://bmclapi2.bangbang93.com/maven"),
+        ]
+        for (from, to) in rules where s.hasPrefix(from) {
+            return URL(string: s.replacingOccurrences(of: from, with: to)) ?? url
+        }
+        return url
+    }
+
     /// 默认共享实例（使用 `makeSession()` 配置的 URLSession）。
     public static let shared = MojangAPI()
 
@@ -728,7 +768,8 @@ public struct MojangAPI: @unchecked Sendable {
 
     /// 拉取版本清单（正式版 + 快照 + 远古版本，约 1000+ 条）。
     public func fetchManifest() async throws -> VersionManifest {
-        try await self.fetchJSON(from: self.manifestURL)
+        // 每次拉清单都按当前设置选源：选了国内镜像就走 BMCLAPI
+        try await self.fetchJSON(from: Self.preferredManifestURL)
     }
 
     // MARK: 版本详情
@@ -755,10 +796,11 @@ public struct MojangAPI: @unchecked Sendable {
     ///   所以中途失败/取消不会留下半截的目标文件，也不会破坏已有的旧文件。
     /// - `onProgress` 回调 0...1（HTTP 没给 Content-Length 时只在结束时回调 1.0）；
     ///   回调发生在后台上下文，UI 更新请自己切到 MainActor。
-    public func downloadFile(from url: URL,
+    public func downloadFile(from rawURL: URL,
                              to destination: URL,
                              onProgress: (@Sendable (Double) -> Void)? = nil) async throws {
 
+        let url = Self.mirrored(rawURL)
         guard Self.isSupported(url) else {
             throw MojangAPIError.invalidURL(url.absoluteString)
         }

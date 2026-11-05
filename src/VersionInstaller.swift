@@ -236,7 +236,7 @@ actor VersionInstaller {
 
     /// 下载原始字节（用于版本 JSON）
     private func downloadData(_ url: URL) async throws -> Data {
-        var req = URLRequest(url: url, timeoutInterval: 30)
+        var req = URLRequest(url: MojangAPI.mirrored(url), timeoutInterval: 30)
         req.setValue("ZL2-iOS/1.0", forHTTPHeaderField: "User-Agent")
         let (data, resp) = try await session.data(for: req)
         if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
@@ -251,7 +251,7 @@ actor VersionInstaller {
         guard let url = URL(string: "https://resources.download.minecraft.net/\(hash.prefix(2))/\(hash)") else { return false }
         for _ in 0..<2 {
             do {
-                let (tmp, resp) = try await session.download(from: url)
+                let (tmp, resp) = try await session.download(from: MojangAPI.mirrored(url))
                 guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { continue }
                 try? fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try? fm.removeItem(at: dst)
@@ -267,7 +267,7 @@ actor VersionInstaller {
         var lastError: Error?
         for attempt in 1...3 {
             do {
-                let (tmp, resp) = try await session.download(from: url)
+                let (tmp, resp) = try await session.download(from: MojangAPI.mirrored(url))
                 guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                     throw InstallError.failed("HTTP \((resp as? HTTPURLResponse)?.statusCode ?? 0)")
                 }
