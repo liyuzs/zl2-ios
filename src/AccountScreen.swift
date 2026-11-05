@@ -3,8 +3,8 @@
 import SwiftUI
 
 struct AccountScreen: View {
-    @AppStorage("accountType")     private var accountType = "offline"
-    @AppStorage("accountName")     private var accountName = "wzw2333"
+    @AppStorage("accountType")     private var accountType = ""
+    @AppStorage("accountName")     private var accountName = ""
     @AppStorage("authServerURL")   private var authServerURL = ""
 
     @State private var draftName = ""

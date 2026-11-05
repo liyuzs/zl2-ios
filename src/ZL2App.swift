@@ -81,6 +81,7 @@ struct RootView: View {
     var body: some View {
         NavigationStack(path: $path) {
             HomeScreen(
+                onAccount: { path.append(.account) },
                 onMultiplayer: { path.append(.multiplayer) },
                 onDownload: { path.append(.download) },
                 onSettings: { path.append(.settings) },

@@ -141,9 +141,16 @@ struct ZLTopBar: View {
 
             Spacer()
 
-            topIcon("person.2.fill", highlighted: active == .multiplayer) { onMultiplayer?() }
-            topIcon("arrow.down.to.line", highlighted: active == .download) { onDownload?() }
-            topIcon("gearshape.fill", highlighted: active == .settings) { onSettings?() }
+            // 没传回调就不画图标（原来画了但点了没反应，还会高亮误导）
+            if let a = onMultiplayer {
+                topIcon("person.2.fill", highlighted: active == .multiplayer, action: a)
+            }
+            if let a = onDownload {
+                topIcon("arrow.down.to.line", highlighted: active == .download, action: a)
+            }
+            if let a = onSettings {
+                topIcon("gearshape.fill", highlighted: active == .settings, action: a)
+            }
         }
         .padding(.horizontal, ZLTheme.screenPadding)
         .frame(height: 56)

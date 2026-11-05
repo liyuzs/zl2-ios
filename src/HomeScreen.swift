@@ -3,8 +3,20 @@
 import SwiftUI
 
 struct HomeScreen: View {
-    @AppStorage("accountName") private var accountName = "liyuzs"
-    @AppStorage("accountType") private var accountType = "LittleSkin"
+    /// 点头像进账号页（原来账号页根本没有任何入口）
+    var onAccount: () -> Void = {}
+    @AppStorage("accountName") private var accountName = ""
+    /// 存的是枚举原始值（offline/microsoft/authlib），显示时转中文
+    @AppStorage("accountType") private var accountTypeRaw = ""
+
+    private var accountType: String {
+        switch accountTypeRaw {
+        case "microsoft": return "微软账号"
+        case "authlib":   return "外置认证"
+        case "offline":   return "离线账号"
+        default:          return "未登录，点头像去登录"
+        }
+    }
 
     @State private var launching = false
     // 真正的版本名由 onAppear 从已安装列表里取，不能写死
@@ -218,12 +230,24 @@ struct HomeScreen: View {
                         ZLHaptic.rigid()
                         avatarSpinning = true
                     }
-                Text(accountName)
+                Text(accountName.isEmpty ? "未登录" : accountName)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(ZLTheme.textPrimary)
                 Text(accountType)
                     .font(.system(size: 13))
                     .foregroundStyle(ZLTheme.textSecond)
+                Button {
+                    ZLHaptic.light()
+                    onAccount()
+                } label: {
+                    Text(accountName.isEmpty ? "去登录" : "切换账号")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(ZLTheme.primaryDeep)
+                        .padding(.horizontal, 10)
+                        .frame(height: 26)
+                        .background(Capsule().fill(ZLTheme.primarySoft))
+                }
+                .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
