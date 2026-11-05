@@ -91,7 +91,7 @@ actor MicrosoftAuth {
     // MARK: 1. 设备码
     func requestDeviceCode() async throws -> DeviceCodeInfo {
         let url = URL(string: "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode")!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, timeoutInterval: 20)
         req.httpMethod = "POST"
         req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         let body = "client_id=\(Self.clientID)&scope=\(Self.scope.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? Self.scope)"
@@ -124,7 +124,7 @@ actor MicrosoftAuth {
             try await Task.sleep(nanoseconds: UInt64(max(info.interval, 3)) * 1_000_000_000)
             onWaiting()
 
-            var req = URLRequest(url: url)
+            var req = URLRequest(url: url, timeoutInterval: 20)
             req.httpMethod = "POST"
             req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
             let body = [
@@ -208,7 +208,7 @@ actor MicrosoftAuth {
 
     // MARK: 6. 拉取档案（含皮肤、披风）
     func fetchProfile(mcToken: String) async throws -> MinecraftProfile {
-        var req = URLRequest(url: URL(string: "https://api.minecraftservices.com/minecraft/profile")!)
+        var req = URLRequest(url: URL(string: "https://api.minecraftservices.com/minecraft/profile")!, timeoutInterval: 20)
         req.setValue("Bearer \(mcToken)", forHTTPHeaderField: "Authorization")
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw MSAuthError.invalidResponse("profile") }
@@ -257,7 +257,7 @@ actor MicrosoftAuth {
     func uploadSkin(mcToken: String, pngData: Data, variant: String) async throws {
         let url = URL(string: "https://api.minecraftservices.com/minecraft/profile/skins")!
         let boundary = "----ZL2\(UUID().uuidString)"
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, timeoutInterval: 20)
         req.httpMethod = "POST"
         req.setValue("Bearer \(mcToken)", forHTTPHeaderField: "Authorization")
         req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
@@ -278,7 +278,7 @@ actor MicrosoftAuth {
     // MARK: 换披风
     func setCape(mcToken: String, capeID: String) async throws {
         let url = URL(string: "https://api.minecraftservices.com/minecraft/profile/capes/active")!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, timeoutInterval: 20)
         req.httpMethod = "PUT"
         req.setValue("Bearer \(mcToken)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -291,7 +291,7 @@ actor MicrosoftAuth {
 
     // MARK: 工具
     private func postJSON(_ url: URL, _ payload: [String: Any]) async throws -> [String: Any] {
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, timeoutInterval: 20)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("application/json", forHTTPHeaderField: "Accept")

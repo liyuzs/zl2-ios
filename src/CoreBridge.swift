@@ -1,6 +1,7 @@
 // ZL2-iOS · 启动核心桥接
 // 负责：环境初始化（AME_HOME / 偏好 / JRE 映射）→ 调用 Amethyst 的 launchJVM
 import Foundation
+import UIKit
 import Darwin
 
 enum CoreLaunchError: LocalizedError {
@@ -73,8 +74,9 @@ enum CoreBridge {
         setenv("GAME_DIR", gameDir, 1)
 
         // === 性能优化 ===
-        // 1) 渲染器：auto = Metal/ANGLE（iOS 上最快的路径）
-        setenv("RENDERER", "auto", 1)
+        // 1) 渲染器：读用户设置，留空则用 auto（Metal/ANGLE）
+        let userRenderer = (getPrefObject("renderer") as? String) ?? ""
+        setenv("RENDERER", userRenderer.isEmpty ? "auto" : userRenderer, 1)
         // 2) JIT 常驻（性能关键：避免反复 attach 造成卡顿）
         if getPrefObject("debug.debug_always_attached_jit") == nil {
             setPrefObject("debug.debug_always_attached_jit", true)
@@ -83,8 +85,12 @@ enum CoreBridge {
         if getPrefObject("general.cosmetica") == nil {
             setPrefObject("general.cosmetica", false)
         }
-        // 4) 内存分配：按物理内存 1/3，上限 2048MB（iOS 单进程限制）
-        if getPrefObject("general.allocated_memory") == nil {
+        // 4) 内存分配：优先用设置页的 ramAllocation，没设过才按物理内存推算
+        let userRam = (getPrefObject("ramAllocation") as? NSNumber)?.intValue ?? 0
+        if userRam > 0 {
+            // 用户明确设了，就用他的（同时同步给核心用的 key）
+            setPrefObject("general.allocated_memory", userRam)
+        } else if getPrefObject("general.allocated_memory") == nil {
             let ramMB = Int(ProcessInfo.processInfo.physicalMemory / 1024 / 1024)
             let alloc = max(512, min(2048, ramMB / 3))
             setPrefObject("general.allocated_memory", alloc)
@@ -131,9 +137,36 @@ enum CoreBridge {
     }
 
     /// 用版本元数据启动（需要完整的版本 JSON 与已下载的游戏文件）
+    /// 按「分辨率缩放」设置和屏幕尺寸算出渲染宽高
+    /// 安卓的 resolutionRatio 是百分比（25~300），即渲染分辨率 = 屏幕分辨率 × 比例
+    static func renderSize() -> (width: Int, height: Int) {
+        let ratio = (getPrefObject("resolutionRatio") as? NSNumber)?.intValue ?? 100
+        let rule = (getPrefObject("resolutionRule") as? String) ?? "ResolutionRule.PERCENTAGE"
+
+        // 自定义分辨率（用户直接填了宽高）
+        if rule.contains("CUSTOM") {
+            let w = (getPrefObject("customResolutionWidth") as? NSNumber)?.intValue ?? 0
+            let h = (getPrefObject("customResolutionHeight") as? NSNumber)?.intValue ?? 0
+            if w > 0 && h > 0 { return (w, h) }
+        }
+
+        // 按屏幕尺寸 × 百分比
+        let screen = UIScreen.main.bounds.size
+        let scale = UIScreen.main.scale
+        let baseW = Double(screen.width * scale)
+        let baseH = Double(screen.height * scale)
+        let pct = Double(max(25, min(300, ratio))) / 100.0
+        // 偶数，避免某些渲染器要求
+        var w = Int((baseW * pct).rounded())
+        var h = Int((baseH * pct).rounded())
+        if w % 2 != 0 { w += 1 }
+        if h % 2 != 0 { h += 1 }
+        return (max(320, w), max(240, h))
+    }
+
     static func launchVersion(_ metadata: [String: Any],
-                              width: Int = 1280,
-                              height: Int = 720) async throws {
+                              width: Int = 0,
+                              height: Int = 0) async throws {
         try bootstrap()
         if let home = ProcessInfo.processInfo.environment["AME_HOME"] {
             writePerfOptionsIfNeeded(gameDir: (home as NSString).appendingPathComponent("instances/default/.minecraft"))
@@ -146,8 +179,20 @@ enum CoreBridge {
         guard runtimeCheck() else {
             throw CoreLaunchError.bootstrapFailed("找不到内置 JRE（java_runtimes/java-17-openjdk/lib/libjli.dylib）")
         }
-        // Java 版本从版本元数据读（1.8~1.16 要 Java 8，1.20.5+ 要 Java 21）
-        let minJava = Self.requiredJavaVersion(metadata)
+        // 宽高为 0 时按设置自动计算
+        let (w0, h0) = (width > 0 && height > 0) ? (width, height) : Self.renderSize()
+        let width = w0
+        let height = h0
+        // Java 版本：用户关了自动选择且填了运行时就照办，否则按版本自动判断
+        let autoPick = ((getPrefObject("autoPickJavaRuntime") as? NSNumber)?.boolValue) ?? true
+        let manual = (getPrefObject("javaRuntime") as? String) ?? ""
+        let manualVer = Int(manual.trimmingCharacters(in: .whitespaces))
+        let minJava: Int
+        if !autoPick, let mv = manualVer, mv > 0 {
+            minJava = mv
+        } else {
+            minJava = Self.requiredJavaVersion(metadata)
+        }
         // Amethyst 的 launchJVM 内部会弹对话框、操作 UI，必须在主线程调用
         let code: Int32 = await withCheckedContinuation { cont in
             DispatchQueue.main.async {

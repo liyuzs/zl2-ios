@@ -40,6 +40,8 @@ struct ModsManagerScreen: View {
     @State private var detail: ZLModInfo?
     @State private var toast = ""
     @State private var showImporter = false
+    @State private var isLoading = true
+    @State private var loadError: String?
 
     private var modsDir: URL {
         VersionRepository.shared.mcRoot
@@ -89,11 +91,18 @@ struct ModsManagerScreen: View {
 
             ScrollView {
                 VStack(spacing: 10) {
-                    if filtered.isEmpty {
+                    if isLoading {
+                        // 首屏骨架：扫目录 + 解析 jar 需要一点时间，先别闪空状态
+                        ZLSkeletonList(count: 4, height: 86)
+                    } else if let e = loadError {
+                        errorState(e)
+                    } else if filtered.isEmpty {
                         emptyState
-                    }
-                    ForEach(filtered) { m in
-                        modRow(m)
+                    } else {
+                        ForEach(Array(filtered.enumerated()), id: \.element.id) { idx, m in
+                            modRow(m)
+                                .popIn(delay: Double(min(idx, 10)) * 0.035)
+                        }
                     }
                 }
                 .padding(.horizontal, ZLTheme.screenPadding)
@@ -130,24 +139,57 @@ struct ModsManagerScreen: View {
         }
     }
 
+    @ViewBuilder
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            ZLWaveLine()
-            Text(search.isEmpty ? "还没有模组" : "没有找到相关模组")
-                .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
-            Text("把 .jar 文件放进 mods 目录，或从下载中心安装")
-                .font(.system(size: 10.5)).foregroundStyle(ZLTheme.textSecond.opacity(0.7))
-            Button { showImporter = true } label: {
-                Text("从文件导入 .jar")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(ZLTheme.primaryDeep)
-                    .padding(.horizontal, 14).frame(height: 34)
-                    .background(ZLTheme.primarySoft)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
+        if search.isEmpty {
+            ZLEmptyState(
+                icon: "puzzlepiece.extension",
+                title: "还没有模组",
+                detail: "mods 目录现在是空的。\n可以导入 .jar，或者去下载中心挑一个装",
+                actionTitle: "从文件导入 .jar",
+                action: { showImporter = true })
+        } else {
+            ZLEmptyState(
+                icon: "magnifyingglass",
+                title: "没有找到相关模组",
+                detail: "换个关键词试试，或者清空搜索看全部 \(mods.count) 个",
+                actionTitle: "清空搜索",
+                action: { search = "" })
         }
-        .frame(maxWidth: .infinity).padding(.vertical, 40)
+    }
+
+    /// 读不了目录时的提示（之前这里会静默当成"没有模组"）
+    private func errorState(_ message: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 26, weight: .light))
+                .foregroundStyle(ZLTheme.warning)
+            Text("模组列表没能读出来")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(ZLTheme.textPrimary)
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundStyle(ZLTheme.textSecond)
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+            Button {
+                ZLHaptic.light()
+                reload()
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .medium))
+                    Text("重试").font(.system(size: 12, weight: .medium))
+                }
+                .foregroundStyle(ZLTheme.primaryDeep)
+                .padding(.horizontal, 14).frame(height: 34)
+                .background(ZLTheme.primarySoft)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(ZLPressStyle())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .padding(.horizontal, 24)
     }
 
     private func modRow(_ m: ZLModInfo) -> some View {
@@ -282,28 +324,32 @@ struct ModsManagerScreen: View {
 
     private func reload() {
         let fm = FileManager.default
-        try? fm.createDirectory(at: modsDir, withIntermediateDirectories: true)
-        guard let files = try? fm.contentsOfDirectory(at: modsDir,
-                                                     includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey]) else {
+        do {
+            try fm.createDirectory(at: modsDir, withIntermediateDirectories: true)
+            let files = try fm.contentsOfDirectory(at: modsDir,
+                                                   includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey])
+            mods = files.filter { $0.pathExtension.lowercased() == "jar" }.map { url in
+                let attrs = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+                let enabled = !url.lastPathComponent.hasSuffix(".disabled")
+                let info = ModJarParser.parse(url)
+                return ZLModInfo(fileName: url.lastPathComponent,
+                                 path: url,
+                                 sizeBytes: Int64(attrs?.fileSize ?? 0),
+                                 modified: attrs?.contentModificationDate ?? Date.distantPast,
+                                 enabled: enabled,
+                                 modName: info?.name,
+                                 modVersion: info?.version,
+                                 modAuthors: info?.authors ?? [],
+                                 modDescription: info?.description,
+                                 modId: info?.id,
+                                 loader: info?.loader)
+            }
+            loadError = nil
+        } catch {
             mods = []
-            return
+            loadError = "读不了 mods 目录：\(error.localizedDescription)"
         }
-        mods = files.filter { $0.pathExtension.lowercased() == "jar" }.map { url in
-            let attrs = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
-            let enabled = !url.lastPathComponent.hasSuffix(".disabled")
-            let info = ModJarParser.parse(url)
-            return ZLModInfo(fileName: url.lastPathComponent,
-                             path: url,
-                             sizeBytes: Int64(attrs?.fileSize ?? 0),
-                             modified: attrs?.contentModificationDate ?? Date.distantPast,
-                             enabled: enabled,
-                             modName: info?.name,
-                             modVersion: info?.version,
-                             modAuthors: info?.authors ?? [],
-                             modDescription: info?.description,
-                             modId: info?.id,
-                             loader: info?.loader)
-        }
+        isLoading = false
     }
 
     private func toggle(_ m: ZLModInfo, _ on: Bool) {

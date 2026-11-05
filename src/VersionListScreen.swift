@@ -2,6 +2,13 @@
 // 结构：左侧游戏目录面板 + 中间列表（筛选芯片 + 版本卡片）
 //       底部：添加游戏目录 / 清理游戏文件
 import SwiftUI
+import Combine
+
+/// 浏览某个版本目录用（sheet(item:) 需要 Identifiable）
+private struct VersionFolderRef: Identifiable {
+    let id = UUID()
+    let url: URL
+}
 
 struct VersionListScreen: View {
     var onBack: () -> Void = {}
@@ -20,6 +27,12 @@ struct VersionListScreen: View {
     @State private var showAlert = false
     @State private var showDirs = false
     @State private var showClean = false
+    // iOS 原生交互：长按菜单 / 下拉刷新 / ⌘R
+    @State private var launchedID = ""
+    @State private var showLaunch = false
+    @State private var deleteTarget: String?
+    @State private var browsing: VersionFolderRef?
+    @State private var toast: String?
 
     private let filters = ["全部", "原版", "可安装模组"]
 
@@ -74,6 +87,37 @@ struct VersionListScreen: View {
         }
         .sheet(isPresented: $showClean) {
             CleanFilesScreen(onBack: { showClean = false }, onHome: { showClean = false })
+        }
+        // 长按菜单里的「启动」
+        .fullScreenCover(isPresented: $showLaunch) {
+            LaunchScreen(versionName: launchedID,
+                         versionID: launchedID,
+                         isPresented: $showLaunch)
+        }
+        // 长按菜单里的「浏览文件」
+        .sheet(item: $browsing) { f in
+            FileManagerScreen(initialPath: f.url,
+                              onBack: { browsing = nil },
+                              onHome: { browsing = nil })
+        }
+        // 长按菜单里的「删除」
+        .confirmationDialog("删除版本",
+                            isPresented: Binding(get: { deleteTarget != nil },
+                                                 set: { if !$0 { deleteTarget = nil } }),
+                            titleVisibility: .visible) {
+            Button("删除「\(deleteTarget ?? "")」", role: .destructive) {
+                let id = deleteTarget
+                deleteTarget = nil
+                if let id { deleteVersion(id) }
+            }
+            Button("取消", role: .cancel) { deleteTarget = nil }
+        } message: {
+            Text("该版本及其全部文件都会被删除，无法恢复。")
+        }
+        .overlay(alignment: .top) { toastView }
+        // ⌘R（iPad 键盘）刷新当前页
+        .onReceive(NotificationCenter.default.publisher(for: .zlRefreshRequested)) { _ in
+            reload()
         }
     }
 
@@ -195,6 +239,8 @@ struct VersionListScreen: View {
                 }
                 .padding(10)
             }
+            // iOS 原生下拉刷新（重扫 versions 目录）
+            .refreshable { reload() }
             .background(ZLTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
@@ -265,6 +311,26 @@ struct VersionListScreen: View {
         .padding(12)
         .background(ZLTheme.primarySoft.opacity(0.55))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(Rectangle())
+        // iOS 长按菜单（iPad / 触屏都可用）
+        .contextMenu {
+            Button { startLaunch(v.id) } label: {
+                Label("启动", systemImage: "play.fill")
+            }
+            Button { onOpenVersion(v.id) } label: {
+                Label("设置", systemImage: "gearshape")
+            }
+            Button { browseFiles(v.id) } label: {
+                Label("浏览文件", systemImage: "folder")
+            }
+            Button { copyVersionID(v.id) } label: {
+                Label("复制 ID", systemImage: "doc.on.doc")
+            }
+            Divider()
+            Button(role: .destructive) { deleteTarget = v.id } label: {
+                Label("删除", systemImage: "trash")
+            }
+        }
     }
 
     // MARK: 数据
@@ -297,5 +363,61 @@ struct VersionListScreen: View {
 
     private func reload() {
         versions = VersionRepository.shared.listVersions()
+    }
+
+    // MARK: - iOS 交互动作
+
+    private func startLaunch(_ id: String) {
+        ZLInteraction.haptic(.medium)
+        launchedID = id
+        showLaunch = true
+    }
+
+    private func browseFiles(_ id: String) {
+        ZLInteraction.haptic(.light)
+        let dir = VersionRepository.shared.folder(for: "版本", versionID: id)
+            ?? VersionRepository.shared.versionsDir
+        browsing = VersionFolderRef(url: dir)
+    }
+
+    private func copyVersionID(_ id: String) {
+        ZLInteraction.haptic(.light)
+        ZLInteraction.copy(id)
+        showToast("已复制版本 ID：\(id)")
+    }
+
+    private func deleteVersion(_ id: String) {
+        do {
+            try VersionRepository.shared.deleteVersion(id)
+            showToast("已删除 \(id)")
+        } catch {
+            showToast(error.localizedDescription)
+        }
+        if selected == id { selected = nil }
+        reload()
+    }
+
+    // MARK: - 轻提示
+
+    @ViewBuilder
+    private var toastView: some View {
+        if let toast {
+            Text(toast)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Capsule().fill(ZLTheme.primaryDeep))
+                .padding(.top, 10)
+                .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
+    private func showToast(_ text: String) {
+        withAnimation(.easeOut(duration: 0.18)) { toast = text }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toast == text else { return }
+            withAnimation(.easeOut(duration: 0.2)) { toast = nil }
+        }
     }
 }

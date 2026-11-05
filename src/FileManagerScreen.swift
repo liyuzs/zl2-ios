@@ -1,6 +1,7 @@
 // ZL2-iOS · 文件管理器
 // 对齐 ZL2：目录浏览 / 前进后退 / 排序 / 隐藏文件 / 重命名 / 删除到回收站 / 属性
 import SwiftUI
+import Combine
 
 struct FileEntry: Identifiable {
     let id = UUID()
@@ -14,6 +15,8 @@ struct FileEntry: Identifiable {
 struct FileManagerScreen: View {
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
+    /// 从版本列表「浏览文件」进来时直接定位到该目录
+    var initialPath: URL? = nil
 
     @State private var current: URL = {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -48,7 +51,17 @@ struct FileManagerScreen: View {
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
-        .task { reload() }
+        .task {
+            if let p = initialPath,
+               FileManager.default.fileExists(atPath: p.path) {
+                current = p
+            }
+            reload()
+        }
+        // ⌘R（iPad 键盘）重新读当前目录
+        .onReceive(NotificationCenter.default.publisher(for: .zlRefreshRequested)) { _ in
+            reload()
+        }
         .alert("重命名", isPresented: Binding(
             get: { renaming != nil },
             set: { if !$0 { renaming = nil } }
@@ -199,6 +212,11 @@ struct FileManagerScreen: View {
                         if e.isDir {
                             Button("进入") { history.append(current); current = e.url; reload() }
                         }
+                        if !e.isDir {
+                            ShareLink(item: e.url) {
+                                Label("分享", systemImage: "square.and.arrow.up")
+                            }
+                        }
                         Button("属性") { showProperty = e }
                         Button("重命名") { renaming = e; newName = e.name }
                         Button("删除到回收站", role: .destructive) { trash(e) }
@@ -213,6 +231,8 @@ struct FileManagerScreen: View {
             .padding(.horizontal, ZLTheme.screenPadding)
             .padding(.bottom, 10)
         }
+        // iOS 原生下拉刷新
+        .refreshable { reload() }
     }
 
     // 底部批量操作
@@ -221,6 +241,15 @@ struct FileManagerScreen: View {
             Text(selection.isEmpty ? "\(entries.count) 项" : "已选中 \(selection.count) 项")
                 .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
             Spacer()
+            // iOS 原生分享（选中文件后出现）
+            if !selectedFiles.isEmpty {
+                ShareLink(items: selectedFiles.map(\.url)) {
+                    Label(selectedFiles.count > 1 ? "分享 \(selectedFiles.count) 个文件" : "分享",
+                          systemImage: "square.and.arrow.up")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .foregroundStyle(ZLTheme.primaryDeep)
+            }
             if !selection.isEmpty {
                 Button("删除") {
                     let picked = entries.filter { selection.contains($0.id) }
@@ -233,6 +262,11 @@ struct FileManagerScreen: View {
         }
         .padding(.horizontal, ZLTheme.screenPadding)
         .frame(height: 42)
+    }
+
+    /// 当前选中的文件（目录不参与分享）
+    private var selectedFiles: [FileEntry] {
+        entries.filter { selection.contains($0.id) && !$0.isDir }
     }
 
     // MARK: 逻辑

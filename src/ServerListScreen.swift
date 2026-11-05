@@ -2,6 +2,7 @@
 // 参考：ZL2 的 ServerListScreen.kt + ServerData.kt
 // 功能：servers.dat 读写（NBT）+ 真实 Minecraft 服务器 ping（状态协议）
 import SwiftUI
+import Combine
 
 // MARK: - 纹理包状态（对齐 ZL2 的 TexturePackStatus）
 enum ZLTexturePackStatus: Int, Codable {
@@ -45,6 +46,10 @@ struct ServerListScreen: View {
     @State private var showEdit = false
     @State private var deleteTarget: ZLServerData?
     @State private var search = ""
+    /// ping 不通的服务器，单独给「重试」，不影响其他行
+    @State private var failed: Set<UUID> = []
+    // 轻提示（连接 / 复制地址）
+    @State private var toast: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -87,25 +92,62 @@ struct ServerListScreen: View {
             .padding(.horizontal, ZLTheme.screenPadding)
             .padding(.bottom, 10)
 
-            ScrollView {
-                VStack(spacing: 8) {
-                    if filtered.isEmpty {
-                        VStack(spacing: 10) {
-                            Image(systemName: "server.rack")
-                                .font(.system(size: 32))
-                                .foregroundStyle(ZLTheme.textSecond.opacity(0.35))
-                            Text("还没有添加服务器").font(.system(size: 13))
-                                .foregroundStyle(ZLTheme.textSecond)
-                        }
-                        .frame(maxWidth: .infinity).padding(.vertical, 50)
-                    }
-
-                    ForEach(filtered) { s in
+            // 用 List 才能拿到 iOS 原生的 swipeActions（左滑删除）
+            List {
+                if servers.isEmpty {
+                    ZLEmptyState(
+                        icon: "server.rack",
+                        title: "还没有服务器",
+                        detail: "点上方「添加服务器」填一个地址\n或者让朋友在游戏里「对局域网开放」，用局域网联机",
+                        actionTitle: "添加服务器",
+                        action: { addServer() })
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 5, leading: ZLTheme.screenPadding,
+                                                  bottom: 5, trailing: ZLTheme.screenPadding))
+                } else if filtered.isEmpty {
+                    ZLEmptyState(
+                        icon: "magnifyingglass",
+                        title: "没有匹配的服务器",
+                        detail: "换个名字或地址关键词试试",
+                        actionTitle: "清空搜索",
+                        action: { search = "" })
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 5, leading: ZLTheme.screenPadding,
+                                                  bottom: 5, trailing: ZLTheme.screenPadding))
+                } else {
+                    ForEach(Array(filtered.enumerated()), id: \.element.id) { idx, s in
                         serverRow(s)
+                            .popIn(delay: Double(min(idx, 10)) * 0.035)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 4, leading: ZLTheme.screenPadding,
+                                                      bottom: 4, trailing: ZLTheme.screenPadding))
+                            // 左滑删除 / 刷新状态
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    deleteServer(s)
+                                } label: {
+                                    Label("删除", systemImage: "trash")
+                                }
+                                Button {
+                                    Task { await ping(s) }
+                                } label: {
+                                    Label("刷新", systemImage: "arrow.clockwise")
+                                }
+                                .tint(ZLTheme.primary)
+                            }
                     }
                 }
-                .padding(.horizontal, ZLTheme.screenPadding)
-                .padding(.bottom, ZLTheme.screenPadding)
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .environment(\.defaultMinListRowHeight, 0)
+            // iOS 原生下拉刷新：重新 ping 所有服务器
+            .refreshable {
+                load()
+                await pingAll()
             }
         }
         .background(ZLTheme.background.ignoresSafeArea())
@@ -131,12 +173,20 @@ struct ServerListScreen: View {
             Button("删除", role: .destructive) {
                 if let t = deleteTarget {
                     servers.removeAll { $0.id == t.id }
+                    pings.removeValue(forKey: t.id)
+                    failed.remove(t.id)
+                    loading.remove(t.id)
                     save()
                 }
                 deleteTarget = nil
             }
         } message: {
             Text("确定删除「\(deleteTarget?.name ?? "")」？")
+        }
+        .overlay(alignment: .top) { toastView }
+        // ⌘R（iPad 键盘）重新 ping
+        .onReceive(NotificationCenter.default.publisher(for: .zlRefreshRequested)) { _ in
+            Task { await pingAll() }
         }
     }
 
@@ -159,17 +209,38 @@ struct ServerListScreen: View {
                 HStack(spacing: 6) {
                     Text(s.name).font(.system(size: 14, weight: .medium))
                         .foregroundStyle(ZLTheme.textPrimary).lineLimit(1)
-                    if loading.contains(s.id) {
-                        ProgressView().scaleEffect(0.6)
-                    } else if let p = pings[s.id] {
+                    if let p = pings[s.id], !loading.contains(s.id) {
                         SignalBars(online: p.onlinePlayers, max: p.maxPlayers)
                     }
                 }
-                if let p = pings[s.id] {
+                if loading.contains(s.id) {
+                    // 状态没回来之前用骨架条占位，比转圈更稳，行高也不会抖
+                    VStack(alignment: .leading, spacing: 4) {
+                        ZLSkeletonRow(height: 8, corner: 4).frame(width: 118)
+                        ZLSkeletonRow(height: 8, corner: 4).frame(width: 172)
+                    }
+                    .padding(.top, 2)
+                } else if let p = pings[s.id] {
                     Text("\(p.onlinePlayers)/\(p.maxPlayers) · \(p.latencyMs)ms · \(p.versionName)")
                         .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
                     Text(p.motd.replacingOccurrences(of: "§.", with: "", options: .regularExpression))
                         .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond).lineLimit(1)
+                } else if failed.contains(s.id) {
+                    HStack(spacing: 8) {
+                        Text("连不上，检查地址或网络").font(.system(size: 11))
+                            .foregroundStyle(ZLTheme.danger)
+                        Button {
+                            ZLHaptic.light()
+                            Task { await ping(s) }
+                        } label: {
+                            Text("重试").font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(ZLTheme.primaryDeep)
+                                .padding(.horizontal, 8).padding(.vertical, 2)
+                                .background(ZLTheme.primarySoft)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 } else {
                     Text(s.originIp).font(.system(size: 11))
                         .foregroundStyle(ZLTheme.textSecond)
@@ -198,6 +269,23 @@ struct ServerListScreen: View {
         .padding(12)
         .background(ZLTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(Rectangle())
+        // iOS 长按菜单
+        .contextMenu {
+            Button { connect(s) } label: {
+                Label("连接", systemImage: "play.fill")
+            }
+            Button { editing = s; showEdit = true } label: {
+                Label("编辑", systemImage: "pencil")
+            }
+            Button { copyAddress(s) } label: {
+                Label("复制地址", systemImage: "doc.on.doc")
+            }
+            Divider()
+            Button(role: .destructive) { deleteTarget = s } label: {
+                Label("删除", systemImage: "trash")
+            }
+        }
     }
 
     private var filtered: [ZLServerData] {
@@ -210,13 +298,8 @@ struct ServerListScreen: View {
 
     // MARK: 数据
     private func load() {
+        // 不再塞演示数据：空列表交给空状态，告诉用户怎么加第一个服务器
         servers = ServerStore.shared.load()
-        if servers.isEmpty {
-            // 演示数据
-            servers = [
-                ZLServerData(name: "Hypixel", originIp: "mc.hypixel.net"),
-            ]
-        }
     }
 
     private func save() { ServerStore.shared.save(servers) }
@@ -227,11 +310,76 @@ struct ServerListScreen: View {
     }
 
     private func pingAll() async {
-        for s in servers {
-            loading.insert(s.id)
-            let r = await MinecraftPing.ping(host: s.originIp)
-            if let r = r { pings[s.id] = r }
-            loading.remove(s.id)
+        for s in servers { await ping(s) }
+    }
+
+    /// 单个服务器的状态刷新：失败也记下来，行内可以单独重试
+    private func ping(_ s: ZLServerData) async {
+        loading.insert(s.id)
+        failed.remove(s.id)
+        let r = await MinecraftPing.ping(host: s.originIp)
+        if let r = r {
+            pings[s.id] = r
+            failed.remove(s.id)
+        } else {
+            pings[s.id] = nil
+            failed.insert(s.id)
+        }
+        loading.remove(s.id)
+    }
+
+    // MARK: - iOS 交互动作
+
+    /// 连接：把地址放进剪贴板 + 顺手刷新状态。
+    /// iOS 上没法直接拉起游戏去连服务器，所以给一句明确的后续操作提示。
+    private func connect(_ s: ZLServerData) {
+        ZLInteraction.haptic(.medium)
+        ZLInteraction.copy(s.originIp)
+        showToast("已复制地址，游戏里「多人游戏 → 直接连接」即可加入")
+        Task { await ping(s) }
+    }
+
+    private func copyAddress(_ s: ZLServerData) {
+        ZLInteraction.haptic(.light)
+        ZLInteraction.copy(s.originIp)
+        showToast("已复制地址：\(s.originIp)")
+    }
+
+    /// 左滑删除（滑动删除是 iOS 的原生快捷动作，不再二次确认）
+    private func deleteServer(_ s: ZLServerData) {
+        ZLInteraction.haptic(.rigid)
+        servers.removeAll { $0.id == s.id }
+        pings.removeValue(forKey: s.id)
+        failed.remove(s.id)
+        loading.remove(s.id)
+        deleteTarget = nil
+        save()
+        showToast("已删除「\(s.name)」")
+    }
+
+    // MARK: - 轻提示
+
+    @ViewBuilder
+    private var toastView: some View {
+        if let toast {
+            Text(toast)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Capsule().fill(ZLTheme.primaryDeep))
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
+    private func showToast(_ text: String) {
+        withAnimation(.easeOut(duration: 0.18)) { toast = text }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+            guard toast == text else { return }
+            withAnimation(.easeOut(duration: 0.2)) { toast = nil }
         }
     }
 }

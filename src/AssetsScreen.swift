@@ -1,6 +1,7 @@
 // ZL2-iOS · 资源下载（整合包 / 模组 / 资源包 / 光影 / 存档 / 收藏）
 // 依据真机：左侧分类 + 顶部筛选 + 卡片列表；这里做一个通用页，按类型换数据源与筛选项
 import SwiftUI
+import Combine
 
 // MARK: - 资源类型
 enum AssetKind: String, CaseIterable, Identifiable {
@@ -97,6 +98,8 @@ struct AssetsScreen: View {
     @State private var totalHits = 0
     // 点卡片进入项目详情（对应 ZL2 的 AssetInfoScreen）
     @State private var detailHit: ModrinthHit?
+    // 轻提示（复制链接等）
+    @State private var toast: String?
 
     private let platforms = ["未选择", "Windows", "Linux", "macOS", "Android", "iOS"]
     private let mcVersions = ["未选择", "1.21.4", "1.20.1", "1.19.2", "1.16.5", "1.12.2"]
@@ -130,6 +133,12 @@ struct AssetsScreen: View {
                             kind: kind,
                             onBack: { detailHit = nil },
                             onHome: { detailHit = nil })
+        }
+        .overlay(alignment: .top) { toastView }
+        // ⌘R（iPad 键盘）重新搜索
+        .onReceive(NotificationCenter.default.publisher(for: .zlRefreshRequested)) { _ in
+            guard kind != .favorite && kind != .saves else { return }
+            Task { await runSearch() }
         }
     }
 
@@ -380,6 +389,8 @@ struct AssetsScreen: View {
             }
             .padding(.trailing, 2)
         }
+        // iOS 原生下拉刷新：重新搜一次
+        .refreshable { await runSearch() }
     }
 
     private func hitRow(_ h: ModrinthHit) -> some View {
@@ -430,6 +441,58 @@ struct AssetsScreen: View {
         .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         .contentShape(Rectangle())
         .onTapGesture { detailHit = h }
+        // iOS 长按菜单
+        .contextMenu {
+            Button { detailHit = h } label: {
+                Label("查看详情", systemImage: "info.circle")
+            }
+            Button { Task { await installProject(h) } } label: {
+                Label("下载安装", systemImage: "arrow.down.circle")
+            }
+            Button { copyProjectLink(h) } label: {
+                Label("复制链接", systemImage: "link")
+            }
+            if let url = projectURL(h) {
+                ShareLink(item: url) {
+                    Label("分享", systemImage: "square.and.arrow.up")
+                }
+            }
+        }
+    }
+
+    // MARK: - 项目链接与轻提示
+
+    private func projectURL(_ h: ModrinthHit) -> URL? {
+        URL(string: "https://modrinth.com/project/\(h.id)")
+    }
+
+    private func copyProjectLink(_ h: ModrinthHit) {
+        guard let url = projectURL(h) else { return }
+        ZLInteraction.haptic(.light)
+        ZLInteraction.copy(url.absoluteString)
+        showToast("已复制项目链接")
+    }
+
+    @ViewBuilder
+    private var toastView: some View {
+        if let toast {
+            Text(toast)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Capsule().fill(ZLTheme.primaryDeep))
+                .padding(.top, 10)
+                .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
+    private func showToast(_ text: String) {
+        withAnimation(.easeOut(duration: 0.18)) { toast = text }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+            guard toast == text else { return }
+            withAnimation(.easeOut(duration: 0.2)) { toast = nil }
+        }
     }
 
     /// 下载并放入对应目录

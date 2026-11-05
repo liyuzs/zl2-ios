@@ -3,6 +3,7 @@
 // 功能：扫描 saves 目录、解析 level.dat（gzip+NBT）、显示世界信息
 import SwiftUI
 import Compression
+import Combine
 
 // MARK: - 管理页共用卡片小件（对齐真机下载卡片的视觉语言）
 // 模组 / 存档 / 资源包三个管理页共用，避免三处样式漂移
@@ -150,6 +151,11 @@ struct SavesManagerScreen: View {
     @State private var search = ""
     @State private var deleteTarget: ZLWorldInfo?
     @State private var detail: ZLWorldInfo?
+    @State private var isLoading = true
+    @State private var loadError: String?
+    // iOS 原生交互：右滑收藏（本地持久化）/ 轻提示
+    @AppStorage("zl.saves.favorites") private var favoritesRaw = ""
+    @State private var toast: String?
 
     private var savesDir: URL {
         VersionRepository.shared.mcRoot.appendingPathComponent("saves", isDirectory: true)
@@ -184,28 +190,66 @@ struct SavesManagerScreen: View {
             .padding(.horizontal, ZLTheme.screenPadding)
             .padding(.bottom, 8)
 
-            ScrollView {
-                VStack(spacing: 10) {
-                    if filtered.isEmpty {
-                        VStack(spacing: 12) {
-                            ZLWaveLine()
-                            Text(search.isEmpty ? "还没有存档" : "没有找到相关存档")
-                                .font(.system(size: 12))
-                                .foregroundStyle(ZLTheme.textSecond)
-                            Text(search.isEmpty ? "在游戏里创建世界后，这里会自动出现"
-                                                : "换个关键词试试")
-                                .font(.system(size: 10.5))
-                                .foregroundStyle(ZLTheme.textSecond.opacity(0.7))
-                        }
-                        .frame(maxWidth: .infinity).padding(.vertical, 48)
-                    }
-                    ForEach(filtered) { w in
+            // 用 List 才能拿到 iOS 原生的 swipeActions（左滑删除 / 右滑收藏）
+            List {
+                if isLoading {
+                    // 首屏骨架：解析 level.dat + 统计每个世界的目录大小要花点时间
+                    ZLSkeletonList(count: 4, height: 76)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 10, leading: ZLTheme.screenPadding,
+                                                  bottom: 10, trailing: ZLTheme.screenPadding))
+                } else if let e = loadError {
+                    errorState(e)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 20, leading: ZLTheme.screenPadding,
+                                                  bottom: 20, trailing: ZLTheme.screenPadding))
+                } else if filtered.isEmpty {
+                    emptyState
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets())
+                } else {
+                    ForEach(Array(filtered.enumerated()), id: \.element.id) { idx, w in
                         worldRow(w)
+                            .popIn(delay: Double(min(idx, 8)) * 0.035)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 5, leading: ZLTheme.screenPadding,
+                                                      bottom: 5, trailing: ZLTheme.screenPadding))
+                            // 左滑：删除 / 备份
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    deleteTarget = w
+                                } label: {
+                                    Label("删除", systemImage: "trash")
+                                }
+                                Button {
+                                    backup(w)
+                                } label: {
+                                    Label("备份", systemImage: "externaldrive.badge.plus")
+                                }
+                                .tint(ZLTheme.primary)
+                            }
+                            // 右滑：收藏
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                Button {
+                                    toggleFavorite(w)
+                                } label: {
+                                    Label(isFavorite(w) ? "取消收藏" : "收藏",
+                                          systemImage: isFavorite(w) ? "star.slash.fill" : "star.fill")
+                                }
+                                .tint(ZLTheme.warning)
+                            }
                     }
                 }
-                .padding(.horizontal, ZLTheme.screenPadding)
-                .padding(.bottom, ZLTheme.screenPadding)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .environment(\.defaultMinListRowHeight, 0)
+            // iOS 原生下拉刷新
+            .refreshable { reload() }
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
@@ -223,6 +267,11 @@ struct SavesManagerScreen: View {
         }
         .sheet(item: $detail) { w in
             WorldDetailSheet(world: w) { detail = nil }
+        }
+        .overlay(alignment: .top) { toastView }
+        // ⌘R（iPad 键盘）重新扫描存档
+        .onReceive(NotificationCenter.default.publisher(for: .zlRefreshRequested)) { _ in
+            reload()
         }
     }
 
@@ -255,6 +304,11 @@ struct SavesManagerScreen: View {
                         .font(.system(size: 10))
                         .foregroundStyle(ZLTheme.textSecond)
                         .lineLimit(1)
+                    if isFavorite(w) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(ZLTheme.warning)
+                    }
                     Spacer(minLength: 6)
                 }
 
@@ -290,6 +344,27 @@ struct SavesManagerScreen: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .zlCardSurface()
+        .contentShape(Rectangle())
+        // iOS 长按菜单
+        .contextMenu {
+            Button { detail = w } label: {
+                Label("进入", systemImage: "arrow.right.circle")
+            }
+            Button { backup(w) } label: {
+                Label("备份", systemImage: "externaldrive.badge.plus")
+            }
+            Button { copyWorldName(w) } label: {
+                Label("复制名称", systemImage: "doc.on.doc")
+            }
+            Button { toggleFavorite(w) } label: {
+                Label(isFavorite(w) ? "取消收藏" : "收藏",
+                      systemImage: isFavorite(w) ? "star.slash" : "star")
+            }
+            Divider()
+            Button(role: .destructive) { deleteTarget = w } label: {
+                Label("删除", systemImage: "trash")
+            }
+        }
     }
 
     private func lastPlayedText(_ w: ZLWorldInfo) -> String {
@@ -305,31 +380,88 @@ struct SavesManagerScreen: View {
         }
     }
 
+    @ViewBuilder
+    private var emptyState: some View {
+        if search.isEmpty {
+            ZLEmptyState(
+                icon: "map",
+                title: "还没有存档",
+                detail: "进入游戏后创建一个世界，存档会自动出现在这里。\n刚在游戏里存过档的话，点「重新扫描」",
+                actionTitle: "重新扫描",
+                action: { reload() })
+        } else {
+            ZLEmptyState(
+                icon: "magnifyingglass",
+                title: "没有找到相关存档",
+                detail: "换个关键词试试，或者清空搜索看全部 \(worlds.count) 个世界",
+                actionTitle: "清空搜索",
+                action: { search = "" })
+        }
+    }
+
+    /// 读不了 saves 目录时的提示（以前这里会静默当成"没有存档"）
+    private func errorState(_ message: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 26, weight: .light))
+                .foregroundStyle(ZLTheme.warning)
+            Text("存档列表没能读出来")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(ZLTheme.textPrimary)
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundStyle(ZLTheme.textSecond)
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+            Button {
+                ZLInteraction.haptic(.light)
+                reload()
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .medium))
+                    Text("重试").font(.system(size: 12, weight: .medium))
+                }
+                .foregroundStyle(ZLTheme.primaryDeep)
+                .padding(.horizontal, 14).frame(height: 34)
+                .background(ZLTheme.primarySoft)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(ZLPressStyle())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .padding(.horizontal, 24)
+    }
+
     private func reload() {
         let fm = FileManager.default
-        try? fm.createDirectory(at: savesDir, withIntermediateDirectories: true)
-        guard let dirs = try? fm.contentsOfDirectory(at: savesDir,
-                                                     includingPropertiesForKeys: [.isDirectoryKey]) else {
+        do {
+            try fm.createDirectory(at: savesDir, withIntermediateDirectories: true)
+            let dirs = try fm.contentsOfDirectory(at: savesDir,
+                                                  includingPropertiesForKeys: [.isDirectoryKey])
+            worlds = dirs.filter {
+                (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+            }.compactMap { dir in
+                let levelDat = dir.appendingPathComponent("level.dat")
+                let info = LevelDatParser.parse(levelDat)
+                let size = directorySize(dir)
+                return ZLWorldInfo(folderName: dir.lastPathComponent,
+                                   path: dir,
+                                   levelName: info?.levelName,
+                                   gameMode: info?.gameMode,
+                                   versionName: info?.versionName,
+                                   lastPlayed: info?.lastPlayed,
+                                   sizeBytes: size,
+                                   iconData: info?.icon,
+                                   seed: info?.seed)
+            }
+            .sorted { ($0.lastPlayed ?? .distantPast) > ($1.lastPlayed ?? .distantPast) }
+            loadError = nil
+        } catch {
             worlds = []
-            return
+            loadError = "读不了 saves 目录：\(error.localizedDescription)"
         }
-        worlds = dirs.filter {
-            (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
-        }.compactMap { dir in
-            let levelDat = dir.appendingPathComponent("level.dat")
-            let info = LevelDatParser.parse(levelDat)
-            let size = directorySize(dir)
-            return ZLWorldInfo(folderName: dir.lastPathComponent,
-                               path: dir,
-                               levelName: info?.levelName,
-                               gameMode: info?.gameMode,
-                               versionName: info?.versionName,
-                               lastPlayed: info?.lastPlayed,
-                               sizeBytes: size,
-                               iconData: info?.icon,
-                               seed: info?.seed)
-        }
-        .sorted { ($0.lastPlayed ?? .distantPast) > ($1.lastPlayed ?? .distantPast) }
+        isLoading = false
     }
 
     private func directorySize(_ url: URL) -> Int64 {
@@ -342,6 +474,72 @@ struct SavesManagerScreen: View {
             }
         }
         return total
+    }
+
+    // MARK: - iOS 交互动作
+
+    private var favoriteSet: Set<String> {
+        Set(favoritesRaw.split(separator: "\n").map(String.init))
+    }
+
+    private func isFavorite(_ w: ZLWorldInfo) -> Bool {
+        favoriteSet.contains(w.folderName)
+    }
+
+    /// 右滑收藏：状态存在 UserDefaults，重启后还在
+    private func toggleFavorite(_ w: ZLWorldInfo) {
+        var s = favoriteSet
+        if s.contains(w.folderName) { s.remove(w.folderName) } else { s.insert(w.folderName) }
+        favoritesRaw = s.sorted().joined(separator: "\n")
+        ZLInteraction.haptic(.selection)
+        showToast(s.contains(w.folderName) ? "已收藏「\(w.levelName ?? w.folderName)」"
+                                           : "已取消收藏")
+    }
+
+    /// 备份：把整个存档目录复制一份到 saves/ 下（不覆盖原存档）
+    private func backup(_ w: ZLWorldInfo) {
+        let df = DateFormatter()
+        df.dateFormat = "yyyyMMdd-HHmmss"
+        let name = "\(w.folderName)-备份-\(df.string(from: Date()))"
+        let dst = savesDir.appendingPathComponent(name, isDirectory: true)
+        do {
+            try FileManager.default.copyItem(at: w.path, to: dst)
+            ZLInteraction.haptic(.medium)
+            showToast("已备份为 \(name)")
+        } catch {
+            showToast("备份失败：\(error.localizedDescription)")
+        }
+        reload()
+    }
+
+    private func copyWorldName(_ w: ZLWorldInfo) {
+        ZLInteraction.haptic(.light)
+        ZLInteraction.copy(w.levelName ?? w.folderName)
+        showToast("已复制存档名称")
+    }
+
+    // MARK: - 轻提示
+
+    @ViewBuilder
+    private var toastView: some View {
+        if let toast {
+            Text(toast)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Capsule().fill(ZLTheme.primaryDeep))
+                .padding(.top, 10)
+                .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
+    private func showToast(_ text: String) {
+        withAnimation(.easeOut(duration: 0.18)) { toast = text }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toast == text else { return }
+            withAnimation(.easeOut(duration: 0.2)) { toast = nil }
+        }
     }
 }
 

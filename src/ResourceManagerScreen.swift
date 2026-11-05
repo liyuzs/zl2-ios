@@ -48,6 +48,8 @@ struct ResourceManagerScreen: View {
     @State private var search = ""
     @State private var deleteTarget: ZLResourceItem?
     @State private var preview: ZLResourceItem?
+    @State private var isLoading = true
+    @State private var loadError: String?
 
     private var folderURL: URL {
         VersionRepository.shared.mcRoot.appendingPathComponent(kind.folder, isDirectory: true)
@@ -82,19 +84,18 @@ struct ResourceManagerScreen: View {
 
             ScrollView {
                 VStack(spacing: 10) {
-                    if filtered.isEmpty {
-                        VStack(spacing: 12) {
-                            ZLWaveLine()
-                            Text(search.isEmpty ? "还没有\(kind.rawValue)" : "没有找到相关\(kind.rawValue)")
-                                .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
-                            Text("把文件放进 \(kind.folder) 目录")
-                                .font(.system(size: 10.5))
-                                .foregroundStyle(ZLTheme.textSecond.opacity(0.7))
+                    if isLoading {
+                        // 首屏骨架：扫目录 + 解析 pack.mcmeta / 读截图都要时间
+                        ZLSkeletonList(count: 4, height: 76)
+                    } else if let e = loadError {
+                        errorState(e)
+                    } else if filtered.isEmpty {
+                        emptyState
+                    } else {
+                        ForEach(Array(filtered.enumerated()), id: \.element.id) { idx, item in
+                            row(item)
+                                .popIn(delay: Double(min(idx, 10)) * 0.035)
                         }
-                        .frame(maxWidth: .infinity).padding(.vertical, 48)
-                    }
-                    ForEach(filtered) { item in
-                        row(item)
                     }
                 }
                 .padding(.horizontal, ZLTheme.screenPadding)
@@ -215,37 +216,111 @@ struct ResourceManagerScreen: View {
         }
     }
 
+    @ViewBuilder
+    private var emptyState: some View {
+        if !search.isEmpty {
+            ZLEmptyState(
+                icon: "magnifyingglass",
+                title: "没有找到相关\(kind.rawValue)",
+                detail: "换个关键词试试，或者清空搜索看全部 \(items.count) 个",
+                actionTitle: "清空搜索",
+                action: { search = "" })
+        } else {
+            switch kind {
+            case .resourcePack:
+                ZLEmptyState(
+                    icon: "paintbrush",
+                    title: "还没有资源包",
+                    detail: "把资源包 .zip 放进 resourcepacks 目录，\n或者去下载中心挑一个；放进去后点「重新扫描」",
+                    actionTitle: "重新扫描",
+                    action: { reload() })
+            case .shaderPack:
+                ZLEmptyState(
+                    icon: "sun.max",
+                    title: "还没有光影包",
+                    detail: "把光影 .zip 放进 shaderpacks 目录；\n光影要配合 sodium + podium 才会生效",
+                    actionTitle: "重新扫描",
+                    action: { reload() })
+            case .screenshot:
+                ZLEmptyState(
+                    icon: "photo",
+                    title: "还没有截图",
+                    detail: "游戏里的截图会存到 screenshots 目录，\n截完回来点「重新扫描」就能看到",
+                    actionTitle: "重新扫描",
+                    action: { reload() })
+            }
+        }
+    }
+
+    /// 读不了目录时的提示（以前这里会静默当成"没有资源"）
+    private func errorState(_ message: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 26, weight: .light))
+                .foregroundStyle(ZLTheme.warning)
+            Text("\(kind.rawValue)列表没能读出来")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(ZLTheme.textPrimary)
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundStyle(ZLTheme.textSecond)
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+            Button {
+                ZLHaptic.light()
+                reload()
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .medium))
+                    Text("重试").font(.system(size: 12, weight: .medium))
+                }
+                .foregroundStyle(ZLTheme.primaryDeep)
+                .padding(.horizontal, 14).frame(height: 34)
+                .background(ZLTheme.primarySoft)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(ZLPressStyle())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .padding(.horizontal, 24)
+    }
+
     private func reload() {
         let fm = FileManager.default
-        try? fm.createDirectory(at: folderURL, withIntermediateDirectories: true)
-        guard let files = try? fm.contentsOfDirectory(at: folderURL,
-                                                     includingPropertiesForKeys: [.fileSizeKey]) else {
-            items = []
-            return
-        }
-        items = files.filter { f in
-            if kind == .screenshot {
-                return ["png", "jpg", "jpeg"].contains(f.pathExtension.lowercased())
+        do {
+            try fm.createDirectory(at: folderURL, withIntermediateDirectories: true)
+            let files = try fm.contentsOfDirectory(at: folderURL,
+                                                   includingPropertiesForKeys: [.fileSizeKey])
+            items = files.filter { f in
+                if kind == .screenshot {
+                    return ["png", "jpg", "jpeg"].contains(f.pathExtension.lowercased())
+                }
+                return ["zip", "jar"].contains(f.pathExtension.lowercased()) ||
+                       (try? f.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+            }.map { url in
+                let attrs = try? url.resourceValues(forKeys: [.fileSizeKey])
+                let enabled = !url.lastPathComponent.hasSuffix(".disabled")
+                var info: PackMetaInfo? = nil
+                if kind != .screenshot { info = PackMetaParser.parse(url) }
+                var iconData: Data? = nil
+                if kind == .screenshot { iconData = try? Data(contentsOf: url) }
+                return ZLResourceItem(fileName: url.lastPathComponent,
+                                      path: url,
+                                      sizeBytes: Int64(attrs?.fileSize ?? 0),
+                                      enabled: enabled,
+                                      packName: info?.name,
+                                      packDescription: info?.description,
+                                      packVersion: info?.version,
+                                      iconData: iconData)
             }
-            return ["zip", "jar"].contains(f.pathExtension.lowercased()) ||
-                   (try? f.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
-        }.map { url in
-            let attrs = try? url.resourceValues(forKeys: [.fileSizeKey])
-            let enabled = !url.lastPathComponent.hasSuffix(".disabled")
-            var info: PackMetaInfo? = nil
-            if kind != .screenshot { info = PackMetaParser.parse(url) }
-            var iconData: Data? = nil
-            if kind == .screenshot { iconData = try? Data(contentsOf: url) }
-            return ZLResourceItem(fileName: url.lastPathComponent,
-                                  path: url,
-                                  sizeBytes: Int64(attrs?.fileSize ?? 0),
-                                  enabled: enabled,
-                                  packName: info?.name,
-                                  packDescription: info?.description,
-                                  packVersion: info?.version,
-                                  iconData: iconData)
+            .sorted { $0.fileName.lowercased() < $1.fileName.lowercased() }
+            loadError = nil
+        } catch {
+            items = []
+            loadError = "读不了 \(kind.folder) 目录：\(error.localizedDescription)"
         }
-        .sorted { $0.fileName.lowercased() < $1.fileName.lowercased() }
+        isLoading = false
     }
 
     private func toggle(_ item: ZLResourceItem, _ on: Bool) {

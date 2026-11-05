@@ -571,7 +571,7 @@ private struct ZLLicenseDocSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
 
-                    Link(destination: URL(string: doc.fullTextURL)!) {
+                    Link(destination: URL(string: doc.fullTextURL) ?? URL(string: "https://www.gnu.org/licenses/")!) {
                         HStack(spacing: 6) {
                             Image(systemName: "safari")
                             Text("在浏览器中打开官方全文")

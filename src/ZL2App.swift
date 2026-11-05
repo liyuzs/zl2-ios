@@ -265,7 +265,60 @@ struct RootView: View {
         .tint(ZLTheme.primary)
         .environmentObject(themeManager)
         .preferredColorScheme(themeManager.darkMode ? .dark : .light)
+        // 键盘快捷键挂在导航栈上：所有页面都能用（iPad / 外接键盘）
+        .overlay(alignment: .topLeading) { keyboardShortcutHost }
     }
+
+    // MARK: - 键盘快捷键
+    //
+    // iOS 的 .keyboardShortcut 只对 Button 生效，不能直接加在 View 上。
+    // 所以这里藏一组零尺寸按钮，挂在 NavigationStack 外层，随页面常驻。
+    private var keyboardShortcutHost: some View {
+        Group {
+            Button("下载") { push(.download) }
+                .keyboardShortcut("n", modifiers: .command)
+
+            Button("设置") { push(.settings) }
+                .keyboardShortcut(",", modifiers: .command)
+
+            // ⌘R：能刷新的页面自己监听，没有刷新动作的页面自动忽略
+            Button("刷新") {
+                NotificationCenter.default.post(name: .zlRefreshRequested, object: nil)
+            }
+            .keyboardShortcut("r", modifiers: .command)
+
+            // Esc = 返回上一页（没有上一页时什么都不做）
+            Button("返回") { goBack() }
+                .keyboardShortcut(.cancelAction)
+
+            // ⌘W = 直接回首页
+            Button("首页") { path.removeAll() }
+                .keyboardShortcut("w", modifiers: .command)
+        }
+        // 用 1×1 的透明按钮而不是 0×0：iOS 需要按钮真实参与布局才会注册快捷键
+        .frame(width: 1, height: 1)
+        .opacity(0.01)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    /// 打开页面（已经在这一页就不重复压栈）
+    private func push(_ route: AppRoute) {
+        guard path.last != route else { return }
+        path.append(route)
+    }
+
+    /// 返回上一页
+    private func goBack() {
+        guard !path.isEmpty else { return }
+        path.removeLast()
+    }
+}
+
+// MARK: - 全局快捷键广播
+extension Notification.Name {
+    /// ⌘R：请求当前页面刷新（能刷新的页面监听这个通知）
+    static let zlRefreshRequested = Notification.Name("zl.refresh.requested")
 }
 
 // MARK: - 陶瓦联机（依据真机：左侧标签页 + 右侧卡片）

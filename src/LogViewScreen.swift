@@ -57,6 +57,11 @@ struct LogViewScreen: View {
                 load(scroll: autoScroll)
             }
         }
+        // ⌘R（iPad 键盘）立即重新读取日志
+        .onReceive(NotificationCenter.default.publisher(for: .zlRefreshRequested)) { _ in
+            scanFiles()
+            load(scroll: autoScroll)
+        }
     }
 
     // MARK: - 工具栏
