@@ -270,6 +270,8 @@ enum CoreBridge {
         // Java 17+: lib/libjli.dylib；Java 8: lib/jli/libjli.dylib
         let candidates: [(String, String)] = [
             ("17", "lib/libjli.dylib"),
+            ("21", "lib/libjli.dylib"),
+            ("25", "lib/libjli.dylib"),
             ("8",  "lib/jli/libjli.dylib"),
             ("8",  "lib/libjli.dylib"),
         ]
