@@ -39,6 +39,10 @@ struct VersionContentScreen: View {
     @State private var showActions = false
     @State private var alertText = ""
     @State private var showAlert = false
+    // 文件导入
+    @State private var importing = false
+    @State private var importTarget: String = "mods"
+    @State private var importToast: String?
     @State private var showLog = false
 
     var body: some View {
@@ -64,6 +68,22 @@ struct VersionContentScreen: View {
             installed = VersionRepository.shared.listVersions()
         }
         .alert(alertText, isPresented: $showAlert) { Button("好", role: .cancel) { } }
+        .fileImporter(isPresented: $importing,
+                      allowedContentTypes: [.item],
+                      allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result { handleImport(urls) }
+        }
+        .overlay(alignment: .bottom) {
+            if let importToast {
+                Text(importToast)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(Capsule().fill(Color.black.opacity(0.82)))
+                    .padding(.bottom, 24)
+                    .transition(.opacity)
+            }
+        }
         .sheet(isPresented: $showLog) {
             LogViewScreen(onBack: { showLog = false }, onHome: { showLog = false })
         }
@@ -305,7 +325,9 @@ struct VersionContentScreen: View {
                 .background(ZLTheme.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            ZLGoldButton(title: "导入\(title)", icon: "square.and.arrow.down") { }
+            ZLGoldButton(title: "导入\(title)", icon: "square.and.arrow.down") {
+                beginImport(for: title)
+            }
         }
     }
 
@@ -353,7 +375,10 @@ struct VersionContentScreen: View {
                 .background(ZLTheme.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            ZLGoldButton(title: "添加服务器", icon: "plus") { }
+            ZLGoldButton(title: "添加服务器", icon: "plus") {
+                alertText = "服务器列表在「多人游戏」页管理，\n在那里可以添加、编辑、测试连通性。"
+                showAlert = true
+            }
         }
     }
 
@@ -382,7 +407,37 @@ struct VersionContentScreen: View {
                 .background(ZLTheme.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            ZLGoldButton(title: "导入光影", icon: "square.and.arrow.down") { }
+            ZLGoldButton(title: "导入光影", icon: "square.and.arrow.down") {
+                beginImport(for: "光影")
+            }
         }
+    }
+
+    // MARK: 文件导入
+
+    /// 根据分组名决定导入到哪个目录
+    private func beginImport(for title: String) {
+        if title.contains("光影") { importTarget = "shaderpacks" }
+        else if title.contains("资源包") { importTarget = "resourcepacks" }
+        else { importTarget = "mods" }
+        importing = true
+    }
+
+    private func handleImport(_ urls: [URL]) {
+        let fm = FileManager.default
+        let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let dir = docs.appendingPathComponent("instances/default/.minecraft/\(importTarget)", isDirectory: true)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        var ok = 0
+        for src in urls {
+            let dst = dir.appendingPathComponent(src.lastPathComponent)
+            // 需要先取得安全访问权限（别的 App 目录里的文件）
+            let scoped = src.startAccessingSecurityScopedResource()
+            defer { if scoped { src.stopAccessingSecurityScopedResource() } }
+            if (try? fm.copyItem(at: src, to: dst)) != nil { ok += 1 }
+        }
+        importToast = ok > 0 ? "已导入 \(ok) 个文件" : "导入失败"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { importToast = nil }
     }
 }
