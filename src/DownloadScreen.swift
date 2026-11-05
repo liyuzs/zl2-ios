@@ -180,7 +180,37 @@ struct DownloadScreen: View {
     }
 
     private var filtered: [DLVersion] {
-        query.isEmpty ? sourceVersions : sourceVersions.filter { $0.id.contains(query) }
+        var list = sourceVersions
+
+        // 先按类型筛选（原来这里完全没判断 filter，点快照/远古都没反应）
+        switch filter {
+        case 0:   // 正式版
+            list = list.filter { $0.type == "正式版" }
+        case 1:   // 快照版
+            list = list.filter { $0.type == "快照版" && !Self.isAprilFools($0.id) }
+        case 2:   // 愚人节版（Mojang 不单独标记，只能按 id 认）
+            list = list.filter { Self.isAprilFools($0.id) }
+        case 3:   // 远古版
+            list = list.filter { $0.type == "远古版" || $0.type == "旧版" }
+        default:
+            break
+        }
+
+        // 再按搜索词过滤
+        if !query.isEmpty {
+            list = list.filter { $0.id.localizedCaseInsensitiveContains(query) }
+        }
+        return list
+    }
+
+    /// Mojang 的愚人节版本没有单独标记，靠 id 特征认
+    private static func isAprilFools(_ id: String) -> Bool {
+        let l = id.lowercased()
+        // 已知愚人节版本的关键词
+        // 只保留确定的愚人节版本特征，避免把普通预发布误判
+        let marks = ["oneblockatatime", "_or_b", "20w14infinite",
+                     "15w14a", "3d shareware", "inf-20100618"]
+        return marks.contains { l.contains($0) }
     }
 
     private var list: some View {
