@@ -114,6 +114,25 @@ struct AssetsScreen: View {
         return list
     }
 
+    /// 安全取加载器，防越界
+    private func safeLoader(_ idx: Int) -> String? {
+        guard idx > 0, idx < loaders.count else { return nil }
+        return loaders[idx].lowercased()
+    }
+
+    /// 从版本 ID 推断加载器（Fabric / Forge / NeoForge / Quilt）
+    private var defaultLoader: String? {
+        if let first = VersionRepository.shared.listVersions().first {
+            let id = first.id.lowercased()
+            if id.contains("fabric") { return "fabric" }
+            if id.contains("neoforge") { return "neoforge" }
+            if id.contains("quilt") { return "quilt" }
+            if id.contains("forge") { return "forge" }
+            return "vanilla"
+        }
+        return nil
+    }
+
     /// 安全取版本，防越界
     private func safeVersion(_ idx: Int) -> String? {
         guard idx > 0, idx < mcVersions.count else { return nil }
@@ -523,7 +542,7 @@ struct AssetsScreen: View {
             let vs = try await ModrinthAPI.shared.versions(
                 projectID: h.id,
                 gameVersion: safeVersion(gameVersion) ?? defaultGameVersion,
-                loader: modLoader > 0 ? loaders[modLoader] : nil)
+                loader: safeLoader(modLoader) ?? defaultLoader)
             guard let v = vs.first, let f = v.files.first(where: \.primary) ?? v.files.first else {
                 loadError = "该项目没有可用文件"; return
             }
