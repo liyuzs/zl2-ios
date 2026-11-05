@@ -277,6 +277,22 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     margv[++margc] = "-XX:G1ReservePercent=20";
     margv[++margc] = "-XX:MaxMetaspaceSize=256M";
 
+    // 用户自定义 JVM 参数（设置里的 jvmArgs），空格分隔。
+    // 放在内置调优之后，让用户的设置能覆盖默认值。
+    const char *extraArgs = getenv("AME_EXTRA_JVM_ARGS");
+    if (extraArgs != NULL && strlen(extraArgs) > 0) {
+        char *dup = strdup(extraArgs);
+        if (dup != NULL) {
+            char *saveptr = NULL;
+            char *tok = strtok_r(dup, " \t", &saveptr);
+            while (tok != NULL && margc < (int)(sizeof(margv) / sizeof(margv[0])) - 2) {
+                margv[++margc] = strdup(tok);
+                tok = strtok_r(NULL, " \t", &saveptr);
+            }
+            free(dup);
+        }
+    }
+
     // On iOS 26, use mirror mapped JIT by default
     if (@available(iOS 26.0, *)) {
         margv[++margc] = "-XX:+MirrorMappedCodeCache";

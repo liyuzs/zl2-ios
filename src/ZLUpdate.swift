@@ -304,3 +304,46 @@ struct ZLUpdateCard: View {
         }
     }
 }
+
+// MARK: - 日志自动清理（按设置里的「日志保留天数」）
+
+enum ZLLogRetention {
+    /// 删除超过保留天数的日志文件。App 启动时调一次即可。
+    @discardableResult
+    static func cleanup() -> Int {
+        let days = (getPrefObject("launcherLogRetentionDays") as? NSNumber)?.intValue ?? 7
+        guard days > 0 else { return 0 }
+
+        let fm = FileManager.default
+        // 日志可能在几个位置，都扫一遍
+        var roots: [URL] = []
+        if let home = ProcessInfo.processInfo.environment["AME_HOME"] {
+            roots.append(URL(fileURLWithPath: home))
+        }
+        if let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first {
+            roots.append(docs)
+        }
+
+        let cutoff = Date().addingTimeInterval(-Double(days) * 86400)
+        var removed = 0
+
+        for root in roots {
+            guard let en = fm.enumerator(at: root,
+                                         includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
+                                         options: [.skipsHiddenFiles]) else { continue }
+            for case let url as URL in en {
+                let ext = url.pathExtension.lowercased()
+                guard ext == "log" || ext == "txt" else { continue }
+                guard let vals = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey]),
+                      vals.isRegularFile == true,
+                      let mtime = vals.contentModificationDate,
+                      mtime < cutoff else { continue }
+                if (try? fm.removeItem(at: url)) != nil { removed += 1 }
+            }
+        }
+        if removed > 0 {
+            NSLog("[ZL2] 已清理 \(removed) 个过期日志（保留 \(days) 天）")
+        }
+        return removed
+    }
+}

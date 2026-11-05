@@ -74,6 +74,10 @@ enum CoreBridge {
         setenv("GAME_DIR", gameDir, 1)
 
         // === 性能优化 ===
+        // 0) 用户自定义 JVM 参数：核心从 AME_EXTRA_JVM_ARGS 读取
+        let extraJV = (getPrefObject("jvmArgs") as? String) ?? ""
+        setenv("AME_EXTRA_JVM_ARGS", extraJV.trimmingCharacters(in: .whitespacesAndNewlines), 1)
+
         // 1) 渲染器：读用户设置，留空则用 auto（Metal/ANGLE）
         let userRenderer = (getPrefObject("renderer") as? String) ?? ""
         setenv("RENDERER", userRenderer.isEmpty ? "auto" : userRenderer, 1)

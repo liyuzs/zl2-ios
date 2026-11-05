@@ -101,6 +101,9 @@ struct RootView: View {
                 }
             }
             .task {
+                // 启动时清一次过期日志（按设置里的保留天数）
+                ZLLogRetention.cleanup()
+
                 // 启动后静默检查一次（不打扰，有新版才提示）
                 let checker = ZLUpdateChecker()
                 await checker.check()
