@@ -70,7 +70,7 @@ struct VersionListScreen: View {
                                    do {
                                        try VersionRepository.shared.copyVersion(actionVersion, to: "\(actionVersion)-副本")
                                        alertText = "已复制版本"
-                                   } catch { alertText = error.localizedDescription }
+                                   } catch { alertText = ZLFriendlyError.text(error) }
                                    showAlert = true
                                    reload()
                                },
@@ -79,7 +79,7 @@ struct VersionListScreen: View {
                                    do {
                                        try VersionRepository.shared.deleteVersion(actionVersion)
                                        alertText = "已删除 \(actionVersion)"
-                                   } catch { alertText = error.localizedDescription }
+                                   } catch { alertText = ZLFriendlyError.text(error) }
                                    showAlert = true
                                    reload()
                                })
@@ -487,7 +487,7 @@ struct VersionListScreen: View {
             try VersionRepository.shared.deleteVersion(id)
             showToast("已删除 \(id)")
         } catch {
-            showToast(error.localizedDescription)
+            showToast(ZLFriendlyError.text(error))
         }
         if selected == id { selected = nil }
         reload()

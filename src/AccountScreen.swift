@@ -225,7 +225,7 @@ struct AccountScreen: View {
             accountName = account.username
             accountType = "offline"
         } catch {
-            alertText = error.localizedDescription
+            alertText = ZLFriendlyError.text(error)
             showAlert = true
         }
     }
@@ -274,7 +274,7 @@ struct AccountScreen: View {
                     accountName = account.username
                     accountType = "offline"
                 } catch {
-                    alertText = error.localizedDescription
+                    alertText = ZLFriendlyError.text(error)
                     showAlert = true
                 }
             }

@@ -95,7 +95,7 @@ struct VersionContentScreen: View {
                                    do {
                                        try VersionRepository.shared.copyVersion(actionVersion, to: n)
                                        alertText = "已复制为 \(n)"
-                                   } catch { alertText = error.localizedDescription }
+                                   } catch { alertText = ZLFriendlyError.text(error) }
                                    showAlert = true
                                    installed = VersionRepository.shared.listVersions()
                                },
@@ -106,7 +106,7 @@ struct VersionContentScreen: View {
                                    do {
                                        try VersionRepository.shared.deleteVersion(actionVersion)
                                        alertText = "已删除 \(actionVersion)"
-                                   } catch { alertText = error.localizedDescription }
+                                   } catch { alertText = ZLFriendlyError.text(error) }
                                    showAlert = true
                                    installed = VersionRepository.shared.listVersions()
                                })

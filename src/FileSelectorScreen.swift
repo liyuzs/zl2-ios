@@ -339,7 +339,7 @@ struct FileSelectorScreen: View {
             try fm.createDirectory(at: dst, withIntermediateDirectories: false)
             reload()
         } catch {
-            errorText = error.localizedDescription
+            errorText = ZLFriendlyError.text(error)
         }
     }
 }

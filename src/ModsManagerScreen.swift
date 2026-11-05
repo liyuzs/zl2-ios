@@ -352,7 +352,7 @@ struct ModsManagerScreen: View {
             loadError = nil
         } catch {
             mods = []
-            loadError = "读不了 mods 目录：\(error.localizedDescription)"
+            loadError = "读不了 mods 目录：\(ZLFriendlyError.text(error))"
         }
         isLoading = false
     }
@@ -416,7 +416,7 @@ struct ModsManagerScreen: View {
             }
             reload()
         } catch {
-            toast = "导入失败：\(error.localizedDescription)"
+            toast = "导入失败：\(ZLFriendlyError.text(error))"
         }
     }
 }

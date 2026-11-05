@@ -498,8 +498,8 @@ struct AssetInfoScreen: View {
             installedVersion = v.id
             noteText = "已保存到 \(targetFolder)/\(dest.lastPathComponent)"
         } catch {
-            ZLTaskCenter.shared.update(taskID, detail: error.localizedDescription, state: .failed)
-            noteText = "下载失败：\(error.localizedDescription)"
+            ZLTaskCenter.shared.update(taskID, detail: ZLFriendlyError.text(error), state: .failed)
+            noteText = "下载失败：\(ZLFriendlyError.text(error))"
         }
         installingVersion = nil
     }
@@ -524,7 +524,7 @@ struct AssetInfoScreen: View {
                 gameFilter = gameOptions.first
             }
         } catch {
-            errorText = "加载失败：\(error.localizedDescription)"
+            errorText = "加载失败：\(ZLFriendlyError.text(error))"
         }
         loading = false
     }

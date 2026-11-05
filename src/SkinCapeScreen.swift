@@ -196,7 +196,7 @@ struct SkinCapeScreen: View {
                 variant = s.variant
             }
         } catch {
-            errorText = error.localizedDescription
+            errorText = ZLFriendlyError.text(error)
         }
         loading = false
     }
@@ -214,7 +214,7 @@ struct SkinCapeScreen: View {
             message = "皮肤上传成功，稍等片刻后刷新可见"
             profile = try await MicrosoftAuth().fetchProfile(mcToken: tk)
         } catch {
-            errorText = error.localizedDescription
+            errorText = ZLFriendlyError.text(error)
         }
         uploading = false
         pickerItem = nil
@@ -227,7 +227,7 @@ struct SkinCapeScreen: View {
             message = id.isEmpty ? "已移除披风" : "已切换披风"
             profile = try await MicrosoftAuth().fetchProfile(mcToken: tk)
         } catch {
-            errorText = error.localizedDescription
+            errorText = ZLFriendlyError.text(error)
         }
     }
 }

@@ -112,7 +112,7 @@ final class ZLUpdateChecker: ObservableObject {
                 state = .upToDate
             }
         } catch {
-            state = .failed(error.localizedDescription)
+            state = .failed(ZLFriendlyError.text(error))
         }
     }
 

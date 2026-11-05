@@ -234,7 +234,7 @@ struct LaunchScreen: View {
             logs.append("✓ 自检流程结束")
         } catch {
             failed = true
-            lastError = error.localizedDescription
+            lastError = ZLFriendlyError.text(error)
             logs.append("✗ \(error.localizedDescription)")
         }
     }

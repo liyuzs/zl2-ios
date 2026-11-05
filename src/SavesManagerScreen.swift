@@ -465,7 +465,7 @@ struct SavesManagerScreen: View {
             loadError = nil
         } catch {
             worlds = []
-            loadError = "读不了 saves 目录：\(error.localizedDescription)"
+            loadError = "读不了 saves 目录：\(ZLFriendlyError.text(error))"
         }
         isLoading = false
     }
@@ -513,7 +513,7 @@ struct SavesManagerScreen: View {
             ZLInteraction.haptic(.medium)
             showToast("已备份为 \(name)")
         } catch {
-            showToast("备份失败：\(error.localizedDescription)")
+            showToast("备份失败：\(ZLFriendlyError.text(error))")
         }
         reload()
     }
@@ -840,7 +840,7 @@ extension Array {
             ZLInteraction.haptic(.medium)
             showToast("已恢复到 \(backupTimeText(backupURL))")
         } catch {
-            showToast("恢复失败：\(error.localizedDescription)")
+            showToast("恢复失败：\(ZLFriendlyError.text(error))")
         }
         reload()
     }

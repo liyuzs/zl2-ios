@@ -228,7 +228,7 @@ struct RootView: View {
                                                 state: .done)
                                         } catch {
                                             await ZLTaskCenter.shared.update(installTask,
-                                                detail: error.localizedDescription, state: .failed)
+                                                detail: ZLFriendlyError.text(error), state: .failed)
                                         }
                                     }
                                     await ZLTaskCenter.shared.update(taskID,
@@ -236,7 +236,7 @@ struct RootView: View {
                                     ZLTaskCenter.shared.finish(taskID)
                                 } catch {
                                     await ZLTaskCenter.shared.update(taskID,
-                                        detail: error.localizedDescription, state: .failed)
+                                        detail: ZLFriendlyError.text(error), state: .failed)
                                 }
                             }
                         })

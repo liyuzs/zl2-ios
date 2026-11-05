@@ -101,7 +101,7 @@ final class VersionRepository {
                 try? fm.moveItem(at: oldJar, to: newJar)
             }
         } catch {
-            throw VersionRepoError.io(error.localizedDescription)
+            throw VersionRepoError.io(ZLFriendlyError.text(error))
         }
     }
 
@@ -123,7 +123,7 @@ final class VersionRepository {
                 try? fm.moveItem(at: oldJar, to: dst.appendingPathComponent("\(newName).jar"))
             }
         } catch {
-            throw VersionRepoError.io(error.localizedDescription)
+            throw VersionRepoError.io(ZLFriendlyError.text(error))
         }
     }
 
@@ -132,7 +132,7 @@ final class VersionRepository {
         let dir = versionsDir.appendingPathComponent(id, isDirectory: true)
         guard fm.fileExists(atPath: dir.path) else { throw VersionRepoError.notFound(id) }
         do { try fm.removeItem(at: dir) }
-        catch { throw VersionRepoError.io(error.localizedDescription) }
+        catch { throw VersionRepoError.io(ZLFriendlyError.text(error)) }
     }
 
     // MARK: - 清理无用文件

@@ -192,7 +192,7 @@ struct MicrosoftLoginView: View {
             }
         } catch {
             await MainActor.run {
-                self.errorText = error.localizedDescription
+                self.errorText = ZLFriendlyError.text(error)
                 self.running = false
             }
         }

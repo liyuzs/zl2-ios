@@ -266,7 +266,7 @@ struct GameDirsScreen: View {
             _ = try store.create(newName)
             newName = ""
         } catch {
-            errorText = error.localizedDescription
+            errorText = ZLFriendlyError.text(error)
         }
     }
 
@@ -275,7 +275,7 @@ struct GameDirsScreen: View {
         do {
             try store.rename(t.id, to: renameName)
         } catch {
-            errorText = error.localizedDescription
+            errorText = ZLFriendlyError.text(error)
         }
         renameTarget = nil
     }
@@ -285,7 +285,7 @@ struct GameDirsScreen: View {
         do {
             try store.delete(t.id)
         } catch {
-            errorText = error.localizedDescription
+            errorText = ZLFriendlyError.text(error)
         }
         deleteTarget = nil
     }
@@ -299,7 +299,7 @@ struct GameDirsScreen: View {
         do {
             _ = try store.adopt(url)
         } catch {
-            errorText = error.localizedDescription
+            errorText = ZLFriendlyError.text(error)
         }
     }
 }

@@ -364,7 +364,7 @@ struct FileManagerScreen: View {
             loadError = nil
         } catch {
             entries = []
-            loadError = "打不开「\(current.lastPathComponent)」：\(error.localizedDescription)"
+            loadError = "打不开「\(current.lastPathComponent)」：\(ZLFriendlyError.text(error))"
         }
         isLoading = false
     }
@@ -395,7 +395,7 @@ struct FileManagerScreen: View {
         guard let e = renaming else { return }
         let dst = current.appendingPathComponent(newName)
         do { try fm.moveItem(at: e.url, to: dst) }
-        catch { errorText = error.localizedDescription }
+        catch { errorText = ZLFriendlyError.text(error) }
         renaming = nil
         reload()
     }
@@ -403,7 +403,7 @@ struct FileManagerScreen: View {
     private func doCreateFolder() {
         let dst = current.appendingPathComponent(folderName)
         do { try fm.createDirectory(at: dst, withIntermediateDirectories: true) }
-        catch { errorText = error.localizedDescription }
+        catch { errorText = ZLFriendlyError.text(error) }
         reload()
     }
 
@@ -413,7 +413,7 @@ struct FileManagerScreen: View {
             let target = trashDir.appendingPathComponent("\(Int(Date().timeIntervalSince1970))-\(e.name)")
             try fm.moveItem(at: e.url, to: target)
         } catch {
-            errorText = error.localizedDescription
+            errorText = ZLFriendlyError.text(error)
         }
         reload()
     }

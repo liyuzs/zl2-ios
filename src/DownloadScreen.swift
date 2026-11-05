@@ -71,7 +71,7 @@ struct DownloadScreen: View {
                           date: v.publishDate.map { fmt.string(from: $0) } ?? "—")
             }
         } catch {
-            loadError = error.localizedDescription
+            loadError = ZLFriendlyError.text(error)
         }
         loading = false
     }
@@ -94,7 +94,7 @@ struct DownloadScreen: View {
             installMsg = "\(id) 安装完成"
             installFrac = 1
         } catch {
-            installMsg = "安装失败：\(error.localizedDescription)"
+            installMsg = "安装失败：\(ZLFriendlyError.text(error))"
         }
         installing = nil
     }

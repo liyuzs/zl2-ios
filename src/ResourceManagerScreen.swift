@@ -323,7 +323,7 @@ struct ResourceManagerScreen: View {
             loadError = nil
         } catch {
             items = []
-            loadError = "读不了 \(kind.folder) 目录：\(error.localizedDescription)"
+            loadError = "读不了 \(kind.folder) 目录：\(ZLFriendlyError.text(error))"
         }
         isLoading = false
     }

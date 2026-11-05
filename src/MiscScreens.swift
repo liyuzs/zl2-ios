@@ -240,7 +240,7 @@ struct ExportScreen: View {
             } catch {
                 DispatchQueue.main.async {
                     exporting = false
-                    message = "打包失败：\(error.localizedDescription)"
+                    message = "打包失败：\(ZLFriendlyError.text(error))"
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3) { message = nil }
                 }
             }
@@ -568,7 +568,7 @@ struct SearchIDScreen: View {
                 errorText = "未找到该项目"
             }
         } catch {
-            errorText = error.localizedDescription
+            errorText = ZLFriendlyError.text(error)
         }
         loading = false
     }

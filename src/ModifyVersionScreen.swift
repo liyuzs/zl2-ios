@@ -218,7 +218,7 @@ struct ModifyVersionScreen: View {
                 messages.append("提示：完整切换需要重新下载核心文件，请在下载中心操作。")
                 resultText = messages.joined(separator: "\n")
             } catch {
-                resultText = "修改版本时发生错误：\(error.localizedDescription)"
+                resultText = "修改版本时发生错误：\(ZLFriendlyError.text(error))"
             }
             working = false
             showResult = true

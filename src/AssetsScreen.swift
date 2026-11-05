@@ -307,7 +307,7 @@ struct AssetsScreen: View {
             hits = r.hits
             totalHits = r.totalHits
         } catch {
-            loadError = error.localizedDescription
+            loadError = ZLFriendlyError.text(error)
             hits = []
         }
         loading = false
@@ -516,7 +516,7 @@ struct AssetsScreen: View {
             }
             _ = try await ModrinthAPI.shared.download(f, to: dir)
         } catch {
-            loadError = error.localizedDescription
+            loadError = ZLFriendlyError.text(error)
         }
     }
 }

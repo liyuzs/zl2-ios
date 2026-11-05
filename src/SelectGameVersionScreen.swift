@@ -218,7 +218,7 @@ struct SelectGameVersionScreen: View {
                                url: e.url.absoluteString)
             }
         } catch {
-            self.error = "无法获取版本列表：\(error.localizedDescription)"
+            self.error = "无法获取版本列表：\(ZLFriendlyError.text(error))"
         }
         loading = false
     }

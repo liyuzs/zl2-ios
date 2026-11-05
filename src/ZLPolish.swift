@@ -575,3 +575,48 @@ struct ZLQCard<Content: View>: View {
             )
     }
 }
+
+// MARK: - 把系统错误翻成人话
+
+enum ZLFriendlyError {
+    /// 把常见的英文网络/文件错误翻成中文，其他情况原样返回。
+    static func text(_ error: Error) -> String {
+        let ns = error as NSError
+        let raw = ns.localizedDescription
+        let lower = raw.lowercased()
+
+        // 网络类
+        if lower.contains("timed out") || lower.contains("timeout") {
+            return "网络超时，请检查网络后重试"
+        }
+        if lower.contains("offline") || lower.contains("not connected") || lower.contains("internet") {
+            return "没有网络连接"
+        }
+        if lower.contains("could not connect") || lower.contains("cannot connect")
+            || lower.contains("connection") {
+            return "连不上服务器，可能是网络问题或服务器暂时不可用"
+        }
+        if lower.contains("ssl") || lower.contains("certificate") || lower.contains("tls") {
+            return "安全连接失败，请检查网络环境"
+        }
+        // 文件类
+        if lower.contains("no such file") || lower.contains("not exist") {
+            return "文件不存在，可能需要重新下载"
+        }
+        if lower.contains("no permission") || lower.contains("denied") {
+            return "没有权限访问该位置"
+        }
+        if lower.contains("not enough space") || lower.contains("disk full") {
+            return "存储空间不足"
+        }
+        // 解析类
+        if lower.contains("json") || lower.contains("parse") || lower.contains("decod") {
+            return "数据格式不对，可能是下载时文件损坏，请重试"
+        }
+        // 兜底：带上错误码方便排查
+        if ns.domain != NSCocoaErrorDomain, ns.code != 0 {
+            return "\(raw)（错误码 \(ns.code)）"
+        }
+        return raw
+    }
+}

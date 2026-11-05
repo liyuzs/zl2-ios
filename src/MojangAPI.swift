@@ -46,15 +46,15 @@ public enum MojangAPIError: LocalizedError {
         case .invalidURL(let string):
             return "无效的 URL：\(string)"
         case .network(let error):
-            return "网络请求失败：\(error.localizedDescription)"
+            return "网络请求失败：\(ZLFriendlyError.text(error))"
         case .httpStatus(let statusCode):
             return "服务器返回 HTTP \(statusCode)"
         case .decoding(let error):
-            return "JSON 解析失败：\(error.localizedDescription)"
+            return "JSON 解析失败：\(ZLFriendlyError.text(error))"
         case .versionNotFound(let id):
             return "版本清单中找不到版本：\(id)"
         case .fileIO(let error):
-            return "文件写入失败：\(error.localizedDescription)"
+            return "文件写入失败：\(ZLFriendlyError.text(error))"
         case .cancelled:
             return "请求已取消"
         }

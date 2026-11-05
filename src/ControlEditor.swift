@@ -2387,7 +2387,7 @@ struct ControlLayoutTransferSheet: View {
             message = error.errorDescription ?? "导入失败：格式不正确。"
             isError = true
         } catch {
-            message = "导入失败：\(error.localizedDescription)"
+            message = "导入失败：\(ZLFriendlyError.text(error))"
             isError = true
         }
     }
