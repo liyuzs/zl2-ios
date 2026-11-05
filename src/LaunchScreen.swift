@@ -183,10 +183,10 @@ struct LaunchScreen: View {
         logs.append("开始环境自检…")
         coreLinked = CoreBridge.isCoreLinked
         runtimeReady = CoreBridge.runtimeCheck()
-        let docs = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).last ?? ""
         let vid = versionID.isEmpty ? versionName : versionID
-        let metaPath = (docs as NSString).appendingPathComponent(
-            "instances/\(instanceName)/.minecraft/versions/\(vid)/\(vid).json")
+        // 统一走 mcRoot，切了游戏目录也能找对
+        let metaPath = VersionRepository.shared.mcRoot
+            .appendingPathComponent("versions/\(vid)/\(vid).json").path
         versionReady = FileManager.default.fileExists(atPath: metaPath)
         logs.append(coreLinked ? "✓ Amethyst 核心已链接" : "✗ 未链接核心（仅界面构建）")
         logs.append(runtimeReady ? "✓ 找到 java_runtimes" : "✗ 未找到 java_runtimes")
@@ -211,8 +211,8 @@ struct LaunchScreen: View {
             let docs = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).last ?? NSTemporaryDirectory()
             // 优先用已安装版本的元数据启动
             let vid = versionID.isEmpty ? versionName : versionID
-            let metaPath = (docs as NSString).appendingPathComponent(
-                "instances/\(instanceName)/.minecraft/versions/\(vid)/\(vid).json")
+            let metaPath = VersionRepository.shared.mcRoot
+                .appendingPathComponent("versions/\(vid)/\(vid).json").path
             if FileManager.default.fileExists(atPath: metaPath),
                let data = FileManager.default.contents(atPath: metaPath),
                let meta = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
