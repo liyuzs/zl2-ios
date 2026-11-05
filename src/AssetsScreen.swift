@@ -383,7 +383,7 @@ struct AssetsScreen: View {
             }
         } label: {
             HStack(spacing: 5) {
-                Text(selection.wrappedValue > 0 ? options[selection.wrappedValue] : title)
+                Text(selection.wrappedValue > 0 ? options[min(max(selection.wrappedValue, 0), options.count - 1)] : title)
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
                 Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))

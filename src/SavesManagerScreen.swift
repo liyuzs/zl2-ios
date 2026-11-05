@@ -593,7 +593,13 @@ struct SavesManagerScreen: View {
         } catch {
             // 失败必须把原存档挪回去，否则存档就从列表里消失了
             if parked {
-                try? fm.moveItem(at: park, to: w.path)
+                // 先清掉可能留下的半个目标目录，否则 move 会因「已存在」失败并被吞掉
+                try? fm.removeItem(at: w.path)
+                do {
+                    try fm.moveItem(at: park, to: w.path)
+                } catch {
+                    showToast("原存档已移到：\(park.lastPathComponent)，手动改回来即可")
+                }
             }
             showToast("恢复失败：\(ZLFriendlyError.text(error))")
         }

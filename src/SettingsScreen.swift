@@ -728,7 +728,7 @@ struct SettingsScreen: View {
 
     private func text(_ key: String, _ title: String, _ summary: String?,
                       placeholder: String) -> ZLSettingRow {
-        ZLSettingRow(key: key, title: title, summary: summary, kind: .text(placeholder: placeholder))
+        ZLSettingRow(key: key, title: markUnsupported(key, title), summary: summary, kind: .text(placeholder: placeholder))
     }
 
     private func number(_ key: String, _ title: String, _ summary: String?,
