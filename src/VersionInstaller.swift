@@ -246,13 +246,25 @@ actor VersionInstaller {
 
     /// 下载原始字节（用于版本 JSON）
     private func downloadData(_ url: URL) async throws -> Data {
-        var req = URLRequest(url: MojangAPI.mirrored(url), timeoutInterval: 30)
-        req.setValue("ZL2-iOS/1.0", forHTTPHeaderField: "User-Agent")
-        let (data, resp) = try await session.data(for: req)
-        if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            throw InstallError.failed("HTTP \(http.statusCode)")
+        // 元数据下载也重试 3 次（网络抖动很常见）
+        var lastError: Error = InstallError.failed("未知错误")
+        for attempt in 1...3 {
+            do {
+                var req = URLRequest(url: MojangAPI.mirrored(url), timeoutInterval: 30)
+                req.setValue("ZL2-iOS/1.0", forHTTPHeaderField: "User-Agent")
+                let (data, resp) = try await session.data(for: req)
+                if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                    throw InstallError.failed("HTTP \(http.statusCode)")
+                }
+                return data
+            } catch {
+                lastError = error
+                if attempt < 3 {
+                    try? await Task.sleep(nanoseconds: UInt64(attempt) * 800_000_000)
+                }
+            }
         }
-        return data
+        throw lastError
     }
 
     static func downloadAsset(hash: String, root: URL, session: URLSession, fm: FileManager) async -> Bool {
