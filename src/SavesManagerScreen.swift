@@ -2,6 +2,7 @@
 // 参考：ZL2 的 SavesManagerScreen.kt
 // 功能：扫描 saves 目录、解析 level.dat（gzip+NBT）、显示世界信息
 import SwiftUI
+import UIKit
 import Compression
 import Combine
 

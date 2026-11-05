@@ -436,6 +436,44 @@ struct ModsManagerScreen: View {
             toast = "导入失败：\(ZLFriendlyError.text(error))"
         }
     }
+    // MARK: 检查更新
+
+    private func checkUpdates() {
+        updating = true
+        updates.removeAll()
+        let snapshot = mods
+        Task {
+            let api = ModrinthAPI()
+            var found: [String: String] = [:]
+            for m in snapshot {
+                guard let id = m.modId, !id.isEmpty else { continue }
+                let (has, latest) = await ZLModUpdater.checkUpdate(
+                    modID: id,
+                    currentVersion: m.modVersion,
+                    gameVersion: nil,
+                    loader: m.loader?.lowercased(),
+                    api: api
+                )
+                if has, let v = latest { found[id] = v }
+            }
+            await MainActor.run {
+                updates = found
+                updating = false
+                if found.isEmpty {
+                    showToast("全部模组都是最新版")
+                } else {
+                    showToast("\(found.count) 个模组有新版本")
+                }
+            }
+        }
+    }
+
+    private func showToast(_ text: String) {
+        toast = text
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            if toast == text { toast = "" }
+        }
+    }
 }
 
 // MARK: - 模组详情
@@ -653,35 +691,4 @@ enum ZipReader {
         return Int(d[i]) | (Int(d[i + 1]) << 8) | (Int(d[i + 2]) << 16) | (Int(d[i + 3]) << 24)
     }
 
-    // MARK: 检查更新
-
-    private func checkUpdates() {
-        updating = true
-        updates.removeAll()
-        let snapshot = mods
-        Task {
-            let api = ModrinthAPI()
-            var found: [String: String] = [:]
-            for m in snapshot {
-                guard let id = m.modId, !id.isEmpty else { continue }
-                let (has, latest) = await ZLModUpdater.checkUpdate(
-                    modID: id,
-                    currentVersion: m.modVersion,
-                    gameVersion: nil,
-                    loader: m.loader?.lowercased(),
-                    api: api
-                )
-                if has, let v = latest { found[id] = v }
-            }
-            await MainActor.run {
-                updates = found
-                updating = false
-                if found.isEmpty {
-                    showToast("全部模组都是最新版")
-                } else {
-                    showToast("\(found.count) 个模组有新版本")
-                }
-            }
-        }
-    }
 }

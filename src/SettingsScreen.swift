@@ -3,6 +3,7 @@
 // 每个分类内的设置项、控件类型、标题/说明文案均取自 AllSettings.kt 与 values-zh-rCN/strings.xml
 import Foundation
 import SwiftUI
+import Combine
 
 // MARK: - 设置读写（key 与 AllSettings.kt 一致，默认值统一回退到 ZLSettings）
 

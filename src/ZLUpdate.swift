@@ -1,6 +1,7 @@
 // CraftLauncher · 更新检查与反馈
 // 从 GitHub Releases 读最新版本，与当前版本对比
 import SwiftUI
+import Combine
 import UIKit
 
 // MARK: - 版本信息

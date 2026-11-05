@@ -7,6 +7,7 @@
 // Network.framework 的 NWListener 不会加入组播组，收不到这些包。
 import Foundation
 import Darwin
+import Combine
 
 struct LanServer: Identifiable, Equatable {
     let id = UUID()

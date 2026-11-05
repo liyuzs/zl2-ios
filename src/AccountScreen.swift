@@ -3,6 +3,9 @@
 import SwiftUI
 
 struct AccountScreen: View {
+    // 观察账号列表，添加/切换后界面会自动刷新
+    @ObservedObject private var accountStore = AccountStore.shared
+
     @AppStorage("accountType")     private var accountType = ""
     @AppStorage("accountName")     private var accountName = ""
     @AppStorage("authServerURL")   private var authServerURL = ""

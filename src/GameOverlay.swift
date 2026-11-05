@@ -22,6 +22,7 @@
 //     ProcessInfo.physicalMemory 近似，含义与安卓的"已用/总量"不完全等价。
 
 import SwiftUI
+import Combine
 import UIKit
 import Darwin
 

@@ -2,6 +2,7 @@
 // 参考：ZL2 的 ServerListScreen.kt + ServerData.kt
 // 功能：servers.dat 读写（NBT）+ 真实 Minecraft 服务器 ping（状态协议）
 import SwiftUI
+import UIKit
 import Combine
 
 // MARK: - 纹理包状态（对齐 ZL2 的 TexturePackStatus）

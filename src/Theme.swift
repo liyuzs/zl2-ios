@@ -1,6 +1,7 @@
 // ZL2-iOS · 主题（依据真机截图还原）
 // 真机配色：米白背景 + 橄榄金主色 + 白色大圆角卡片 + 横屏
 import SwiftUI
+import Combine
 
 // MARK: - 主题管理器（8 套主题来自 ZL2 Color.kt）
 final class ThemeManager: ObservableObject {

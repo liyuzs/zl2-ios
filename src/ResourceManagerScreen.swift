@@ -1,6 +1,7 @@
 // ZL2-iOS · 资源包 / 光影包 / 截图 管理
 // 参考：ZL2 的 ResourcePackManageScreen.kt / ShadersManagerScreen.kt / ScreenshotsManagerScreen.kt
 import SwiftUI
+import UIKit
 
 // MARK: - 通用资源项
 struct ZLResourceItem: Identifiable, Equatable {

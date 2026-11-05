@@ -19,6 +19,7 @@
 //   · Tab 改为等宽平分（安卓是 minTabWidth 58dp 的可滚动 TabRow，卡片窄时也能放下 5 个图标）
 
 import SwiftUI
+import Combine
 import UIKit
 import CoreMotion
 

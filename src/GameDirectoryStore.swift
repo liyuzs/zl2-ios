@@ -5,6 +5,7 @@
 // 并持久化到 UserDefaults，下次启动仍然使用上次选择的目录。
 import Foundation
 import SwiftUI
+import Combine
 
 enum GameDirError: LocalizedError {
     case invalidName

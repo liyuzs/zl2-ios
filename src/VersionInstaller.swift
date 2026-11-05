@@ -210,14 +210,18 @@ actor VersionInstaller {
                     var assetFail = 0
                     report(.assets, Double(0) / Double(max(total, 1)), "资源文件 \(total) 个")
                     // 并发 8 路下载
+                    let cancel = shouldCancel
+                    let sess = session
+                    let fileMgr = fm
                     await withTaskGroup(of: Bool.self) { group in
                         var idx = 0
                         let concurrency = 8
                         while idx < min(concurrency, total) {
                             let (hash, _) = pending[idx]
                             group.addTask {
-                                if self.shouldCancel?() == true { return false }
-                                return await Self.downloadAsset(hash: hash, root: objRoot, session: self.session, fm: self.fm)
+                                // shouldCancel 是入参，不在 actor 上，得捕获
+                                if cancel?.() == true { return false }
+                                return await Self.downloadAsset(hash: hash, root: objRoot, session: sess, fm: fileMgr)
                             }
                             idx += 1
                         }

@@ -102,9 +102,9 @@ struct VersionListScreen: View {
         }
         // 长按菜单里的「浏览文件」
         .sheet(item: $browsing) { f in
-            FileManagerScreen(initialPath: f.url,
-                              onBack: { browsing = nil },
-                              onHome: { browsing = nil })
+            FileManagerScreen(onBack: { browsing = nil },
+                              onHome: { browsing = nil },
+                              initialPath: f.url)
         }
         // 长按菜单里的「删除」
         .confirmationDialog("删除版本",

@@ -1,6 +1,7 @@
 // ZL2-iOS · Java 管理（按真机录屏还原）
 // 结构：顶部 导入 / 新建 / 打开 Jar 文件；列表显示每个 Java 的版本与架构
 import SwiftUI
+import UIKit
 
 struct JavaRuntime: Identifiable {
     let id = UUID()
