@@ -370,6 +370,7 @@ struct MultiplayerRoomScreen: View {
     var onHome: () -> Void = {}
     @State private var isHost = true
     @State private var code = ""
+    @State private var joinMessage: String?
     @State private var roomCode = "—"
 
     var body: some View {
@@ -405,7 +406,17 @@ struct MultiplayerRoomScreen: View {
                                 .padding(12)
                                 .background(ZLTheme.surfaceAlt)
                                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            ZLGoldButton(title: "加入房间", icon: "arrow.right.circle", enabled: code.count >= 4) { }
+                            ZLGoldButton(title: "加入房间", icon: "arrow.right.circle", enabled: code.count >= 4) {
+                                joinMessage = "远程联机需要 EasyTier 内核，当前版本还没接入。\n局域网联机可以直接用「多人游戏」页扫描。"
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 4) { joinMessage = nil }
+                            }
+                            if let joinMessage {
+                                Text(joinMessage)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(ZLTheme.warning)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.top, 4)
+                            }
                         }
                     }
                 }
