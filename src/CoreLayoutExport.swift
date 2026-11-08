@@ -133,8 +133,17 @@ enum CoreLayoutExporter {
         d["name"] = btn.text.plainText
         d["keycodes"] = keycodesOf(btn.clickEvents, layerIndexByUUID: layerIndexByUUID)
         d["isDynamic"] = true
-        d["displayInGame"] = (btn.visibilityType != .inMenu)
-        d["displayInMenu"] = false
+
+        // 可见性：核心按 isGrabbing 切换两套显示
+        //   isGrabbing = true  （鼠标被抓取 = 游戏内）→ 看 displayInGame
+        //   isGrabbing = false （菜单状态）           → 看 displayInMenu
+        // 见 SurfaceViewController.m:411 updateControlHiddenState:
+        //
+        // 之前这里把 displayInMenu 恒写成 false，导致菜单状态下所有按钮消失。
+        let vis = visibilityFlags(btn.visibilityType)
+        d["displayInGame"] = vis.inGame
+        d["displayInMenu"] = vis.inMenu
+
         d["isToggle"] = btn.isToggleable
         d["isSwipeable"] = btn.isSwipple
         d["passThruEnabled"] = btn.isPenetrable
@@ -146,6 +155,21 @@ enum CoreLayoutExporter {
         return d
     }
 
+    /// ZL2 的三种可见性 → 核心的两个布尔
+    ///
+    /// | ZL2       | displayInGame | displayInMenu |
+    /// |-----------|---------------|---------------|
+    /// | always    | true          | true          |
+    /// | inGame    | true          | false         |
+    /// | inMenu    | false         | true          |
+    static func visibilityFlags(_ type: ZLVisibilityType) -> (inGame: Bool, inMenu: Bool) {
+        switch type {
+        case .always: return (true, true)
+        case .inGame: return (true, false)
+        case .inMenu: return (false, true)
+        }
+    }
+
     // MARK: 文本框
 
     private static func convertTextBox(_ txt: ZLTextWidget,
@@ -155,8 +179,9 @@ enum CoreLayoutExporter {
         d["name"] = txt.text.plainText
         d["keycodes"] = [Int]()
         d["isDynamic"] = true
-        d["displayInGame"] = (txt.visibilityType != .inMenu)
-        d["displayInMenu"] = false
+        let txtVis = visibilityFlags(txt.visibilityType)
+        d["displayInGame"] = txtVis.inGame
+        d["displayInMenu"] = txtVis.inMenu
         d["isToggle"] = false
         d["isSwipeable"] = false
         d["passThruEnabled"] = true     // 纯文本不该吃触摸
@@ -180,8 +205,8 @@ enum CoreLayoutExporter {
             "name": "",
             "keycodes": [Int](),
             "isDynamic": true,
-            "displayInGame": (joy.visibilityType != .inMenu),
-            "displayInMenu": false,
+            "displayInGame": visibilityFlags(joy.visibilityType).inGame,
+            "displayInMenu": visibilityFlags(joy.visibilityType).inMenu,
             "passThruEnabled": false,
             "forwardLock": joy.canLock,
             "absolute": joy.triggerMode == .absolute,
@@ -345,9 +370,15 @@ enum CoreLayoutExporter {
                     codes.append(code)
                 }
             case .switchLayer, .showLayer, .hideLayer:
-                // 图层事件：uuid 查出序号 → 伪键码
+                // 图层事件：uuid 查出序号 → 按动作类型编伪键码
                 if let idx = layerIndexByUUID[ev.value] {
-                    codes.append(LayerPseudoKey.encode(index: idx))
+                    let action: LayerPseudoKey.Action
+                    switch ev.type {
+                    case .showLayer: action = .showLayer
+                    case .hideLayer: action = .hideLayer
+                    default:         action = .switchLayer
+                    }
+                    codes.append(LayerPseudoKey.encode(index: idx, action: action))
                 }
             default:
                 // launcher_event / send_text 没有键码对应，跳过
@@ -443,7 +474,43 @@ enum CoreLayoutExporter {
         if let def = map["__default__"] {
             activeLayoutName = def
         }
+
+        // 预生成「图层组合」文件
+        //
+        // show_layer / hide_layer 需要把多层叠在一起显示，但核心一次只能加载一份文件。
+        // 所以在导出时就把常见组合都算好：
+        //   __combo_0-1.json   显示第 0、1 层
+        //   __combo_0-1-2.json 显示第 0、1、2 层
+        //   ...（全部非空子集）
+        //
+        // 层数不多（通常 2~4），子集数量 2^n - 1 完全可接受。
+        try exportCombinations(layout, base: base)
+
         return map
+    }
+
+    /// 生成全部非空图层子集的组合文件
+    private static func exportCombinations(_ layout: ZLControlLayout, base: String) throws {
+        let n = layout.layers.count
+        guard n > 1, n <= 6 else { return }   // 超过 6 层就不预生成（63 种太多）
+
+        for mask in 1..<(1 << n) {
+            let indices = (0..<n).filter { mask & (1 << $0) != 0 }
+            // 单层组合已经有 __layerN.json 了，跳过
+            if indices.count == 1 { continue }
+
+            let picked = indices.map { layout.layers[$0] }
+            var combo = ZLControlLayout(info: layout.info,
+                                        layers: picked,
+                                        styles: layout.styles,
+                                        joystickStyles: layout.joystickStyles,
+                                        editorVersion: layout.editorVersion)
+            // 组合里所有层都要显示
+            for i in combo.layers.indices { combo.layers[i].hide = false }
+
+            let key = indices.map(String.init).joined(separator: "-")
+            _ = try export(combo, fileName: "\(base)__combo_\(key).json")
+        }
     }
 
     /// 生成给「切换图层」按钮用的说明（写进核心能识别的备注字段）

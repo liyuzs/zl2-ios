@@ -34,16 +34,46 @@ enum LayerPseudoKey {
     /// 伪键码的边界（比核心的 -1 ~ -9 小得多，不会撞）
     static let threshold = -1000
 
-    /// 第 index 层对应的伪键码：-1001, -1002, -1003 ...
-    static func encode(index: Int) -> Int {
-        threshold - (index + 1)
+    /// 第一版只用序号，三种图层事件都当「切换」处理。
+    /// 第二版把「动作类型」也编进去，便于核心侧区分：
+    ///
+    ///   -1001 ~ -1900   switch_layer   切到该层（独占）
+    ///   -2001 ~ -2900   show_layer     叠加显示该层（不隐藏其它层）
+    ///   -3001 ~ -3900   hide_layer     隐藏该层
+    ///
+    /// 这样核心只要看伪键码落在哪个区间，就知道该做什么，
+    /// 不用额外查表。
+
+    /// 动作类型
+    enum Action: Int {
+        case switchLayer = 1
+        case showLayer   = 2
+        case hideLayer   = 3
     }
 
-    /// 伪键码 → 层序号
-    static func decodeIndex(_ pseudo: Int) -> Int? {
+    /// 第 index 层、指定动作对应的伪键码
+    static func encode(index: Int, action: Action = .switchLayer) -> Int {
+        threshold - action.rawValue * 1000 - (index + 1)
+    }
+
+    /// 从伪键码解析出（动作, 层序号）
+    ///
+    /// 编码：pseudo = -1000 - action*1000 - (index+1)
+    /// 解码：offset = -1000 - pseudo = action*1000 + index + 1
+    ///       action = offset / 1000
+    ///       index  = offset % 1000 - 1
+    static func decode(_ pseudo: Int) -> (action: Action, index: Int)? {
         guard pseudo <= threshold else { return nil }
-        let idx = threshold - pseudo - 1
-        return idx >= 0 ? idx : nil
+        let offset = threshold - pseudo          // 正数：action*1000 + index + 1
+        let actionRaw = offset / 1000
+        let index = offset % 1000 - 1
+        guard index >= 0, let action = Action(rawValue: actionRaw) else { return nil }
+        return (action, index)
+    }
+
+    /// 只取层序号（向后兼容）
+    static func decodeIndex(_ pseudo: Int) -> Int? {
+        decode(pseudo)?.index
     }
 
     /// 判断某个键码是不是伪键码

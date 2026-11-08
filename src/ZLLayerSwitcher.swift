@@ -116,15 +116,82 @@ public final class ZLLayerSwitcher: NSObject {
 
     /// 由核心的 executebtn: 通过伪键码调用
     ///
-    /// 流程：伪键码 → 层序号 → 切到对应图层
+    /// 伪键码里同时编了「动作类型」和「层序号」，见 LayerPseudoKey：
+    ///   -1001~   switch_layer  切到该层（独占）
+    ///   -2001~   show_layer    叠加显示该层
+    ///   -3001~   hide_layer    隐藏该层
     @objc(activateLayerByPseudoKey:)
     @discardableResult
     public static func activateLayer(pseudoKey: Int) -> Bool {
-        guard let index = LayerPseudoKey.decodeIndex(pseudoKey) else {
+        guard let (action, index) = LayerPseudoKey.decode(pseudoKey) else {
             NSLog("[ZL2] 伪键码 %ld 不合法", pseudoKey)
             return false
         }
-        return activateLayer(at: index)
+        switch action {
+        case .switchLayer:
+            return activateLayer(at: index)
+        case .showLayer:
+            return showLayer(at: index)
+        case .hideLayer:
+            return hideLayer(at: index)
+        }
+    }
+
+    // MARK: 三种图层动作
+
+    /// 切到某层（独占）：只显示这一层
+    @discardableResult
+    public static func switchToLayer(at index: Int) -> Bool {
+        activateLayer(at: index)
+    }
+
+    /// 叠加显示某层：在「当前已显示的层」基础上再加一层
+    ///
+    /// 核心没有图层概念，所以做法是：重新导出一份
+    /// 「当前层 + 目标层」合并的布局文件，然后加载它。
+    @discardableResult
+    public static func showLayer(at index: Int) -> Bool {
+        guard let m = manifest, m.layers.indices.contains(index) else { return false }
+        var visible = visibleIndices
+        if !visible.contains(index) { visible.append(index) }
+        return applyComposite(visible: visible, name: m.layers[index].name)
+    }
+
+    /// 隐藏某层：从当前显示集合里去掉它
+    @discardableResult
+    public static func hideLayer(at index: Int) -> Bool {
+        guard let m = manifest, m.layers.indices.contains(index) else { return false }
+        var visible = visibleIndices
+        visible.removeAll { $0 == index }
+        // 一层都不剩时保留第 0 层，避免控件全消失没法操作
+        if visible.isEmpty { visible = [0] }
+        return applyComposite(visible: visible, name: "隐藏 " + m.layers[index].name)
+    }
+
+    /// 当前显示的层序号集合
+    private static var visibleIndices: [Int] { [currentIndex] }
+
+    /// 把若干图层合并导出并加载
+    ///
+    /// 需要原始布局文件才能合并，所以要求导出时把源 json 也留在
+    /// controlmap 目录（文件名 <base>__source.json）。
+    private static func applyComposite(visible: [Int], name: String) -> Bool {
+        guard let m = manifest else { return false }
+
+        // 优先走「预合并」路线：导出时已经为常见组合准备好文件
+        let key = visible.sorted().map(String.init).joined(separator: "-")
+        let compositeName = "\(m.layoutName)__combo_\(key).json"
+        if FileManager.default.fileExists(
+            atPath: controlMapDir.appendingPathComponent(compositeName).path) {
+            guard apply(file: compositeName) else { return false }
+            currentIndex = visible.first ?? 0
+            NSLog("[ZL2] 已切到组合层 %@（%@）", key, name)
+            return true
+        }
+
+        // 没预合并就退回单层
+        NSLog("[ZL2] 组合层 %@ 未预生成，退回单层切换", key)
+        return activateLayer(at: visible.first ?? 0)
     }
 
     /// 保存「伪键码 → uuid」映射，供按钮点击时反查
