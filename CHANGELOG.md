@@ -22,6 +22,9 @@
 
 ### 修复
 
+- **版本号从来没被真的写进去**：`project.yml` 里 `MARKETING_VERSION` 硬编码 `0.1.0`、`CFBundleVersion` 硬编码 `1`，而 CI 的 Release tag 用的是运行号（`build-235`、`build-236`…），两者毫无关联 —— 不管装哪个构建，App 都自称 `0.1.0 (1)`。现在 CI 在生成工程之前把 `1.0.<运行号>` 和 `<运行号>` 写进 `project.yml`，并加了断言：注入失败直接构建失败，不会静默产出旧版本号。
+- **「检查更新」永远说有新版本**：旧逻辑把 tag `build-236` normalize 成 `"236"`，再跟 `"0.1.0"` 比大小，`236 > 0` 恒成立，于是线上就是最新版也一直提示更新。改成优先按 build 号比较（tag 的 `build-N` 与 `CFBundleVersion` 同源），抽不到 build 号才退回语义化版本。21 条用例覆盖了这条回归。
+- **点「下载更新」会 404**：Release 里的文件名是 `ZL2.ipa`，兜底地址却写着 `CraftLauncher.ipa`。已对齐。
 - **渲染器崩溃**：`MobileGlues` 在代码里声明可选但 IPA 里没有这个库，选了必崩
 - **启动崩溃**：`egl_bridge` 的 `default` 分支默认指向 MobileGlues，所有 OpenGL 3.0+ 版本启动即崩
 - **首屏文案**：写着「专为 Android 设备打造」
@@ -37,6 +40,7 @@
 - **设置项标注**：115 项中 75 项明确标注「不支持 / 未接入」，置灰并说明原因
 - **下拉刷新**：模组管理、资源管理页支持下拉重扫目录
 - **死代码清理**：删除 204 行无用代码
+- **版本号单一来源**：`Info.plist` 不再重复写死版本，改为引用 `$(MARKETING_VERSION)`；`LicenseScreen` 也不再自己写一份兜底值，统一走 `ZLUpdateChecker`
 
 ### 已知问题
 

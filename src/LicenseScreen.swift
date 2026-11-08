@@ -32,12 +32,10 @@ struct LicenseScreen: View {
 
     @State private var shownDoc: ZLLicenseDoc?
 
-    private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
-    }
-    private var buildNumber: String {
-        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-    }
+    // 版本号唯一来源是 ZLUpdateChecker（它读的就是 Info.plist，由 CI 注入真实构建号），
+    // 这里不再自己写一份兜底值 —— 两处各写一个默认值，迟早会对不上。
+    private var appVersion: String { ZLUpdateChecker.currentVersion }
+    private var buildNumber: String { ZLUpdateChecker.currentBuild }
     private var osVersion: String {
         UIDevice.current.systemVersion
     }
