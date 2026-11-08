@@ -855,8 +855,16 @@ struct ControlEditorScreen: View {
     private func syncToCore() {
         let zl = ZLControlLayout.from(doc: doc)
         do {
-            let name = try CoreLayoutExporter.exportAndActivate(zl)
-            NSLog("[ZL2] 控制布局已同步到核心：%@", name)
+            // 多图层：每层导出一份文件，核心运行时按需切换
+            if zl.layers.count > 1 {
+                let map = try CoreLayoutExporter.exportAllLayers(zl)
+                let manifest = try CoreLayoutExporter.writeLayerManifest(zl, map: map)
+                NSLog("[ZL2] 控制布局已同步 %ld 个图层，清单：%@",
+                      zl.layers.count, manifest.lastPathComponent)
+            } else {
+                let name = try CoreLayoutExporter.exportAndActivate(zl)
+                NSLog("[ZL2] 控制布局已同步到核心：%@", name)
+            }
         } catch {
             NSLog("[ZL2] 控制布局同步失败：%@", error.localizedDescription)
         }

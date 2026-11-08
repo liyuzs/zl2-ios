@@ -20,6 +20,7 @@
 //  ────────────────────────────────────────────────────────────
 
 import Foundation
+import UIKit
 
 // MARK: - 导出器
 
@@ -191,7 +192,10 @@ enum CoreLayoutExporter {
         // 摇杆样式（背景色/摇杆色/圆角）
         if let sid = joy.joystickStyleId,
            let js = layout.joystickStyles.first(where: { $0.uuid == sid }) {
-            let cfg = js.commonStyle ? js.lightStyle : js.lightStyle
+            // commonStyle = true 表示亮暗共用一套配色，直接用 lightStyle；
+            // 否则按系统当前外观选。原来这里三元两边都写 lightStyle（笔误），
+            // 导致暗色模式下摇杆永远是亮色配色。
+            let cfg = js.commonStyle ? js.lightStyle : effectiveJoystickStyle(js)
             d["opacity"] = phpClamp(cfg.alpha, 0, 1)
             d["bgColor"] = colorToInt(cfg.backgroundColor, fallback: 0x4d000000)
             d["joystickColor"] = colorToInt(cfg.joystickColor, fallback: 0x80ffffff)
@@ -216,7 +220,32 @@ enum CoreLayoutExporter {
     private static func resolveStyle(_ uuid: String?,
                                      _ index: [String: ZLButtonStyle]) -> ZLStyleConfig? {
         guard let uuid, !uuid.isEmpty, let style = index[uuid] else { return nil }
-        return style.lightStyle
+        // ZLButtonStyle.commonStyle = true 时亮暗共用，直接用 lightStyle；
+        // 否则按系统当前外观选（原来这里固定返回 lightStyle，暗色模式下控件颜色不对）
+        if style.commonStyle { return style.lightStyle }
+        return isSystemDark ? style.darkStyle : style.lightStyle
+    }
+
+    /// 摇杆样式：commonStyle 为真用 light，否则按系统外观选
+    private static func effectiveJoystickStyle(_ js: ZLJoystickStyle) -> ZLJoystickStyleConfig {
+        js.commonStyle ? js.lightStyle : (isSystemDark ? js.darkStyle : js.lightStyle)
+    }
+
+    /// 系统当前是否深色外观
+    ///
+    /// 导出发生在保存/启动时，可能不在主线程，所以：
+    ///   · 主线程直接看 UITraitCollection.current
+    ///   · 其它线程退回查 UITraitCollection 的全局值（读不到就当亮色）
+    private static var isSystemDark: Bool {
+        if Thread.isMainThread {
+            return UITraitCollection.current.userInterfaceStyle == .dark
+        }
+        // 非主线程：用一个不依赖线程状态的方式
+        var isDark = false
+        DispatchQueue.main.sync {
+            isDark = UITraitCollection.current.userInterfaceStyle == .dark
+        }
+        return isDark
     }
 
     private static func applyStyle(_ d: inout [String: Any], style: ZLStyleConfig?) {
@@ -339,5 +368,90 @@ enum CoreLayoutExporter {
         let data = try Data(contentsOf: src)
         let layout = try ZLControlLayout.importJSON(data)
         return try exportAndActivate(layout, fileName: "\(sanitize(name)).json")
+    }
+
+    // MARK: - 图层切换支持
+    //
+    // 核心（Pojav 的 ControlLayout）是扁平的，没有「图层」概念。
+    // 但 ZL2 允许按钮触发 switch_layer / show_layer / hide_layer。
+    //
+    // 解决方案：为每个图层各导出一份独立布局文件，
+    // 图层切换时让核心重新 loadControlFile:。
+    // 核心本身支持运行时切换（ControlLayout.h 暴露了 loadControlFile: 和
+    // removeAllButtons），所以这条路可行。
+    //
+    // 代价：一份布局会变成 N 个文件（N = 图层数）。
+    // 命名规则：<布局名>__layer<i>.json，第 0 层同时复制一份成 <布局名>.json。
+
+    /// 导出全部图层，返回「图层 uuid → 核心文件名」的映射
+    @discardableResult
+    static func exportAllLayers(_ layout: ZLControlLayout,
+                                baseName: String? = nil) throws -> [String: String] {
+        let rawName = layout.info.name.plainText
+        let base = baseName ?? (rawName.isEmpty ? "default" : sanitize(rawName))
+
+        var map: [String: String] = [:]
+
+        for (index, layer) in layout.layers.enumerated() {
+            // 只导出该图层的控件
+            var single = ZLControlLayout(info: layout.info,
+                                         layers: [layer],
+                                         styles: layout.styles,
+                                         joystickStyles: layout.joystickStyles,
+                                         editorVersion: layout.editorVersion)
+            // 关键：单层导出时不能因为 hide 就跳过，否则空层
+            single.layers[0].hide = false
+
+            let fileName = "\(base)__layer\(index).json"
+            _ = try export(single, fileName: fileName)
+            if !layer.uuid.isEmpty {
+                map[layer.uuid] = fileName
+            }
+            // 第 0 层同时作为默认布局
+            if index == 0 {
+                map["__default__"] = fileName
+            }
+        }
+
+        if let def = map["__default__"] {
+            activeLayoutName = def
+        }
+        return map
+    }
+
+    /// 生成给「切换图层」按钮用的说明（写进核心能识别的备注字段）
+    ///
+    /// 核心读到这个字段不会执行任何动作（它不认识），
+    /// 但 Swift 侧的 ZLLayerSwitcher 会监听并调用核心切文件。
+    static func layerSwitchManifest(_ layout: ZLControlLayout,
+                                    map: [String: String]) -> [String: Any] {
+        var layers: [[String: Any]] = []
+        for (index, layer) in layout.layers.enumerated() {
+            layers.append([
+                "uuid": layer.uuid,
+                "name": layer.name,
+                "index": index,
+                "file": map[layer.uuid] ?? "",
+                "visibleType": layer.visibilityType.rawValue,
+            ])
+        }
+        return [
+            "layoutName": layout.info.name.plainText,
+            "layers": layers,
+        ]
+    }
+
+    /// 把图层清单写成 json（和布局文件同目录，供 App 侧读取）
+    @discardableResult
+    static func writeLayerManifest(_ layout: ZLControlLayout,
+                                   map: [String: String]) throws -> URL {
+        let rawName = layout.info.name.plainText
+        let base = rawName.isEmpty ? "default" : sanitize(rawName)
+        let url = controlMapDir.appendingPathComponent("\(base)__layers.json")
+        let obj = layerSwitchManifest(layout, map: map)
+        let data = try JSONSerialization.data(withJSONObject: obj,
+                                              options: [.prettyPrinted, .sortedKeys])
+        try data.write(to: url, options: .atomic)
+        return url
     }
 }

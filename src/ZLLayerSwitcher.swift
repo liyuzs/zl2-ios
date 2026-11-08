@@ -1,0 +1,186 @@
+//
+//  ZLLayerSwitcher.swift
+//  ZL2-iOS · 运行时切换控制布局图层
+//
+//  ────────────────────────────────────────────────────────────
+//  背景：
+//
+//  ZL2 的控件有「图层」概念，按钮可以触发：
+//    · switch_layer  切到某层
+//    · show_layer    显示某层
+//    · hide_layer    隐藏某层
+//
+//  但核心（Pojav 的 ControlLayout）是扁平的，不认识图层。
+//
+//  解决方案：
+//    CoreLayoutExporter.exportAllLayers() 为每个图层各导出一份布局文件，
+//    核心支持运行时 loadControlFile: 换加载哪份。
+//    这个类负责读图层清单、按需切换。
+//
+//  用法（ObjC 侧）：
+//    [ZLLayerSwitcher activateLayerAtIndex:1];
+//    [ZLLayerSwitcher activateLayerWithUUID:@"xxx"];
+//  ────────────────────────────────────────────────────────────
+
+import Foundation
+import UIKit
+
+@objc(ZLLayerSwitcher)
+public final class ZLLayerSwitcher: NSObject {
+
+    /// 图层清单条目
+    struct LayerInfo: Codable {
+        let uuid: String
+        let name: String
+        let index: Int
+        let file: String
+        let visibleType: String
+    }
+
+    private struct Manifest: Codable {
+        let layoutName: String
+        let layers: [LayerInfo]
+    }
+
+    /// 当前布局的图层清单（nil = 单层，无需切换）
+    private static var manifest: Manifest?
+    private static var currentIndex: Int = 0
+
+    /// 核心的 controlmap 目录
+    private static var controlMapDir: URL {
+        CoreLayoutExporter.controlMapDir
+    }
+
+    // MARK: 加载清单
+
+    /// 读完布局后调用，记下有哪些图层可切
+    @objc(loadManifestFor:)
+    public static func loadManifest(for layoutFile: String) {
+        // 从 "xxx__layer0.json" 或 "xxx.json" 推导出 base
+        var base = layoutFile
+        if let r = base.range(of: "__layer") {
+            base = String(base[base.startIndex..<r.lowerBound])
+        }
+        if base.hasSuffix(".json") { base = String(base.dropLast(5)) }
+
+        let url = controlMapDir.appendingPathComponent("\(base)__layers.json")
+        guard let data = try? Data(contentsOf: url),
+              let m = try? JSONDecoder().decode(Manifest.self, from: data) else {
+            manifest = nil
+            currentIndex = 0
+            return
+        }
+        manifest = m
+        currentIndex = 0
+        NSLog("[ZL2] 图层清单已加载：%@，共 %ld 层",
+              m.layoutName, m.layers.count)
+    }
+
+    // MARK: 切换
+
+    /// 按序号切（0 起）
+    @objc(activateLayerAtIndex:)
+    @discardableResult
+    public static func activateLayer(at index: Int) -> Bool {
+        guard let m = manifest, m.layers.indices.contains(index) else { return false }
+        let info = m.layers[index]
+        guard apply(file: info.file) else { return false }
+        currentIndex = index
+        NSLog("[ZL2] 已切到图层 %ld：%@", index, info.name)
+        return true
+    }
+
+    /// 按 uuid 切
+    @objc(activateLayerWithUUID:)
+    @discardableResult
+    public static func activateLayer(uuid: String) -> Bool {
+        guard let m = manifest,
+              let idx = m.layers.firstIndex(where: { $0.uuid == uuid }) else { return false }
+        return activateLayer(at: idx)
+    }
+
+    /// 按图层名切
+    @discardableResult
+    public static func activateLayer(name: String) -> Bool {
+        guard let m = manifest,
+              let idx = m.layers.firstIndex(where: { $0.name == name }) else { return false }
+        return activateLayer(at: idx)
+    }
+
+    /// 回到默认层（第 0 层）
+    @objc public static func resetToDefault() {
+        _ = activateLayer(at: 0)
+    }
+
+    /// 当前层序号
+    @objc public static var activeIndex: Int { currentIndex }
+
+    /// 是否有多个图层
+    @objc public static var hasMultipleLayers: Bool {
+        (manifest?.layers.count ?? 0) > 1
+    }
+
+    /// 全部图层名（给 UI 列表用）
+    @objc public static var layerNames: [String] {
+        manifest?.layers.map { $0.name } ?? []
+    }
+
+    // MARK: 实际切换
+
+    /// 让核心重新加载指定布局文件
+    ///
+    /// 核心的 ControlLayout 暴露了 loadControlFile:，
+    /// SurfaceViewController 持有 ctrlView。这里通过响应链找到它。
+    private static func apply(file: String) -> Bool {
+        guard !file.isEmpty else { return false }
+
+        // 找当前窗口的根控制器，沿视图树找持有 ControlLayout 的那个
+        guard let root = keyWindow?.rootViewController else {
+            NSLog("[ZL2] 切图层失败：找不到 window")
+            return false
+        }
+        guard let host = findSurfaceController(from: root) else {
+            NSLog("[ZL2] 切图层失败：找不到 SurfaceViewController")
+            return false
+        }
+
+        // 用 KVC 拿 ctrlView（避免 Swift 依赖 ObjC 头文件）
+        guard let ctrlView = host.value(forKey: "ctrlView") as? NSObject else {
+            NSLog("[ZL2] 切图层失败：ctrlView 不存在")
+            return false
+        }
+
+        // 调 loadControlFile:
+        let sel = NSSelectorFromString("loadControlFile:")
+        guard ctrlView.responds(to: sel) else {
+            NSLog("[ZL2] 切图层失败：ctrlView 不支持 loadControlFile:")
+            return false
+        }
+        _ = ctrlView.perform(sel, with: file)
+
+        // 同时更新核心读的偏好，下次启动仍用这层
+        UserDefaults.standard.set(file, forKey: "defaultTouchCtrl")
+        return true
+    }
+
+    private static var keyWindow: UIWindow? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
+    }
+
+    /// 在视图控制器树里找类名含 SurfaceViewController 的那个
+    private static func findSurfaceController(from vc: UIViewController) -> UIViewController? {
+        let name = NSStringFromClass(type(of: vc))
+        if name.contains("SurfaceViewController") { return vc }
+
+        for child in vc.children {
+            if let found = findSurfaceController(from: child) { return found }
+        }
+        if let presented = vc.presentedViewController {
+            if let found = findSurfaceController(from: presented) { return found }
+        }
+        return nil
+    }
+}
