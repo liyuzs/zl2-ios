@@ -123,6 +123,12 @@ struct ModsManagerScreen: View {
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
         .task { reload() }
+        // 从「文件」App 或电脑塞了模组之后，下拉就能重新扫目录
+        .refreshable {
+            reload()
+            // 给系统一个极短的等待，让下拉动画不至于一闪而过
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
         .alert("删除模组", isPresented: Binding(get: { deleteTarget != nil },
                                                  set: { if !$0 { deleteTarget = nil } })) {
             Button("取消", role: .cancel) { deleteTarget = nil }

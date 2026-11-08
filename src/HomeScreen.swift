@@ -253,6 +253,12 @@ struct HomeScreen: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
 
+            // 新手引导：一个版本都没装时，直接告诉用户下一步做什么
+            // （不在欢迎页说，是因为用户可能跳过欢迎页，这里才是必经之地）
+            if !hasInstalledVersion {
+                onboardingCard
+            }
+
             // 版本卡片
             HStack(spacing: 12) {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -380,5 +386,77 @@ struct HomeScreen: View {
         }
         // 否则取第一个（列表已按修改时间排序）
         selectedVersion = list[0].id
+    }
+
+    // MARK: - 新手引导
+
+    /// 是否已经装了至少一个版本
+    private var hasInstalledVersion: Bool {
+        !VersionRepository.shared.listVersions().isEmpty
+    }
+
+    /// 一个版本都没装时的引导卡：三步走，直接给按钮
+    private var onboardingCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14))
+                    .foregroundStyle(ZLTheme.primary)
+                Text("第一次使用？")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                Spacer()
+            }
+
+            // 三步清单，第一步高亮
+            VStack(alignment: .leading, spacing: 8) {
+                onboardingStep(1, "下载一个游戏版本", done: false, active: true)
+                onboardingStep(2, "选 Fabric 加载器（Forge 不支持）", done: false, active: false)
+                onboardingStep(3, "回到这里点「启动游戏」", done: false, active: false)
+            }
+
+            Button {
+                ZLHaptic.medium()
+                onDownload()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.down.circle.fill")
+                    Text("去下载版本")
+                }
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background(ZLTheme.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: ZLTheme.cardRadius, style: .continuous)
+                .fill(ZLTheme.primarySoft.opacity(0.5))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: ZLTheme.cardRadius, style: .continuous)
+                .stroke(ZLTheme.primary.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private func onboardingStep(_ n: Int, _ text: String, done: Bool, active: Bool) -> some View {
+        HStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(active ? ZLTheme.primary : ZLTheme.cardStroke)
+                    .frame(width: 18, height: 18)
+                Text("\(n)")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(active ? .white : ZLTheme.textSecond)
+            }
+            Text(text)
+                .font(.system(size: 12))
+                .foregroundStyle(active ? ZLTheme.textPrimary : ZLTheme.textSecond)
+            Spacer()
+        }
     }
 }

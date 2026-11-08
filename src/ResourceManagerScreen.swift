@@ -108,6 +108,11 @@ struct ResourceManagerScreen: View {
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
         .task { reload() }
+        // 资源包/光影常从外部导入，下拉重扫目录
+        .refreshable {
+            reload()
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
         .alert("删除\(kind.rawValue)", isPresented: Binding(get: { deleteTarget != nil },
                                                           set: { if !$0 { deleteTarget = nil } })) {
             Button("取消", role: .cancel) { deleteTarget = nil }
