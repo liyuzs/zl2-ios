@@ -55,6 +55,30 @@ jobs:
           cmake --build build -j 4 || cmake --build build --target ZL2Core -j 4
           ls -lh build/*.a build/*.dylib 2>/dev/null || true
 
+      - name: Inject version
+        run: |
+          # 把 CI 的运行号写进工程，让 App 里的「关于」和「检查更新」拿到真实版本。
+          # 版本号规则：1.0.<run_number>，build 号 = run_number。
+          # ZLUpdate 按 build 号比较，所以 build-236 不会被误判成 236.0.0。
+          #
+          # 注意：sed 的正则里有引号和反斜杠，直接在命令行写 "..." 会在
+          # GNU sed 下报 unterminated `s' command（本地已实测踩过一次）。
+          # 所以这里先生成 sed 脚本文件，再用 -f 执行，彻底避开 shell 转义。
+          BUILD="${{ github.run_number }}"
+          VER="1.0.${BUILD}"
+          echo "注入版本 $VER ($BUILD)"
+          printf '%s\n' \
+            "s|^\( *\)MARKETING_VERSION: .*|\1MARKETING_VERSION: \"${VER}\"|" \
+            "s|^\( *\)CURRENT_PROJECT_VERSION: .*|\1CURRENT_PROJECT_VERSION: \"${BUILD}\"|" \
+            > /tmp/zl2-version.sed
+          cat /tmp/zl2-version.sed
+          sed -i -f /tmp/zl2-version.sed project.yml
+          echo "--- 注入结果 ---"
+          grep -nE 'MARKETING_VERSION|CURRENT_PROJECT_VERSION' project.yml
+          # 断言：必须真的改掉了，否则构建出来的 App 版本号还是旧的
+          grep -q "MARKETING_VERSION: \"${VER}\"" project.yml || { echo "::error::版本注入失败"; exit 1; }
+          grep -q "CURRENT_PROJECT_VERSION: \"${BUILD}\"" project.yml || { echo "::error::build 号注入失败"; exit 1; }
+
       - name: Generate Xcode project
         run: |
           xcodegen generate

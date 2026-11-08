@@ -91,12 +91,17 @@ final class ZLUpdateChecker: ObservableObject {
                 }
             }
             if ipaURL.isEmpty {
-                ipaURL = "https://github.com/\(repo)/releases/latest/download/CraftLauncher.ipa"
+                // 兜底：Release 里的实际文件名是 ZL2.ipa（见 CI 的 Package unsigned IPA 步骤）。
+                // 之前这里写成 CraftLauncher.ipa，点「下载」会 404。
+                ipaURL = "https://github.com/\(repo)/releases/latest/download/ZL2.ipa"
             }
 
-            // 版本号：去掉前缀 v，取数字部分
-            let remoteVersion = Self.normalize(tag.isEmpty ? name : tag)
+            // 版本号：优先用 build 号比较（tag 是 build-N，与 CFBundleVersion 同源）
+            let remoteRaw = tag.isEmpty ? name : tag
+            let remoteVersion = Self.normalize(remoteRaw)
             let current = Self.normalize(Self.currentVersion)
+            let remoteBuildNum = Self.extractBuild(from: remoteRaw)
+            let currentBuildNum = Int(Self.currentBuild)
 
             let info = ZLUpdateInfo(
                 version: remoteVersion,
@@ -107,7 +112,8 @@ final class ZLUpdateChecker: ObservableObject {
                 publishedAt: Self.parseDate(published)
             )
 
-            if Self.isNewer(remote: remoteVersion, than: current) {
+            if Self.isNewer(remote: remoteVersion, remoteBuild: remoteBuildNum,
+                            than: current, currentBuild: currentBuildNum) {
                 state = .available(info)
             } else {
                 state = .upToDate
@@ -119,20 +125,51 @@ final class ZLUpdateChecker: ObservableObject {
 
     // MARK: - 版本比较
 
-    /// 把 "v0.2.1" 或 "0.2.1" 统一成 "0.2.1"
+    /// 从 tag / name 里抽出 build 号，认这几种写法：
+    ///   "build-236" / "Build 236" / "build/236" -> 236
+    ///   "v1.0.236"                                -> 236（末段当 build）
+    /// 抽不到返回 nil。
+    static func extractBuild(from s: String) -> Int? {
+        let lower = s.lowercased()
+        // 优先认 build-xxx 这种显式写法
+        if let r = lower.range(of: "build") {
+            let tail = lower[r.upperBound...]
+            let digits = tail.drop { !$0.isNumber }.prefix { $0.isNumber }
+            if !digits.isEmpty { return Int(digits) }
+        }
+        // 退回：取最后一段纯数字
+        let parts = lower.split(whereSeparator: { !$0.isNumber })
+        return parts.last.flatMap { Int($0) }
+    }
+
+    /// 把 "v0.2.1" / "0.2.1" / "1.0.236" 统一成数字加点
     static func normalize(_ s: String) -> String {
         var t = s.trimmingCharacters(in: .whitespacesAndNewlines)
         if t.lowercased().hasPrefix("v") { t.removeFirst() }
-        // 只保留数字和点
         let allowed = Set("0123456789.")
         t = String(t.filter { allowed.contains($0) })
+        // 去掉首尾多余的点，避免 "1..2" 这种切分出错
+        while t.hasPrefix(".") { t.removeFirst() }
+        while t.hasSuffix(".") { t.removeLast() }
         return t.isEmpty ? "0" : t
     }
 
-    /// remote 是否比 current 新
+    /// remote 是否比 current 新。
+    /// 优先按 build 号比（tag 形如 build-236，与 CFBundleVersion 同源），
+    /// 没有 build 号时才退回语义化版本比较。
     static func isNewer(remote: String, than current: String) -> Bool {
-        let r = remote.split(separator: ".").compactMap { Int($0) }
-        let c = current.split(separator: ".").compactMap { Int($0) }
+        isNewer(remote: remote, remoteBuild: nil, than: current, currentBuild: nil)
+    }
+
+    static func isNewer(remote: String, remoteBuild: Int?,
+                        than current: String, currentBuild: Int?) -> Bool {
+        // 1) build 号能对上就按 build 比 —— 这是 CI 的真实递增号
+        if let rb = remoteBuild, let cb = currentBuild {
+            return rb > cb
+        }
+        // 2) 退回语义化版本
+        let r = normalize(remote).split(separator: ".").compactMap { Int($0) }
+        let c = normalize(current).split(separator: ".").compactMap { Int($0) }
         let n = max(r.count, c.count)
         for i in 0..<n {
             let rv = i < r.count ? r[i] : 0
