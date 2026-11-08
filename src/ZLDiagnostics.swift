@@ -200,6 +200,25 @@ enum ZLDiagnostics {
             ))
         }
 
+        // 当前实际使用的渲染器 —— 排查「启动黑屏 / 一进游戏就退」时，
+        // 第一件要知道的事就是「它到底拿了哪个后端去 dlopen」。
+        let storedRenderer = UserDefaults.standard.string(forKey: "renderer") ?? ""
+        let effective = ZLRenderers.sanitize(storedRenderer)
+        var rendererValue = ZLRenderers.displayName(for: effective)
+        if storedRenderer != effective {
+            // 拆开写，避免在字符串插值里嵌套三元 + 字符串字面量（读起来也清楚些）
+            let shown = storedRenderer.isEmpty ? "空" : storedRenderer
+            rendererValue += "（原值 \(shown) 不可用，已自动改）"
+        }
+        out.append(ZLDiagItem(
+            title: "当前渲染器",
+            value: rendererValue,
+            level: storedRenderer == effective ? .ok : .warn,
+            advice: storedRenderer == effective
+                ? nil
+                : "设置 → 渲染 → 渲染器 里重新选一个"
+        ))
+
         // JIT 脚本
         let jit = Bundle.main.bundlePath + "/UniversalJIT26.js"
         out.append(ZLDiagItem(
