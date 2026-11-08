@@ -1,0 +1,359 @@
+# Codemagic CI —— 替代 GitHub Actions 的 macOS 构建
+# 免费额度：个人账号每月 500 分钟 macOS M2
+# 产物：out/ZL2.ipa（未签名）+ 模拟器截图 / 录屏
+
+workflows:
+  ios-unsigned:
+    name: ZL2 iOS 构建（未签名）
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      vars:
+        SCHEME: ZL2iOS
+        PROJECT: ZL2iOS.xcodeproj
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+      cancel_previous_builds: true
+
+    scripts:
+      - name: 核对代码版本
+        script: |
+          echo "=== 当前构建的 commit ==="
+          git log -1 --format='%H %s'
+          echo "=== 关键文件行数 ==="
+          wc -l src/ControlEditor.swift src/ControlLayoutModel.swift
+          echo "=== loadLayout 位置 ==="
+          grep -n "private func loadLayout" src/ControlEditor.swift || echo "未找到 loadLayout"
+
+      - name: 显示工具链
+        script: |
+          xcodebuild -version
+          swift --version
+          cmake --version || brew install cmake
+
+      - name: 安装 XcodeGen
+        script: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: 编译 Amethyst 核心（静态库）
+        script: |
+          set -e
+          SYSROOT=$(xcrun --sdk iphoneos --show-sdk-path)
+          CLANG=$(xcrun --sdk iphoneos -f clang)
+          CLANGXX=$(xcrun --sdk iphoneos -f clang++)
+          cd core
+          cmake -B build \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT="$SYSROOT" \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
+            -DCMAKE_C_COMPILER="$CLANG" \
+            -DCMAKE_CXX_COMPILER="$CLANGXX" \
+            -DCONFIG_RELEASE=1 \
+            -DCONFIG_BRANCH=main \
+            -DCONFIG_COMMIT=zl2 \
+            -DCONFIG_CURSEFORGE_API_KEY= \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j 4 || cmake --build build --target ZL2Core -j 4
+          ls -lh build/*.a build/*.dylib 2>/dev/null || true
+          cd ..
+
+      - name: 生成 Xcode 工程
+        script: |
+          xcodegen generate
+          xcodebuild -list -project "$PROJECT"
+
+      - name: 编译真机包（未签名）
+        script: |
+          set +e
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build > /tmp/xcbuild.log 2>&1
+          RC=$?
+          echo "xcodebuild exit=$RC"
+          mkdir -p out
+          ERRORS=$(grep -E "error:" /tmp/xcbuild.log | sort -u | head -40)
+          if [ -n "$ERRORS" ]; then
+            printf '%s\n' "$ERRORS" > out/compile-errors.txt
+            echo "=== ERRORS BEGIN ==="
+            printf '%s\n' "$ERRORS"
+            echo "=== ERRORS END ==="
+            # 尝试把错误文件推回仓库（如果运行器有写权限），供远程直接读取
+            if [ -n "$ERRORS" ]; then
+              git config user.email "ci@codemagic.local" 2>/dev/null
+              git config user.name "codemagic-ci" 2>/dev/null
+              git checkout -q -B build-errors 2>/dev/null || true
+              git add -f out/compile-errors.txt 2>/dev/null
+              git commit -qm "build errors snapshot" 2>/dev/null || true
+              git push -q origin HEAD:refs/heads/build-errors 2>/dev/null || echo "（推回仓库失败，属预期，错误已在 out/compile-errors.txt）"
+            fi
+          fi
+          if [ $RC -ne 0 ]; then
+            tail -60 /tmp/xcbuild.log
+            exit 1
+          fi
+
+      - name: 打包资源与运行时
+        script: |
+          set -e
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          echo "APP=$APP"
+          test -n "$APP"
+
+          mkdir -p "$APP/Frameworks"
+          cp -R core/resources/Frameworks/. "$APP/Frameworks/"
+          for f in core/resources/*.js; do
+            [ -f "$f" ] && cp "$f" "$APP/" && echo "copied $(basename "$f")"
+          done
+          cp -R core/build/*.dylib "$APP/Frameworks/" 2>/dev/null || true
+
+          # JRE 8 / 17 / 21 / 25（按 MC 版本自动选）
+          # 8  → MC 1.12 及以下
+          # 17 → MC 1.13 ~ 1.20.4
+          # 21 → MC 1.20.5 ~ 1.21.x
+          # 25 → MC 22+
+          #
+          # 原源 assets.angelauramc.dev 域名已失效，改为三级回退：
+          #   ① 仓库内 jre/ ② GitHub Release ③ 旧源
+          JRE_BASE_RELEASE="https://github.com/liyuzs/zl2-ios/releases/download/jre-assets"
+          JRE_BASE_OLD="https://assets.angelauramc.dev/openjdk/ios-arm64"
+
+          for JV in 8 17 21 25; do
+            DEST="$APP/java_runtimes/java-${JV}-openjdk"
+            mkdir -p "$DEST"
+            ARCHIVE="/tmp/jre${JV}.tar.xz"
+            GOT=""
+
+            if [ -f "jre/jre${JV}-ios-aarch64.tar.xz" ]; then
+              echo "JRE $JV: 仓库内资源"
+              cp "jre/jre${JV}-ios-aarch64.tar.xz" "$ARCHIVE" && GOT=1
+            fi
+            if [ -z "$GOT" ]; then
+              echo "JRE $JV: Release"
+              curl -L --fail --retry 3 --max-time 300 \
+                -o "$ARCHIVE" "${JRE_BASE_RELEASE}/jre${JV}-ios-aarch64.tar.xz" && GOT=1
+            fi
+            if [ -z "$GOT" ]; then
+              echo "JRE $JV: 旧源"
+              curl -L --fail --retry 2 --max-time 180 \
+                -o "/tmp/jre${JV}.zip" "${JRE_BASE_OLD}/jre${JV}-ios-aarch64.zip" \
+                && unzip -q -o "/tmp/jre${JV}.zip" -d "/tmp/jreext${JV}" \
+                && cp /tmp/jreext${JV}/*.tar.xz "$ARCHIVE" && GOT=1
+            fi
+
+            if [ -z "$GOT" ]; then
+              echo "警告：JRE $JV 拿不到，跳过"
+              continue
+            fi
+            tar xf "$ARCHIVE" -C "$DEST" --strip-components=2
+            echo "JRE $JV done"
+          done
+
+          for JV in 8 17 21 25; do
+            ls "$APP/java_runtimes/java-${JV}-openjdk/lib/libjli.dylib" || echo "警告：JRE $JV 缺失"
+          done
+          du -sh "$APP"
+
+      - name: 生成 IPA
+        script: |
+          set -e
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          test -n "$APP"
+          rm -rf Payload out && mkdir -p Payload out
+          cp -R "$APP" Payload/
+          zip -qry "out/ZL2.ipa" Payload
+          ls -la out
+
+      - name: 模拟器编译与截图
+        ignore_failure: true
+        script: |
+          # 跳过：这一步会把整个工程在模拟器 SDK 上再编译一遍（10~20 分钟），
+          # 对产出 IPA 没有任何帮助，只用于开发时看图。要恢复就把下面这行删掉。
+          echo "模拟器截图已跳过（节省构建时间）"
+          exit 0
+          set +e
+          mkdir -p out
+          echo "=== 1. 模拟器编译 ==="
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-sim \
+            CODE_SIGNING_ALLOWED=NO \
+            OTHER_LDFLAGS="" \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS="" \
+            build > /tmp/simbuild.log 2>&1
+          SIMRC=$?
+          echo "sim build exit=$SIMRC"
+          if [ $SIMRC -ne 0 ]; then
+            echo "=== 模拟器编译错误 ==="
+            grep -E "error:" /tmp/simbuild.log | head -20
+            echo "=== 错误已写入构建摘要 ==="
+            {
+              echo "## 模拟器编译失败"
+              echo '```'
+              grep -E "error:" /tmp/simbuild.log | head -20
+              echo '```'
+            } >> "$CM_BUILD_SUMMARY"
+            exit 0
+          fi
+
+          echo "=== 2. 选设备 ==="
+          xcrun simctl list devices available | head -20
+          DEVICE=$(xcrun simctl list devices available | grep -E 'iPhone 1[5-7]' | head -1 | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+          [ -z "$DEVICE" ] && DEVICE=$(xcrun simctl list devices available | grep 'iPhone' | head -1 | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+          echo "DEVICE=$DEVICE"
+
+          echo "=== 3. 启动模拟器 ==="
+          xcrun simctl boot "$DEVICE" 2>&1 | head -3
+          sleep 10
+
+          APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          echo "APP=$APP"
+          if [ -z "$APP" ]; then
+            echo "没找到 .app，模拟器编译产物缺失"
+            exit 0
+          fi
+
+          echo "=== 4. 安装 ==="
+          xcrun simctl install "$DEVICE" "$APP" 2>&1 | head -5
+          BID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist" 2>/dev/null)
+          echo "BUNDLE_ID=$BID"
+
+          echo "=== 4.5 跳过首次引导（否则新手引导遮罩会盖住截图/录屏） ==="
+          # 首页有 GuideManager 首次启动引导（半透明黑遮罩 + 气泡），
+          # 这里预先把「已看过」写进 App 沙盒的 UserDefaults；失败就忽略，不影响构建。
+          DATA_DIR=$(xcrun simctl get_app_container "$DEVICE" "$BID" data 2>/dev/null || true)
+          if [ -n "$DATA_DIR" ]; then
+            PREFS_DIR="$DATA_DIR/Library/Preferences"
+            mkdir -p "$PREFS_DIR"
+            PREFS_PLIST="$PREFS_DIR/$BID.plist"
+            /usr/libexec/PlistBuddy -c "Add :zl.guide.home.seen bool true" "$PREFS_PLIST" >/dev/null 2>&1 \
+              || /usr/libexec/PlistBuddy -c "Set :zl.guide.home.seen true" "$PREFS_PLIST" >/dev/null 2>&1 \
+              || echo "引导标记写入失败（忽略，最多是画面被引导遮住）"
+          fi
+
+          echo "=== 5. 启动 App ==="
+          xcrun simctl launch "$DEVICE" "$BID" 2>&1 | head -5
+          sleep 12
+
+          echo "=== 6. 录屏（30 秒） ==="
+          # 限制：simctl 没有触摸/滑动命令，App 也没有 -demo 之类的演示启动参数
+          #（已核对 src/：ProcessInfo 只用于内存和 AME_HOME 环境变量），
+          # 所以录到的是首页静态画面，不伪造点击。全程兜底，不影响截图与构建。
+          REC_FILE=/tmp/demo.mov
+          REC_SECONDS=30
+          rm -f "$REC_FILE"
+          xcrun simctl io "$DEVICE" recordVideo --codec=h264 --force "$REC_FILE" \
+            > /tmp/simctl-record.log 2>&1 &
+          REC_PID=$!
+          sleep 2
+          if kill -0 "$REC_PID" 2>/dev/null; then
+            echo "录制中（${REC_SECONDS} 秒）…"
+            sleep $((REC_SECONDS - 2))
+          else
+            echo "录屏进程提前退出："
+            head -5 /tmp/simctl-record.log 2>/dev/null || true
+          fi
+          # SIGINT 让 simctl 收尾写入 moov；8 秒内没退出就强杀，避免卡住构建
+          kill -INT "$REC_PID" 2>/dev/null || true
+          ( sleep 8; kill -KILL "$REC_PID" 2>/dev/null || true ) &
+          WATCHDOG_PID=$!
+          wait "$REC_PID" 2>/dev/null || true
+          kill "$WATCHDOG_PID" 2>/dev/null || true
+          wait "$WATCHDOG_PID" 2>/dev/null || true
+
+          if [ -s "$REC_FILE" ]; then
+            echo "录像大小: $(ls -lh "$REC_FILE" | awk '{print $5}')"
+            # 模拟器录像是竖屏帧缓冲（1179x2556）里躺着横屏 UI：
+            # 与截图步骤的 sips -r 270 保持一致，旋转 270°（transpose=2），
+            # 并补齐旋转后 1179 的奇数高度（libx264 + yuv420p 要求偶数边长）。
+            if command -v ffmpeg >/dev/null 2>&1; then
+              if ffmpeg -hide_banner -loglevel error -y -i "$REC_FILE" \
+                   -vf "transpose=2,pad=ceil(iw/2)*2:ceil(ih/2)*2" \
+                   -c:v libx264 -preset fast -crf 28 -pix_fmt yuv420p \
+                   -movflags +faststart -an out/demo.mp4; then
+                echo "已生成 out/demo.mp4"
+              else
+                echo "ffmpeg 转码失败，回退为直接复制 mov"
+                cp "$REC_FILE" out/demo.mp4 2>/dev/null || true
+              fi
+            else
+              echo "未安装 ffmpeg，直接复制 mov（QuickTime 容器，多数播放器可播）"
+              cp "$REC_FILE" out/demo.mp4 2>/dev/null || true
+            fi
+            ls -lh out/demo.mp4 2>/dev/null || echo "demo.mp4 生成失败（不影响构建）"
+          else
+            echo "录像文件为空或缺失，跳过 demo.mp4（不影响构建）"
+          fi
+
+          echo "=== 7. 截图 ==="
+          xcrun simctl io "$DEVICE" screenshot /tmp/raw.png 2>&1 | head -3
+          if [ -f /tmp/raw.png ]; then
+            cp /tmp/raw.png out/screenshot-raw.png
+            sips -r 270 /tmp/raw.png --out out/screenshot-home.png 2>/dev/null || cp /tmp/raw.png out/screenshot-home.png
+            echo "截图已保存"
+            ls -la out/*.png
+          else
+            echo "截图失败"
+          fi
+
+          echo "=== 8. 应用日志 ==="
+          xcrun simctl spawn "$DEVICE" log show --last 3m --predicate 'process == "ZL2"' 2>/dev/null | tail -50 > out/app-log.txt
+          echo "日志行数: $(wc -l < out/app-log.txt)"
+
+      - name: 上传到 GitHub Releases
+        ignore_failure: true
+        script: |
+          set +e
+          IPA=$(ls out/*.ipa 2>/dev/null | head -1)
+          [ -z "$IPA" ] && { echo "没有 IPA，跳过"; exit 0; }
+
+          GH_TOKEN="${GITHUB_TOKEN:-}"
+          if [ -z "$GH_TOKEN" ]; then echo "没有 GITHUB_TOKEN，跳过上传"; exit 0; fi
+
+          TAG="v$(date +%Y%m%d-%H%M)"
+          REPO="liyuzs/zl2-ios"
+          NAME="CraftLauncher.ipa"
+
+          echo "创建 release $TAG"
+          RESP=$(curl -s -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/releases" \
+            -d "{\"tag_name\":\"$TAG\",\"name\":\"CraftLauncher $TAG\",\"body\":\"自动构建产物\",\"draft\":false,\"prerelease\":false}")
+
+          UPLOAD=$(echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('upload_url','').split('{')[0])" 2>/dev/null)
+          if [ -z "$UPLOAD" ]; then echo "创建 release 失败: $RESP"; exit 0; fi
+
+          echo "上传 $IPA"
+          curl -s -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"$IPA" \
+            "$UPLOAD?name=$NAME" | head -c 200
+          echo ""
+          echo "✓ 完成: https://github.com/$REPO/releases/tag/$TAG"
+
+    artifacts:
+      - out/ZL2.ipa
+      - out/screenshot-home.png
+      - out/demo.mp4
+      - out/app-log.txt
+      - out/compile-errors.txt

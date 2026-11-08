@@ -1,0 +1,95 @@
+# XcodeGen 工程定义
+# 用法（在 Mac 或 GitHub Actions 里）：
+#   brew install xcodegen && xcodegen generate
+# 会生成 ZL2iOS.xcodeproj，然后 xcodebuild 编译。
+
+name: ZL2iOS
+
+options:
+  bundleIdPrefix: com.liyuzs
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+
+targets:
+  ZL2iOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+
+    sources:
+      - path: src
+        excludes:
+          - "Info.plist"
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.liyuzs.craftlauncher
+        PRODUCT_NAME: ZL2
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_OBJC_BRIDGING_HEADER: src/ZL2Core-Bridging-Header.h
+        HEADER_SEARCH_PATHS: $(inherited) $(SRCROOT)/core
+        LIBRARY_SEARCH_PATHS: $(inherited) $(SRCROOT)/core/build
+        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos*]": ZL2_CORE_LINKED
+        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator*]": ''
+        "OTHER_LDFLAGS[sdk=iphoneos*]": "$(inherited) -lZL2Core -lAFNetworking -lawt_xawt -lawt_headless -ltinygl4angle -lAmethystAccountJNI -framework AltKit -framework CAltKit -framework UnzipKit -framework libEGL -framework libGLESv2 -framework AuthenticationServices -framework AVFoundation -framework CoreMotion -framework GameController -framework IOKit -framework QuartzCore -framework UniformTypeIdentifiers -framework WebKit -weak_framework SafariServices"
+        "OTHER_LDFLAGS[sdk=iphonesimulator*]": "$(inherited)"
+        FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/core/resources/Frameworks
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_BITCODE: NO
+        SWIFT_EMIT_LOC_STRINGS: YES
+
+    info:
+      path: src/Info.plist
+      properties:
+        CFBundleDisplayName: CraftLauncher
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        # 允许用户通过「文件」App 把整合包 / 模组放进 Documents，再用文件选择器导入
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        # 启动画面：用和 App 首屏一致的深色，避免白屏闪一下
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        # 长按 App 图标弹出的快捷菜单（iOS 独有）
+        UIApplicationShortcutItems:
+          - UIApplicationShortcutItemType: com.liyuzs.craftlauncher.launch
+            UIApplicationShortcutItemTitle: 启动游戏
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypePlay
+          - UIApplicationShortcutItemType: com.liyuzs.craftlauncher.download
+            UIApplicationShortcutItemTitle: 下载版本
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeDownload
+          - UIApplicationShortcutItemType: com.liyuzs.craftlauncher.settings
+            UIApplicationShortcutItemTitle: 设置
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeSettings
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIRequiresFullScreen: false
+        ITSAppUsesNonExemptEncryption: false
+
+schemes:
+  ZL2iOS:
+    build:
+      targets:
+        ZL2iOS: all
+    run:
+      config: Debug
+    archive:
+      config: Release

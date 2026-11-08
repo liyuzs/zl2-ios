@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 允许调试器 attach：StikDebug / SideStore 靠它开 JIT -->
+    <key>get-task-allow</key>
+    <true/>
+    <!-- JIT 内存权限 -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <!-- 局域网联机发现（组播） -->
+    <key>com.apple.developer.networking.multicast</key>
+    <true/>
+</dict>
+</plist>

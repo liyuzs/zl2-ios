@@ -1,0 +1,38 @@
+# --- 构建产物 ---
+core/build/
+*.o
+*.a
+*.dylib.tmp
+build/
+build-sim/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# --- Swift / Xcode ---
+.swiftpm/
+*.xcuserstate
+xcuserdata/
+
+# --- 系统垃圾 ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+
+# --- 编辑器 ---
+.vscode/
+.idea/
+*.swp
+
+# --- 临时文件 ---
+*.log
+*.tmp
+*.bak
+*.bak-*
+__pycache__/
+*.pyc
+
+# --- 注意：jre/ 要保留 ---
+# CI 从 jre/ 目录取 JRE（见 docs/CI修复-JRE源替换.md）。
+# 不要把它 ignore 掉，否则构建会失败。

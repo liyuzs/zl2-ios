@@ -1,0 +1,240 @@
+name: iOS Build
+
+# 用 GitHub 免费的 macOS 机器编译，全程不需要本地 Mac。
+# 产物：
+#   ZL2.ipa            —— 真机包（未签名，用 TrollStore 装 或 AltStore 签）
+#   ZL2-simulator.zip  —— 模拟器包（没设备时可在 Mac 上跑起来看界面）
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Build Amethyst core (静态库)
+        run: |
+          set -x
+          SYSROOT=$(xcrun --sdk iphoneos --show-sdk-path)
+          CLANG=$(xcrun --sdk iphoneos -f clang)
+          CLANGXX=$(xcrun --sdk iphoneos -f clang++)
+          cd core
+          cmake -B build \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT="$SYSROOT" \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
+            -DCMAKE_C_COMPILER="$CLANG" \
+            -DCMAKE_CXX_COMPILER="$CLANGXX" \
+            -DCONFIG_RELEASE=1 \
+            -DCONFIG_BRANCH=main \
+            -DCONFIG_COMMIT=zl2 \
+            -DCONFIG_CURSEFORGE_API_KEY= \
+            -DCMAKE_BUILD_TYPE=Release
+          # 构建全部目标（主库 + AFNetworking/awt_xawt 等动态依赖）
+          cmake --build build -j 4 || cmake --build build --target ZL2Core -j 4
+          ls -lh build/*.a build/*.dylib 2>/dev/null || true
+
+      - name: Generate Xcode project
+        run: |
+          xcodegen generate
+          ls -la
+          xcodebuild -list -project ZL2iOS.xcodeproj
+
+      - name: Build for device (未签名)
+        run: |
+          xcodebuild \
+            -project ZL2iOS.xcodeproj \
+            -scheme ZL2iOS \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Bundle runtime & frameworks
+        run: |
+          set -x
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          echo "APP=$APP"
+          test -n "$APP"
+
+          # 1) 渲染/认证 dylib 与 framework
+          mkdir -p "$APP/Frameworks"
+          cp -R core/resources/Frameworks/. "$APP/Frameworks/"
+          # JIT 脚本：iOS 26 启动必需（Amethyst 会从 bundle 读）
+          for f in core/resources/*.js; do
+            [ -f "$f" ] && cp "$f" "$APP/" && echo "copied $(basename "$f")"
+          done
+
+          # 1.5) CMake 产出的动态库（AFNetworking / awt_xawt 等）
+          cp -R core/build/*.dylib "$APP/Frameworks/" 2>/dev/null || true
+          ls "$APP/Frameworks" | wc -l
+
+          # 2) JRE 17 / 21 / 25（按 MC 版本自动选；MC 26+ 需要 25）
+          #
+          # 原来的源 assets.angelauramc.dev 已经彻底无法解析（域名挂了），
+          # 所以改成三级回退：
+          #   ① 仓库内的 jre/ 目录（预先放好，最可靠）
+          #   ② GitHub Release 的 jre-assets 标签
+          #   ③ 旧域名（万一它哪天活了）
+          JRE_BASE_RELEASE="https://github.com/liyuzs/zl2-ios/releases/download/jre-assets"
+          JRE_BASE_OLD="https://assets.angelauramc.dev/openjdk/ios-arm64"
+
+          for JV in 17 21 25; do
+            DEST="$APP/java_runtimes/java-${JV}-openjdk"
+            mkdir -p "$DEST"
+            ARCHIVE="/tmp/jre${JV}.tar.xz"
+            GOT=""
+
+            # ① 仓库内
+            if [ -f "jre/jre${JV}-ios-aarch64.tar.xz" ]; then
+              echo "JRE $JV: 使用仓库内资源"
+              cp "jre/jre${JV}-ios-aarch64.tar.xz" "$ARCHIVE" && GOT=1
+            fi
+
+            # ② Release
+            if [ -z "$GOT" ]; then
+              echo "JRE $JV: 尝试从 Release 下载"
+              curl -L --fail --retry 3 --max-time 300 \
+                -o "$ARCHIVE" "${JRE_BASE_RELEASE}/jre${JV}-ios-aarch64.tar.xz" && GOT=1
+            fi
+
+            # ③ 旧域名
+            if [ -z "$GOT" ]; then
+              echo "JRE $JV: 尝试旧源"
+              curl -L --fail --retry 2 --max-time 180 \
+                -o "/tmp/jre${JV}.zip" "${JRE_BASE_OLD}/jre${JV}-ios-aarch64.zip" \
+                && unzip -q -o "/tmp/jre${JV}.zip" -d "/tmp/jreext${JV}" \
+                && cp /tmp/jreext${JV}/*.tar.xz "$ARCHIVE" && GOT=1
+            fi
+
+            if [ -z "$GOT" ]; then
+              echo "::warning::JRE $JV 三个源都拿不到，跳过"
+              continue
+            fi
+
+            tar xf "$ARCHIVE" -C "$DEST" --strip-components=2
+            echo "JRE $JV done"
+          done
+
+          # 3) 校验关键文件
+          ls "$APP/java_runtimes/java-17-openjdk/lib/libjli.dylib" \
+            || echo "::warning::JRE17 缺失 libjli.dylib"
+          ls "$APP/Frameworks" | head -20
+          du -sh "$APP"
+
+      - name: Package unsigned IPA
+        run: |
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          echo "app = $APP"
+          if [ -z "$APP" ]; then echo "::error::没找到 .app，编译失败"; exit 1; fi
+          rm -rf Payload out && mkdir -p Payload out
+          cp -R "$APP" Payload/
+          zip -qry "out/ZL2.ipa" Payload
+          ls -la out
+
+      - name: Build for simulator
+        continue-on-error: true
+        run: |
+          xcodebuild \
+            -project ZL2iOS.xcodeproj \
+            -scheme ZL2iOS \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-sim \
+            CODE_SIGNING_ALLOWED=NO \
+            OTHER_LDFLAGS="" \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS="" \
+            build
+          APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          if [ -n "$APP" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "$APP" out/ZL2-simulator.zip
+          fi
+          ls -la out
+
+      - name: Run in simulator & screenshot
+        continue-on-error: true
+        run: |
+          set -x
+          DEVICE=$(xcrun simctl list devices available | grep -m1 -E 'iPhone 1[5-7]' | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+          echo "DEVICE=$DEVICE"
+          [ -z "$DEVICE" ] && DEVICE=$(xcrun simctl list devices available | grep -m1 'iPhone' | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+          xcrun simctl boot "$DEVICE" || true
+          sleep 5
+          APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' 2>/dev/null | head -1)
+          echo "SIM APP=$APP"
+          if [ -n "$APP" ]; then
+            echo "=== 安装 ==="
+            xcrun simctl install "$DEVICE" "$APP" 2>&1 | tee out/install.log || true
+            echo "=== 启动 ==="
+            BID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist" 2>/dev/null || echo "com.example.zl2ios")
+            echo "BUNDLE_ID=$BID"
+            xcrun simctl launch "$DEVICE" "$BID" 2>&1 | tee out/launch.log || true
+            sleep 8
+            echo "=== 进程状态 ==="
+            xcrun simctl spawn "$DEVICE" launchctl list 2>/dev/null | grep -i zl2 || echo "进程不在运行"
+            xcrun simctl io "$DEVICE" screenshot /tmp/raw-shot.png || true
+            # 设备按住竖屏，但 App 是横屏布局，旋转 90° 才是真实观感
+            sips -r 270 /tmp/raw-shot.png --out out/screenshot-home.png >/dev/null 2>&1 || cp /tmp/raw-shot.png out/screenshot-home.png
+            # 崩溃日志
+            CRASH_DIR="$HOME/Library/Logs/DiagnosticReports"
+            ls -lt "$CRASH_DIR" 2>/dev/null | head -5 || true
+            cp -R "$CRASH_DIR"/ZL2* out/ 2>/dev/null || true
+            echo "=== 最近的 App 日志 ==="
+            xcrun simctl spawn "$DEVICE" log show --last 2m --predicate 'process == "ZL2"' 2>/dev/null | tail -40 || true
+          fi
+          ls -la out || true
+
+      - name: Publish to GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: ZL2 构建 #${{ github.run_number }}
+          body: |
+            自动构建产物（未签名 IPA）
+            - 提交：${{ github.sha }}
+            - 包含：Amethyst 核心 + JRE17 + Frameworks
+            - 提示：需要自行签名（SideStore / Sideloadly）
+          files: out/ZL2.ipa
+          generate_release_notes: false
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZL2-build
+          path: out/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Build summary
+        run: |
+          echo "### 编译完成 ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ZL2.ipa\`：未签名真机包，TrollStore 可直接安装" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ZL2-simulator.zip\`：模拟器包，仅用于看界面" >> $GITHUB_STEP_SUMMARY
+          ls -la out >> $GITHUB_STEP_SUMMARY
