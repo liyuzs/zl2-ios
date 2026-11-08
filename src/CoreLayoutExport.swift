@@ -246,7 +246,51 @@ enum CoreLayoutExporter {
             d["cornerRadius"] = 100.0
         }
 
+        // 方向键位：8 个方向 × 4 个键位 = 32 个整数
+        //
+        // 核心的 ControlJoystick 原来把 W/A/S/D 写死，
+        // 现在改成读 directionKeycodes。索引 = direction * 4 + slot。
+        // 方向编号对齐核心的 DIRECTION_* 宏：
+        //   0=EAST 1=NE 2=NORTH 3=NW 5=SW 7=SE（核心跳过 WEST=4 和 SOUTH=6，
+        //   因为它们是 NE/NW 和 SW/SE 的中间态）
+        // 但 ZL2 的 8 个方向都配了，所以按 0-7 依次填。
+        d["directionKeycodes"] = directionKeycodes(for: joy)
+
         return d
+    }
+
+    /// ZL2 的 directionEvents → 核心要的 32 个整数
+    ///
+    /// 核心的方向编号（见 ControlJoystick.m 的 DIRECTION_* 宏）：
+    ///   0 EAST / 1 NORTH_EAST / 2 NORTH / 3 NORTH_WEST
+    ///   4 WEST / 5 SOUTH_WEST / 6 SOUTH / 7 SOUTH_EAST
+    ///
+    /// ZL2 的键名与之对应，但 ZL2 默认只给 8 个方向配了 WASD 组合。
+    static func directionKeycodes(for joy: ZLJoystick) -> [Int] {
+        // 方向名 → 核心编号
+        let order: [ZLJoystickDirection] = [
+            .east, .northEast, .north, .northWest,
+            .west, .southWest, .south, .southEast,
+        ]
+
+        var out = [Int](repeating: 0, count: 32)
+
+        // 用户没自定义时用 ZL2 的默认绑定（WASD 八向）
+        let events = joy.directionEvents.isEmpty ? ZLJoystickDefaults.directionEvents
+                                                 : joy.directionEvents
+
+        for (idx, dir) in order.enumerated() {
+            guard let list = events[dir.rawValue] else { continue }
+            var slot = 0
+            for ev in list where ev.type == .key {
+                guard slot < 4 else { break }
+                if let code = GLFWKeyNames.code(for: ev.value), code > 0 {
+                    out[idx * 4 + slot] = code
+                    slot += 1
+                }
+            }
+        }
+        return out
     }
 
     // MARK: 样式内联

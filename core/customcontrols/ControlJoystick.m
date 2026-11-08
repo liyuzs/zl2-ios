@@ -27,6 +27,9 @@ NSMutableDictionary* createButton(NSString* name, int* keycodes, NSString* dynam
 @property(nonatomic) UIView *background, *thumb;
 @property(nonatomic) UIButton *fwdLockView;
 @property(nonatomic) CGPoint mCenter;
+/// 当前按下的方向键（用于算出该松开哪些）
+/// 布局里配了 directionKeycodes 时才有意义，旧布局走写死的 WASD 路径
+@property(nonatomic) NSMutableSet<NSNumber *> *activeDirectionKeys;
 @end
 
 @implementation ControlJoystick
@@ -37,6 +40,8 @@ NSMutableDictionary* createButton(NSString* name, int* keycodes, NSString* dynam
     instance.background = [UIView new];
     instance.thumb = [UIView new];
     instance.thumb.backgroundColor = UIColor.blackColor;
+    // 方向键状态集合（配了 directionKeycodes 时用）
+    instance.activeDirectionKeys = [NSMutableSet set];
     [instance addSubview:instance.background];
     [instance addSubview:instance.thumb];
 
@@ -155,25 +160,63 @@ NSMutableDictionary* createButton(NSString* name, int* keycodes, NSString* dynam
         return;
     }
 
-    // Update WASD states
+    // Update direction key states
+    //
+    // ZL2-iOS: 原来这里把 W/A/S/D 写死，忽略了布局文件里的 directionEvents。
+    // 现在从 self.properties[@"directionKeycodes"] 读：
+    //   8 个方向 × 4 个键位 = 32 个整数
+    //   索引 = direction * 4 + slot
+    // 没配的方向键位是 0，跳过不发送。
+    //
+    // 兜底：布局里没这个字段（旧布局）时，保持原来的 WASD 行为。
     int mod = leftShiftHeld ? GLFW_MOD_SHIFT : 0;
-    CallbackBridge_nativeSendKey(GLFW_KEY_W, 0,
-        direction >= DIRECTION_NORTH_EAST &&
-        direction <= DIRECTION_NORTH_WEST,
-        mod);
-    CallbackBridge_nativeSendKey(GLFW_KEY_A, 0,
-        direction >= DIRECTION_NORTH_WEST &&
-        direction <= DIRECTION_SOUTH_WEST,
-        mod);
-    CallbackBridge_nativeSendKey(GLFW_KEY_S, 0,
-        direction >= DIRECTION_SOUTH_WEST &&
-        direction <= DIRECTION_SOUTH_EAST,
-        mod);
-    CallbackBridge_nativeSendKey(GLFW_KEY_D, 0,
-        direction == DIRECTION_SOUTH_EAST ||
-        direction == DIRECTION_EAST ||
-        direction == DIRECTION_NORTH_EAST,
-        mod);
+    NSArray *dirKeys = self.properties[@"directionKeycodes"];
+
+    if (dirKeys != nil && dirKeys.count >= 32) {
+        // 新路径：按配置发送
+        // 先收集「本帧应该按下的键」，再把「上一帧按下但本帧不该按的」松开
+        NSMutableSet *shouldBeDown = [NSMutableSet set];
+        if (direction >= 0) {
+            int base = direction * 4;
+            for (int slot = 0; slot < 4; slot++) {
+                int kc = [dirKeys[base + slot] intValue];
+                if (kc > 0) [shouldBeDown addObject:@(kc)];
+            }
+        }
+
+        // 松开不再需要的
+        for (NSNumber *n in self.activeDirectionKeys) {
+            if (![shouldBeDown containsObject:n]) {
+                CallbackBridge_nativeSendKey([n intValue], 0, 0, mod);
+            }
+        }
+        // 按下新需要的
+        for (NSNumber *n in shouldBeDown) {
+            if (![self.activeDirectionKeys containsObject:n]) {
+                CallbackBridge_nativeSendKey([n intValue], 0, 1, mod);
+            }
+        }
+        self.activeDirectionKeys = shouldBeDown;
+    } else {
+        // 旧路径：写死的 WASD
+        CallbackBridge_nativeSendKey(GLFW_KEY_W, 0,
+            direction >= DIRECTION_NORTH_EAST &&
+            direction <= DIRECTION_NORTH_WEST,
+            mod);
+        CallbackBridge_nativeSendKey(GLFW_KEY_A, 0,
+            direction >= DIRECTION_NORTH_WEST &&
+            direction <= DIRECTION_SOUTH_WEST,
+            mod);
+        CallbackBridge_nativeSendKey(GLFW_KEY_S, 0,
+            direction >= DIRECTION_SOUTH_WEST &&
+            direction <= DIRECTION_SOUTH_EAST,
+            mod);
+        CallbackBridge_nativeSendKey(GLFW_KEY_D, 0,
+            direction == DIRECTION_SOUTH_EAST ||
+            direction == DIRECTION_EAST ||
+            direction == DIRECTION_NORTH_EAST,
+            mod);
+    }
 
     self.fwdLockView.hidden = direction != DIRECTION_NORTH;
     lastDirection = direction;
