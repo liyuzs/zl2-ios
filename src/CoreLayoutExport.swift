@@ -93,12 +93,20 @@ enum CoreLayoutExporter {
         var styleByUUID: [String: ZLButtonStyle] = [:]
         for s in layout.styles { styleByUUID[s.uuid] = s }
 
+        // 图层 uuid → 序号，供「切换图层」按钮编出伪键码
+        var layerIndexByUUID: [String: Int] = [:]
+        for (i, layer) in layout.layers.enumerated() where !layer.uuid.isEmpty {
+            layerIndexByUUID[layer.uuid] = i
+        }
+
         var list: [[String: Any]] = []
 
         // 核心没有图层概念，把不隐藏的图层平铺成一个列表
         for layer in layout.layers where layer.hide == false {
             for btn in layer.normalButtons {
-                list.append(convertButton(btn, style: resolveStyle(btn.buttonStyle, styleByUUID)))
+                list.append(convertButton(btn,
+                                          style: resolveStyle(btn.buttonStyle, styleByUUID),
+                                          layerIndexByUUID: layerIndexByUUID))
             }
             for txt in layer.textBoxes {
                 list.append(convertTextBox(txt, style: resolveStyle(txt.buttonStyle, styleByUUID)))
@@ -118,11 +126,12 @@ enum CoreLayoutExporter {
     // MARK: 普通按钮
 
     private static func convertButton(_ btn: ZLNormalButton,
-                                      style: ZLStyleConfig?) -> [String: Any] {
+                                      style: ZLStyleConfig?,
+                                      layerIndexByUUID: [String: Int] = [:]) -> [String: Any] {
         var d = baseGeometry(position: btn.position, size: btn.buttonSize)
         d["type"] = "button"
         d["name"] = btn.text.plainText
-        d["keycodes"] = keycodesOf(btn.clickEvents)
+        d["keycodes"] = keycodesOf(btn.clickEvents, layerIndexByUUID: layerIndexByUUID)
         d["isDynamic"] = true
         d["displayInGame"] = (btn.visibilityType != .inMenu)
         d["displayInMenu"] = false
@@ -320,11 +329,29 @@ enum CoreLayoutExporter {
     ///
     /// ZL2 把按键存成字符串 "GLFW_KEY_ESCAPE"，核心要 [Int]。
     /// 一个控件最多挂 4 个键位（核心的 keycodes 数组固定长度 4）。
-    private static func keycodesOf(_ events: [ZLClickEvent]) -> [Int] {
+    ///
+    /// 图层事件（switch_layer / show_layer / hide_layer）不是按键，
+    /// 但核心只认整数，所以把图层**在数组里的序号**编成 -1001/-1002/... 的
+    /// 「伪键码」，由 SurfaceViewController 的 executebtn: default 分支拦截处理。
+    ///
+    /// - Parameter layerIndexByUUID: 图层 uuid → 序号（由当前布局提供）
+    private static func keycodesOf(_ events: [ZLClickEvent],
+                                   layerIndexByUUID: [String: Int] = [:]) -> [Int] {
         var codes: [Int] = []
-        for ev in events where ev.type == .key {
-            if let code = GLFWKeyNames.code(for: ev.value), code > 0 {
-                codes.append(code)
+        for ev in events {
+            switch ev.type {
+            case .key:
+                if let code = GLFWKeyNames.code(for: ev.value), code > 0 {
+                    codes.append(code)
+                }
+            case .switchLayer, .showLayer, .hideLayer:
+                // 图层事件：uuid 查出序号 → 伪键码
+                if let idx = layerIndexByUUID[ev.value] {
+                    codes.append(LayerPseudoKey.encode(index: idx))
+                }
+            default:
+                // launcher_event / send_text 没有键码对应，跳过
+                break
             }
         }
         // 核心要求正好 4 个；不足补 0，超出截断

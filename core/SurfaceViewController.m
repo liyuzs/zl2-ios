@@ -906,7 +906,30 @@ static GameSurfaceView* pojavWindow;
                     break;
 
                 default:
-                    NSLog(@"Warning: button %@ sent unknown special keycode: %d", sender.titleLabel.text, keycode);
+                    // ZL2-iOS: 图层切换用的「伪键码」
+                    //
+                    // 核心的 keycodes 是整数数组，而 ZL2 的图层事件存的是 uuid 字符串。
+                    // 导出布局时把 uuid 哈希成 -1000 以下的负数塞进 keycodes，
+                    // 这里拦下来交给 Swift 的 ZLLayerSwitcher 处理。
+                    //
+                    // 用 < -1000 是为了避开核心已占用的 -1 ~ -9（SPECIALBTN_*）。
+                    if (keycode <= -1000) {
+                        if (!held) {
+                            Class switcher = NSClassFromString(@"ZL2iOS.ZLLayerSwitcher");
+                            if (switcher == nil) {
+                                switcher = NSClassFromString(@"ZLLayerSwitcher");
+                            }
+                            if ([switcher respondsToSelector:@selector(activateLayerByPseudoKey:)]) {
+                                [switcher performSelector:@selector(activateLayerByPseudoKey:)
+                                               withObject:@(keycode)];
+                            } else {
+                                NSLog(@"[ZL2] 图层切换器不可用，伪键码 %d", keycode);
+                            }
+                        }
+                    } else {
+                        NSLog(@"Warning: button %@ sent unknown special keycode: %d",
+                              sender.titleLabel.text, keycode);
+                    }
                     break;
             }
         } else if (keycode > 0) {

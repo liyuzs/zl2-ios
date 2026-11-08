@@ -855,6 +855,10 @@ struct ControlEditorScreen: View {
     private func syncToCore() {
         let zl = ZLControlLayout.from(doc: doc)
         do {
+            // 无论单层多层，都先存下「伪键码 → 图层 uuid」映射，
+            // 核心按钮点击时靠它反查要切到哪一层
+            ZLLayerSwitcher.persistPseudoKeys(for: zl)
+
             // 多图层：每层导出一份文件，核心运行时按需切换
             if zl.layers.count > 1 {
                 let map = try CoreLayoutExporter.exportAllLayers(zl)

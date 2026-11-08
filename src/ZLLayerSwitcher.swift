@@ -112,6 +112,29 @@ public final class ZLLayerSwitcher: NSObject {
         _ = activateLayer(at: 0)
     }
 
+    // MARK: ObjC 入口（核心按钮点击时调用）
+
+    /// 由核心的 executebtn: 通过伪键码调用
+    ///
+    /// 流程：伪键码 → 层序号 → 切到对应图层
+    @objc(activateLayerByPseudoKey:)
+    @discardableResult
+    public static func activateLayer(pseudoKey: Int) -> Bool {
+        guard let index = LayerPseudoKey.decodeIndex(pseudoKey) else {
+            NSLog("[ZL2] 伪键码 %ld 不合法", pseudoKey)
+            return false
+        }
+        return activateLayer(at: index)
+    }
+
+    /// 保存「伪键码 → uuid」映射，供按钮点击时反查
+    @objc(persistPseudoKeysFor:)
+    public static func persistPseudoKeys(for layout: ZLControlLayout) {
+        let map = LayerPseudoKey.buildMapping(for: layout)
+        LayerPseudoKey.persist(map)
+        NSLog("[ZL2] 图层伪键码已保存：%ld 条", map.count)
+    }
+
     /// 当前层序号
     @objc public static var activeIndex: Int { currentIndex }
 
