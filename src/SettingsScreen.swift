@@ -255,10 +255,13 @@ struct SettingsScreen: View {
     @ViewBuilder
     private var renderSettings: some View {
         cardGroup(rows: [
-            text("renderer",
-                 ZLStrings.settings_renderer_global_renderer_title,
-                 ZLStrings.settings_renderer_global_renderer_summary,
-                 placeholder: ZLStrings.generic_unspecified),
+            // 原来这里是自由输入框 —— 用户随手打一个 "OpenGL" 进去，
+            // 核心会拿着这个名字去 dlopen("@rpath/OpenGL")，必然失败。
+            // 改成只能从「包里真实存在的渲染库」里选（见 ZLRenderers.swift）。
+            picker("renderer",
+                   ZLStrings.settings_renderer_global_renderer_title,
+                   ZLStrings.settings_renderer_global_renderer_summary,
+                   options: ZLRenderers.pickerPairs().map { ZLOption(value: $0.value, label: $0.label) }),
             toggle("sfpewPluginLayer",
                    ZLStrings.settings_renderer_sfpew_plugin_layer_title,
                    ZLStrings.settings_renderer_sfpew_plugin_layer_summary),

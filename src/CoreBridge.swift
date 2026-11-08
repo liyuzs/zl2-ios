@@ -419,8 +419,17 @@ enum CoreBridge {
         setenv("AME_EXTRA_JVM_ARGS", extraJV, 1)
 
         // 1) 渲染器
-        let userRenderer = UserDefaults.standard.string(forKey: "renderer") ?? ""
-        setenv("RENDERER", userRenderer.isEmpty ? "auto" : userRenderer, 1)
+        // 存进去的值可能是老版本留下的（比如 iOS 上根本不存在的 MobileGlues），
+        // 也可能是用户手输错的。核心拿到名字会直接 dlopen("@rpath/<名字>")，
+        // 名字对不上就是启动失败，所以写进环境变量之前先净化一遍。
+        let storedRenderer = UserDefaults.standard.string(forKey: "renderer") ?? ""
+        let safeRenderer = ZLRenderers.sanitize(storedRenderer)
+        if safeRenderer != storedRenderer {
+            NSLog("[ZL2] 渲染器 %@ 不可用，已改为 %@",
+                  storedRenderer, ZLRenderers.displayName(for: safeRenderer))
+            UserDefaults.standard.set(safeRenderer, forKey: "renderer")
+        }
+        setenv("RENDERER", safeRenderer, 1)
 
         // 2) 内存分配：用户设了就用他的，同时同步给核心
         let userRam = UserDefaults.standard.object(forKey: "ramAllocation") as? Int ?? 0
