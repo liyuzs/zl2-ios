@@ -22,6 +22,12 @@
 
 ### 修复
 
+- **内存分配滑块完全无效**：写的是 `general.allocated_memory`，核心读的是 `java.allocated_memory`；而且核心在 `java.auto_ram` 为真时根本不看这个值（没有内存 entitlement 的设备上它默认就是真）。两层叠在一起，用户拖了滑块等于没拖。现在同时写对键名并关掉 auto，还把值压到物理内存一半以内。
+- **控制布局导出了却没人加载**：JSON 正确写进了 `controlmap/`，但没告诉核心去加载它。核心读布局名走 `PLProfiles` 的两处（`launcher_profiles.json` 或 `control.default_ctrl`），原代码只写了 `UserDefaults` —— 核心一直在加载默认布局。
+- **渲染器选了不生效**：`JavaLauncher` 进启动流程后会重新读一次 renderer 并覆盖环境变量，兜底是 `video.renderer`（默认 auto）。上一轮的净化避免了崩溃，但用户的选择被丢掉。现在同步写 `video.renderer`。
+- **1.20.1 被强行用 Java 21 启动**：`requiredJavaVersion` 里 `if mi >= 20` 把整个 1.20.x 判成要 21，实际分界是 1.20.5。加上 `java_homes` 里 `1_17_newer` 被写成 21（核心自己的默认是 17），1.17~1.20.4 全被拉去 Java 21 —— 而 1.17 用 Java 21 会直接崩。
+- **JRE 自检"通过"但启动失败**：`runtimeCheck()` 只要任意一个 JRE 在就返回 true，但启动用的是按版本算出的 minJava。拆成按版本检查，失败时报「需要 Java X，包里只有…」。
+- **bootstrap 里写偏好的动作全丢失**：`applyUserSettings()` 在 `loadPreferences()` 之前执行，那时全局 `pref` 还是 nil，ObjC 对 nil 发消息是静默无操作。顺序已改为 setenv → loadPreferences → 再读写。
 - **渲染器可以填任意字符串**：设置页的「渲染器」本来是自由输入框，打进 `OpenGL` 或旧配置残留的 `libmobileglues.dylib`，核心会拿这个名字直接 `dlopen("@rpath/<名字>")`，必然失败 —— 表现是启动黑屏或闪退，界面上完全看不出原因。现在改成下拉，只列包里真实存在的后端；启动时还会把旧配置里的残留值净化掉（认不出来的短名补成全名，认不出来就回落 ANGLE → GL4ES）。
 - **版本号从来没被真的写进去**：`project.yml` 里 `MARKETING_VERSION` 硬编码 `0.1.0`、`CFBundleVersion` 硬编码 `1`，而 CI 的 Release tag 用的是运行号（`build-235`、`build-236`…），两者毫无关联 —— 不管装哪个构建，App 都自称 `0.1.0 (1)`。现在 CI 在生成工程之前把 `1.0.<运行号>` 和 `<运行号>` 写进 `project.yml`，并加了断言：注入失败直接构建失败，不会静默产出旧版本号。
 - **「检查更新」永远说有新版本**：旧逻辑把 tag `build-236` normalize 成 `"236"`，再跟 `"0.1.0"` 比大小，`236 > 0` 恒成立，于是线上就是最新版也一直提示更新。改成优先按 build 号比较（tag 的 `build-N` 与 `CFBundleVersion` 同源），抽不到 build 号才退回语义化版本。21 条用例覆盖了这条回归。
@@ -41,6 +47,7 @@
 - **设置项标注**：115 项中 75 项明确标注「不支持 / 未接入」，置灰并说明原因
 - **下拉刷新**：模组管理、资源管理页支持下拉重扫目录
 - **死代码清理**：删除 204 行无用代码
+- **三套存储对撞审计**：新增 `_audit-stores.js`，把「Swift 写 UserDefaults 但核心在别处读」的键全找出来。这次靠它翻出上面三个假功能
 - **渲染器可见性**：环境诊断多一项「当前渲染器」，显示净化后真正生效的后端；存的值和实际不一致时标黄并写出原值
 - **版本号单一来源**：`Info.plist` 不再重复写死版本，改为引用 `$(MARKETING_VERSION)`；`LicenseScreen` 也不再自己写一份兜底值，统一走 `ZLUpdateChecker`
 
