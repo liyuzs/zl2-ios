@@ -63,6 +63,9 @@
 
 ### 已知问题
 
+- **`CallbackBridge` 两个 native 未导出**：`nativeSetInputReady(Z)Z` 由 `GLFW.class` 引用（真实路径），`nativeSendData(ZILjava/lang/String;)V` 是安卓那套 Java→native 输入入口。都已补上 JNI 导出；`nativeSendData` 是只记日志的占位实现（iOS 输入方向相反），若真机日志出现该行则说明确有代码走这条路。
+- **上游 `window-size` 回调笔误**：`CallbackBridge_nativeSetInputReady` 里 `GLFW_invoke_WindowSize` 分支调的是 `GLFW_invoke_FramebufferSize`，导致该回调从未触发。已修正。
+
 - **`UIKit.updateMCGuiScale` 没实现**：jar 里 `org/lwjgl/glfw/GLFW.class` 会引用它（LWJGL 建窗口/改尺寸时调），而核心只导出了 `showError`。缺了就是 `UnsatisfiedLinkError`。已补上并转发到 `MinecraftOptionUtils.updateMCGuiScale`；同时给无调用者的 `refreshAWTBuffer` 留了空实现兜底。
 
 - **JNI 注册拿 NULL 的 jclass 去调 RegisterNatives（每次 JVM 启动都会崩）**：`registerOpenHandler()` 在 `JNI_OnLoad` 里注册 `CTCClipboard` 的 native 方法，而两个包名的 `CTCClipboard` 在我们用的 cacio jar 里都不存在 → `FindClass` 返回 NULL 且留下未清理的异常 → `RegisterNatives(env, NULL, ...)` 让 HotSpot abort。已在两处 `RegisterNatives` 加判空；代价是游戏内复制粘贴不可用（需要带 `CTCClipboard` 的 cacio 构建才能恢复）。
