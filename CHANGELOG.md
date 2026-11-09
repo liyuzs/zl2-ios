@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **删掉 230 行完全没用的重复色板**：`src/ZLPalette.swift` 里的 `ZLThemeType` / `ZLPaletteV2` / `ZLPaletteLight` / `ZLPaletteDark` 全项目零引用，却存了**第二份 490 个颜色值**（真正在用的是 `ColorThemes.swift` 的 `ZLPalette.raw`）。同一份数据两处各存一遍，改了 A 不改 B 就会静默分叉；而且 `ZLThemeType` 有 8 个主题（多一个"动态"）与在用的 7 个不一致，容易误以为有 8 套。已删除，文件数 71 → 70。
+- 顺带核实：README 的「490 色值（35 角色 × 7 主题 × 亮暗）」**数字准确**——`ZLPalette.raw` 正是 70 项 × 7 = 490。
+
 - **三份安装文档给出三套互相不提的路线**：README 推荐「NB 全能助手（中文，推荐）」，而那两份分别给 TrollStore / SideStore / Sideloadly 三条，**完全不提 NB 全能助手**。已把 README 统一成三条路线表并指向 `安装教程-超详细`；新增 `_check-install-docs.js`（三份都必须提 JIT 与 StikDebug；只在一份出现的"孤例工具"会被报出来）。
 - 顺带核实（待查清单另两项，均正确）：游戏内菜单确实是 `HStack` 左右双栏；`writePerfOptionsIfNeeded` 有 `fileExists` 守卫，**只在 options.txt 不存在时写**，不会覆盖用户改过的设置。两个 StikDebug 地址（官网 / GitHub）都返回 200，均有效。
 
