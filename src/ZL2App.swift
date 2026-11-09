@@ -47,8 +47,6 @@ enum AppRoute: Hashable {
     case assets(String)          // 资源类型名
     case versionContent(String)  // 版本内容类型名
     case search
-    case exportPack
-    case crashLog
     case diagnostics
     case room
     case gameDirs
@@ -191,7 +189,8 @@ struct RootView: View {
                     DownloadScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() },
                                    onSettings: { path.append(.settings) },
                                    onOpenAssets: { kind in path.append(.assets(kind.rawValue)) },
-                                   onOpenSearch: { path.append(.search) })
+                                   onOpenSearch: { path.append(.search) },
+                                   onOpenSearchID: { path.append(.searchID) })
                 case .settings:
                     SettingsScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() },
                                    onDownload: { path.append(.download) })
@@ -219,10 +218,6 @@ struct RootView: View {
                         onOpen: { path.append($0) })
                 case .search:
                     SearchScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
-                case .exportPack:
-                    ExportScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
-                case .crashLog:
-                    CrashLogScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .diagnostics:
                     DiagnosticsScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .room:
@@ -804,3 +799,4 @@ struct AboutScreen: View {
     }
 
 }
+

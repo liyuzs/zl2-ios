@@ -8,6 +8,9 @@ struct DownloadScreen: View {
     var onSettings: () -> Void = {}
     var onOpenAssets: (AssetKind) -> Void = { _ in }
     var onOpenSearch: () -> Void = {}
+    /// 按项目 ID 搜索（Modrinth / CurseForge）。
+    /// 这个页面（SearchIDScreen）一直存在但从没有入口 —— 第75轮扫死路由时发现的。
+    var onOpenSearchID: () -> Void = {}
 
     @State private var category = 0
     @State private var filter = 0          // 0 正式版 1 快照 2 愚人节 3 远古
@@ -158,6 +161,20 @@ struct DownloadScreen: View {
             .frame(width: 190, height: 40)
             .background(ZLTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            // 按项目 ID 搜索：知道 ID 的人不用在名字搜索结果里翻
+            Button {
+                ZLHaptic.light()
+                onOpenSearchID()
+            } label: {
+                Image(systemName: "number")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(ZLTheme.textSecond)
+                    .frame(width: 40, height: 40)
+                    .background(ZLTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
 
             Button {
                 ZLHaptic.light()
