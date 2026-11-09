@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **_check-dead-routes 增加一项输出**：对每个「已知死路由」，还会打印它的**目的地上挂了什么**（修饰符 `.xxx(...)` / 内部 `path.append` / `onOpen`）——因为挂在没人走的路由上的东西同样永远不生效。第78轮的实例就是 `.zlGuide(.controlEditor)`（控制编辑器首次引导）挂错在死路由上。
+
 - **清掉 5 个冗余死路由**：`.gameDirs` / `.cleanFiles` / `.exportPackNew` / `.controlLayout` / `.logView` —— 页面都有别的 sheet 入口，路由本身是纯死 case。`AppRoute` 29 → **24 个 case**，死路由豁免 7 → **2 个**（只剩 room 未接入、terracotta 演示页）。
 - **「控制编辑器首次引导」挂错地方**：`.zlGuide(.controlEditor)` 只挂在死路由 `.controlLayout` 的目的地上，所以引导从来没显示过；从真实入口（ControlManageScreen 的 sheet）进编辑器反而看不到。已挪到真实入口。
 
