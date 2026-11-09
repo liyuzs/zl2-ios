@@ -912,7 +912,36 @@ struct ControlEditorScreen: View {
             chipButton("控件层", icon: "square.stack.3d.up.fill", highlighted: showLayerList) {
                 showLayerList.toggle()
             }
-            chipButton("吸附", icon: "grid", highlighted: snap) {
+            // 吸附总开关（会话内）+ 长按/右键出更多吸附选项。
+            // 这里补的是两个**一直没有任何界面**的设置项：
+            //   editorSnapInAllLayers —— 是否吸附到其它图层里的控件（默认关）
+            //   editorWidgetSnapMode  —— 全屏吸附 / 小范围吸附（默认全屏）
+            // 行为代码（ControlEditor.applySnap）早就读它们，用户却调不到。
+            Menu {
+                Button {
+                    writeSettingBool("editorEnableWidgetSnap", !snapEnabled)
+                } label: {
+                    Label(snapEnabled ? "全局关闭吸附" : "全局开启吸附",
+                          systemImage: snapEnabled ? "grid.circle.fill" : "grid.circle")
+                }
+                Button {
+                    writeSettingBool("editorSnapInAllLayers", !snapInAllLayers)
+                } label: {
+                    Label(snapInAllLayers ? "只吸附本层控件" : "吸附所有图层的控件",
+                          systemImage: snapInAllLayers ? "square.stack.3d.up.slash" : "square.stack.3d.up.fill")
+                }
+                Button {
+                    let next = snapModeIsFullScreen ? "SnapMode.Nearby" : "SnapMode.FullScreen"
+                    if let def = ZLSettings.def("editorWidgetSnapMode") {
+                        ZLSettingsStore.shared.set(def, next)
+                    }
+                } label: {
+                    Label(snapModeIsFullScreen ? "改成小范围吸附" : "改成全屏吸附",
+                          systemImage: "arrow.left.and.right.square")
+                }
+            } label: {
+                chipButtonLabel("吸附", icon: "grid", highlighted: snap && snapEnabled)
+            } primaryAction: {
                 snap.toggle()
             }
             chipButton("样式", icon: "paintpalette.fill", highlighted: !doc.styleVault.isEmpty) {
@@ -953,16 +982,27 @@ struct ControlEditorScreen: View {
         .frame(height: 56)
     }
 
+    /// 只负责外观的胶囊标签（Menu 的 label 用它，Button 的 label 也用它）
+    private func chipButtonLabel(_ title: String, icon: String, highlighted: Bool) -> some View {
+        Label(title, systemImage: icon)
+            .font(.system(size: 12))
+            .foregroundStyle(highlighted ? ZLTheme.primaryDeep : ZLTheme.textSecond)
+            .padding(.horizontal, 12).frame(height: 34)
+            .background(highlighted ? ZLTheme.primarySoft : ZLTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
     private func chipButton(_ title: String, icon: String, highlighted: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(title, systemImage: icon)
-                .font(.system(size: 12))
-                .foregroundStyle(highlighted ? ZLTheme.primaryDeep : ZLTheme.textSecond)
-                .padding(.horizontal, 12).frame(height: 34)
-                .background(highlighted ? ZLTheme.primarySoft : ZLTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            chipButtonLabel(title, icon: icon, highlighted: highlighted)
         }
         .buttonStyle(.plain)
+    }
+
+    /// 写一个布尔设置项（吸附菜单用）
+    private func writeSettingBool(_ key: String, _ value: Bool) {
+        guard let def = ZLSettings.def(key) else { return }
+        ZLSettingsStore.shared.set(def, value)
     }
 
     // MARK: 左侧控件层列表
@@ -1224,9 +1264,12 @@ struct ControlEditorScreen: View {
         return v != "SnapMode.Local"
     }
 
+    /// 读一个布尔设置项。
+    /// 默认值只认 `ZLSettings` 声明的那份（`store.bool(def)` 内部按 `def.defaultValue` 兜底）——
+    /// 原来多了一道 `UserDefaults == nil` 的门，等于在这里另写一套默认值，
+    /// 与第86轮 `GameOverlay.boolValue` 是同一个毛病。
     private func readSettingBool(_ key: String, default dv: Bool) -> Bool {
         guard let def = ZLSettings.def(key) else { return dv }
-        if UserDefaults.standard.object(forKey: key) == nil { return dv }
         return ZLSettingsStore.shared.bool(def)
     }
 
