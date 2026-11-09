@@ -1,0 +1,122 @@
+// 死路由检查（声明了目的地，但没有任何导航过去）
+//
+// 起因：ios-zl2 第75轮扫 `AppRoute` 时发现 9 个 case **从来没人导航过去**：
+//   .controlEditor .selectGameVersion .exportPack .crashLog .cleanFiles
+//   .controlLayout .searchID .room .gameDirs（后三者后来确认有入口，见下）
+// 它们对应的屏幕只在 `navigationDestination` 的 switch 里被构造一次，
+// 等于页面写了、用户永远点不到 —— 和"View 写了没挂载"是同一类，但更隐蔽：
+// `_check-orphan-views` 查不出来（因为这些 View 确实被 switch 引用了一次）。
+//
+// 判据：对每个 `case x`，在全部源码里找导航写法：
+//   .append(.x        path.append(AppRoute.x      NavigationLink(value: .x
+//   onOpen(.x         （本项目自定义的回调式导航）
+// 一个都没有 → 死路由。带参数的路由（case x(T)）同样用 `(.x(` 前缀判断。
+//
+// 注意：这不是"错误"，是清理线索。有些路由可能是留给未来的，那也应该有注释说明。
+
+const fs = require('fs');
+const path = require('path');
+
+const SRC = 'D:\\ios-zl2\\src';
+const APP = path.join(SRC, 'ZL2App.swift');
+
+const appSrc = fs.readFileSync(APP, 'utf8');
+const allSrc = fs.readdirSync(SRC)
+  .filter(f => f.endsWith('.swift'))
+  .map(f => fs.readFileSync(path.join(SRC, f), 'utf8'))
+  .join('\n');
+
+// 从 enum AppRoute 块里取 case 名
+const start = appSrc.indexOf('enum AppRoute');
+if (start < 0) {
+  console.log('✗ 找不到 enum AppRoute');
+  process.exit(1);
+}
+const end = appSrc.indexOf('\n}', start);
+const block = appSrc.slice(start, end < 0 ? start + 2000 : end);
+const cases = [...block.matchAll(/case\s+(\w+)/g)].map(m => m[1]);
+
+// 导航写法：逐行统计，跳过"目的地 switch"里那些 `case .x:` 行
+// （那些只是声明目的地，不是导航过去）
+const lines = allSrc.split('\n');
+const navLines = lines.filter(l => {
+  const s = l.trim();
+  if (/^case\s+\./.test(s)) return false;          // switch 的 case
+  if (/^\/\//.test(s)) return false;               // 注释
+  return true;
+});
+const navText = navLines.join('\n');
+
+// 已知的死路由（页面被取代 / 屏幕另有入口 / 明确是演示页）。
+// 新增的死路由**不要**往这里加，先判断该接入口还是该删。
+const ALLOW = {
+  // 明确未接入的功能页（保留是有意的，理由如下）
+  room:             'MultiplayerRoomScreen 属联机房间，远程联机需要 Network Extension（付费开发者账号），尚未接入',
+  terracotta:       'TerracottaScreen 自身已声明为界面演示',
+  // 第76-78轮已删除：exportPack / crashLog / selectGameVersion（页面被取代）
+  //                searchID / serverList（已接上入口）
+  //                gameDirs / cleanFiles / exportPackNew / controlLayout / logView
+  //                （路由死但页面另有 sheet 入口，路由本身冗余，已清掉）
+};
+
+const dead = [];
+for (const c of cases) {
+  if (ALLOW[c]) continue;
+  // 任意位置出现 `.x` 或 `AppRoute.x` 都算引用（append / onOpen / NavigationLink / 其它）
+  const re = new RegExp(`(?:\\.|AppRoute\\.)${c}\\b`);
+  if (!re.test(navText)) dead.push(c);
+}
+
+console.log(`AppRoute 共 ${cases.length} 个 case`);
+console.log('');
+
+// 提取某条路由目的地分支里"挂了什么"（修饰符 / 内部导航）。
+// 为了抓一类具体问题：**有用的东西挂在死路由的目的地上 → 永远不生效**。
+// 第78轮实例：`.zlGuide(.controlEditor)`（编辑器首次引导）只挂在死路由
+// `.controlLayout` 的目的地，所以引导从来没显示过。
+function destinationExtras(route) {
+  const lines = allSrc.split('\n');
+  const startIdx = lines.findIndex(l => new RegExp('^\\s*case \\.' + route + ':').test(l));
+  if (startIdx < 0) return [];
+  const extras = [];
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    const s = lines[i].trim();
+    if (/^case \./.test(s)) break;
+    if (/^\.\w+\(/.test(s) || /path\.append\(/.test(s) || /onOpen\(/.test(s)) {
+      extras.push(s.slice(0, 90));
+    }
+    if (extras.length >= 4) break;
+  }
+  return extras;
+}
+
+console.log('· 已登记为已知死路由（' + Object.keys(ALLOW).length + ' 个，不判失败）：');
+for (const k of Object.keys(ALLOW)) {
+  console.log('    .' + k + '  —— ' + ALLOW[k]);
+  const ex = destinationExtras(k);
+  if (ex.length) {
+    console.log('        ⚠ 它的目的地上还挂着：');
+    for (const e of ex) console.log('            ' + e);
+    console.log('        （没人走这条路由 → 上面这些也永远不生效，考虑挪到真实入口）');
+  }
+}
+console.log('');
+
+if (dead.length === 0) {
+  console.log('✓ 没有新增的死路由');
+  process.exit(0);
+}
+
+console.log(`⚠ ${dead.length} 个路由从没被导航（对应页面用户点不到）：`);
+for (const c of dead) {
+  // 找出它构造了哪个屏幕
+  const m = allSrc.match(new RegExp(`case\\s+\\.${c}\\s*:\\s*([A-Za-z_][\\w]*)\\s*\\(`));
+  const screen = m ? m[1] : '（未能识别）';
+  console.log(`    .${c}   →  ${screen}`);
+}
+console.log('');
+console.log('处理方式二选一：');
+console.log('  ① 接上入口（如果这是该有的功能）');
+console.log('  ② 删掉路由和屏幕（如果已被别的页面取代）');
+console.log('  ③ 确实是留给未来的 → 在 case 上写注释说明，并把它加进本脚本的 ALLOW');
+process.exit(1);
