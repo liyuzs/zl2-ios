@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **README 的性能声明有一处错**：「内存按物理内存 1/3 自适应」——实际是**默认 25%**（`PLPreferences.m:64` 的 `* 0.25`）、**手动上限 50%**（`CoreBridge` 的 `ramMB / 2`），三个数字互不相同。已改正；「关粒子阴影」也改成「粒子最少」（`particles:2` 是 minimal 不是 off）。
+- 新增 `_check-readme-claims.js`：把 README 里能机器验证的声明（内存比例 / 视距 / 粒子 / GC 参数 / 支持版本区间）写成断言，改代码没改文档或反之都会红。
+- 同批核对了三条**准确**的声明：7 套主题（`ZLColorTheme` 正好 7 个 case）、局域网发现（确实是 BSD socket + `IP_ADD_MEMBERSHIP` 加入 `224.0.2.60:4445`）、G1GC + `MaxGCPauseMillis=20`。
+
 - **README 声称支持「1.8 ~ 26+」，但 1.11 及更早需要 Java 8**：`jre/` 只有 17/21/25，`CoreBridge.requiredJavaVersion` 对 ≤1.11 明确返回 8（注释也写着"包里没有 → 明确报错"），所以这批版本装了也起不来，而下载页照样列出且按钮可点。已修：下载页给这类版本加「需 Java 8 · 不支持」标记并**禁用下载**（新增 `CoreBridge.needsUnbundledJava8(_:)`）；README 改成「1.12 ~ 26+」；STATUS 硬限制补一行。
 
 - **界面把 App 自称「ZL2」，违反项目自己声明的 GPLv3 第 7 条**：README 写着「本项目**不以** `ZalithLauncher` 或其缩写 `ZL` 作为名称」，而 8 处界面文字自称 ZL2（欢迎页标题、主界面引导、文件管理空状态、两处 JIT 提示、诊断报告标题、EasyTier 联机名、版本信息默认值）。全部改成 CraftLauncher；新增 `_check-trademark-strings.js`，例外（Bonjour 服务名 / 上游署名 / 发布资产名 / 格式名）逐条登记理由。
