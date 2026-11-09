@@ -413,9 +413,22 @@ struct ServerEditSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("服务器信息") {
+                Section {
                     TextField("名称", text: $server.name)
                     TextField("地址（IP:端口）", text: $server.originIp)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("服务器信息")
+                } footer: {
+                    // 如实说明限制：不查 SRV 记录。
+                    // 很多服务器靠 `_minecraft._tcp` 的 SRV 记录把域名指向真实端口，
+                    // 那种情况下只填域名会连不上（显示离线）。这不是 bug，是能力边界，
+                    // 所以直接告诉用户该填什么，比让他以为服务器坏了强。
+                    Text("如果服务器用了 SRV 记录（只给了你一个域名、没有端口），" +
+                         "请向服主问真实地址和端口，按 `IP:端口` 填写。" +
+                         "比如 `play.example.com:25566`。")
+                        .font(.system(size: 11))
                 }
                 Section("纹理包") {
                     Picker("提示", selection: $server.texturePackStatus) {
@@ -572,8 +585,13 @@ enum MinecraftPing {
         let players = obj["players"] as? [String: Any] ?? [:]
         let maxP = players["max"] as? Int ?? 0
         let online = players["online"] as? Int ?? 0
-        let desc = obj["description"] as? [String: Any]
-        let motd = (desc?["text"] as? String) ?? (obj["description"] as? String) ?? ""
+        // MOTD 有三种常见形态：
+        //   ① 纯字符串                       "A Minecraft Server"
+        //   ② 富文本对象 {"text": "..."}      带颜色/翻译
+        //   ③ 富文本对象 + extra 数组         多数服务器用这个（带分段颜色）
+        // 原来只认 ①② —— 于是 ③ 的服务器 MOTD 全显示空白，
+        // 看起来像"服务器没返回信息"。这里按 ③ 递归展开一次。
+        let motd = flattenChat(obj["description"])
 
         var iconData: Data? = nil
         if let fav = obj["favicon"] as? String,
@@ -589,6 +607,25 @@ enum MinecraftPing {
     }
 
     // MARK: 协议工具
+    /// 把聊天组件（字符串 / {text} / {extra} / 数组）展开成纯文本。
+    /// Minecraft 的 description 字段这三种形态都出现过，只认 text 会漏掉带分段的。
+    private static func flattenChat(_ any: Any?) -> String {
+        switch any {
+        case let s as String:
+            return s
+        case let arr as [Any]:
+            return arr.map { flattenChat($0) }.joined()
+        case let dict as [String: Any]:
+            var out = (dict["text"] as? String) ?? ""
+            if let extra = dict["extra"] {
+                out += flattenChat(extra)
+            }
+            return out
+        default:
+            return ""
+        }
+    }
+
     private static func varInt(_ v: Int) -> Data {
         var value = v
         var out = Data()
