@@ -58,6 +58,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_audit-orphan-core.js` | 核心零引用的初始化类函数（写了没人调） |
 | `_audit3.ps1` | 设置项读写审计（115 项分类） |
 | `_check-workflow.js` | GitHub Actions YAML 结构 |
+| `_check-ci-contract.js` | 推送脚本 ↔ CI workflow 的契约：脚本等待时间不得短于 CI 的 `timeout-minutes`；脚本必须认识 CI 上传的 artifact 名；CI 必须真的产出 `.ipa`；CI 有静态检查时脚本的失败提示要提到它 |
 | `_check-links.ps1` | 文档内部死链 |
 | `_check-checklist-logs.js` | 验证清单里让用户搜的日志文案，在代码里是否真的存在（改了文案会静默失效） |
 | `_check-doc-stats.js` | README / STATUS 的规模数字（Swift 文件数 / 核心 `.m` 数 / jar 数）是否等于实际；行数与体积是假精度不查 |

@@ -54,6 +54,7 @@ $checks = @(
     @('_check-runtime-assets.js',   'js',  '运行时资源完整性'),
     @('_audit-orphan-core.js',      'js',  '核心孤儿函数'),
     @('_check-workflow.js',         'js',  'workflow 结构'),
+    @('_check-ci-contract.js',     'js',  '推送脚本 ↔ CI 契约'),
     @('_audit3.ps1',                'ps1', '设置项读写审计'),
     @('_check-links.ps1',           'ps1', '文档死链'),
     @('_check-checklist-logs.js',   'js',  '清单日志文案 ↔ 代码契约'),
