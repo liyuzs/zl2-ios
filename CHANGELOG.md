@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **导出布局的 `scaledAt` 恒为 100**：`CoreLayoutExport.currentButtonScale()` 从 UserDefaults 读 `control.button_scale`，但这个键是**核心侧**设置（用户在游戏内控制编辑里调，存在 PLPreferences，默认 100），UserDefaults 里从来没有它 → 永远返回 100。用户调过按钮缩放时，导出的布局与实际比例不一致。已改为 `getPrefFloat("control.button_scale")`。这条是 `_audit-stores.js` 新增的「反方向检查」抓出来的（读了一个核心拥有、但从没写进 UserDefaults 的键）。
+
 - **【新增】启动前预检**：点「尝试启动」之前先列出七项必崩条件（版本 JSON/mainClass、client jar（含 `inheritsFrom` 父版本）、libraries、资源索引、对应 Java 运行时、渲染器、控制布局），只提示不阻止。配套 `_test-preflight.js` 11 条契约测试，锁住「布局名必须从核心偏好读」「jar 检查必须考虑 inheritsFrom」等约定。
 
 - **【新增】启动失败页「打包日志发给开发者」**：启动失败那一屏直接可打包（复用诊断页的组包逻辑，并附加错误信息与启动日志），不用退出全屏页再去设置里找。同时补了 `launchJVM 返回错误码 N` 的提示分支——原来这一类最可能撞到的错误在界面上没有任何说明。
