@@ -135,6 +135,19 @@ actor VersionInstaller {
             if shouldCancel?() == true { throw CancellationError() }
             report(.jar, 0, "下载 \(versionID).jar")
             try await download(clientURL, to: jarPath)
+            // 校验 client.jar。
+            // 原来只有上面那句 `jarSize < 1024` 的判断 —— 一个 >1KB 的 HTML 错误页
+            // 会被原样存成 jar，然后启动时报 ClassNotFoundException / 无效 jar，
+            // 而且很难反查到是下载环节出的问题。Mojang 的 JSON 里带了 sha1，用它。
+            if let expect = detail.downloads?.client?.sha1, !expect.isEmpty {
+                let got = (try? Data(contentsOf: jarPath).zlSHA1Hex) ?? ""
+                if got.lowercased() != expect.lowercased() {
+                    try? fm.removeItem(at: jarPath)
+                    throw InstallError.failed(
+                        "client jar 校验失败（SHA-1 不匹配）。多半是下载源返回了错误内容，" +
+                        "请换个下载源或稍后重试。")
+                }
+            }
             report(.jar, Double(1) / Double(max(1, 1)), "jar 完成")
         }
 
@@ -252,7 +265,14 @@ actor VersionInstaller {
         }
 
         if failCount > 0 {
-            report(.done, Double(1) / Double(max(1, 1)), "\(versionID) 安装完成，但有 \(failCount) 个依赖库失败")
+            // 依赖库缺了，游戏启动必然报 ClassNotFoundException。
+            // 所以别只说「完成」——要把失败的名字列出来，并明说这个版本可能起不来。
+            // （failedLibs 之前只收集不使用，是个死变量。）
+            let shown = failedLibs.prefix(3).joined(separator: "、")
+            let more = failedLibs.count > 3 ? " 等 \(failedLibs.count) 个" : ""
+            report(.done, 1,
+                   "\(versionID) 安装完成，但有 \(failCount) 个依赖库下载失败（\(shown)\(more)）。" +
+                   "这个版本很可能启动不了，建议删掉重装，或换个下载源。")
         } else {
             report(.done, 1, "\(versionID) 安装完成")
         }

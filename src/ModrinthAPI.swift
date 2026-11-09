@@ -212,15 +212,61 @@ actor ModrinthAPI {
     func download(_ file: ModrinthVersionFile, to dir: URL, onProgress: ((Double) -> Void)? = nil) async throws -> URL {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let dest = dir.appendingPathComponent(file.filename)
-        if FileManager.default.fileExists(atPath: dest.path) { return dest }
+
+        // 「存在就跳过」要加个条件：必须是**非空**才算已下载。
+        // 原来只要文件存在就 return —— 如果上次下到一半被打断，留下 0 字节或半截文件，
+        // 会一直被当成"已存在"，永远不重下。表现就是「模组显示已下载，游戏里却没有」。
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: dest.path),
+           let size = (attrs[.size] as? NSNumber)?.intValue, size > 0 {
+            return dest
+        }
+
         let (tmp, resp) = try await session.download(from: file.url)
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw ModrinthError.badResponse((resp as? HTTPURLResponse)?.statusCode ?? 0)
         }
+
+        // 落盘前校验产物。下载源偶尔会返回 200 但内容是 HTML 错误页/限流页，
+        // 以前会原样存成 xxx.jar —— 游戏加载失败，而且界面上看不出来。
+        if let reason = Self.validateArchive(tmp, filename: file.filename) {
+            try? FileManager.default.removeItem(at: tmp)
+            throw ModrinthError.decode("\(file.filename) 下载不完整：\(reason)")
+        }
+
         try? FileManager.default.removeItem(at: dest)
         try FileManager.default.moveItem(at: tmp, to: dest)
         onProgress?(1.0)
         return dest
+    }
+
+    /// 校验下载产物是不是有效压缩包。
+    /// - Returns: 通过返回 nil，否则返回给用户看的原因
+    private static func validateArchive(_ url: URL, filename: String) -> String? {
+        let lower = filename.lowercased()
+        // 只有这几种才应该是 zip 容器
+        let needsZip = lower.hasSuffix(".jar") || lower.hasSuffix(".zip")
+            || lower.hasSuffix(".mrpack") || lower.hasSuffix(".litemod")
+        guard needsZip else { return nil }
+
+        let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let size = (attrs?[.size] as? NSNumber)?.intValue ?? 0
+        if size < 4 { return "文件只有 \(size) 字节" }
+
+        guard let fh = FileHandle(forReadingAtPath: url.path) else { return "打不开下载的文件" }
+        defer { try? fh.close() }
+        let head = fh.readData(ofLength: 4)
+        if head.count >= 2, head[head.startIndex] == 0x50, head[head.startIndex + 1] == 0x4B {
+            return nil      // "PK"，是 zip/jar
+        }
+
+        // 常见原因：CDN 返回了 HTML 错误页
+        if let sniff = try? Data(contentsOf: url, options: .mappedIfSafe).prefix(256) {
+            let text = String(decoding: sniff, as: UTF8.self).lowercased()
+            if text.contains("<html") || text.contains("<!doctype") || text.contains("<head") {
+                return "下载源返回的是网页而不是文件（多半是镜像或限流的错误页）"
+            }
+        }
+        return "不是有效的 jar/zip（文件头不是 PK）"
     }
 }
 
