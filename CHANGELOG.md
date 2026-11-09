@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **控制编辑器里 4 类外观设置进游戏不生效**：核心只从布局 JSON 读 `bgColor` / `cornerRadius` / `opacity` / `strokeColor` / `strokeWidth`，而 `textSize`（核心按控件大小自动缩放）、`joystickColor`、`joystickSize`、`pressedBgColor`（核心无"按下态外观"概念）**全核心零命中**。编辑器里这些都有滑杆、预览还能看到变化，用户调完进游戏发现没变。已在外观面板顶部与不透明度区加如实说明；新增 `_check-layout-keys.js`（导出键必须能在核心源码里找到，例外登记理由）。
+
 - **删掉 230 行完全没用的重复色板**：`src/ZLPalette.swift` 里的 `ZLThemeType` / `ZLPaletteV2` / `ZLPaletteLight` / `ZLPaletteDark` 全项目零引用，却存了**第二份 490 个颜色值**（真正在用的是 `ColorThemes.swift` 的 `ZLPalette.raw`）。同一份数据两处各存一遍，改了 A 不改 B 就会静默分叉；而且 `ZLThemeType` 有 8 个主题（多一个"动态"）与在用的 7 个不一致，容易误以为有 8 套。已删除，文件数 71 → 70。
 - 顺带核实：README 的「490 色值（35 角色 × 7 主题 × 亮暗）」**数字准确**——`ZLPalette.raw` 正是 70 项 × 7 = 490。
 
