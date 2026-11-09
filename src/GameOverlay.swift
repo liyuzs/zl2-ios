@@ -165,7 +165,7 @@ struct GameOverlay: View {
     /// ZL2-iOS：iOS 不允许跨应用悬浮窗，但这里画的是 App 自己的游戏画面之上，
     /// 不受系统限制。安卓默认关是怕权限问题，iOS 没这个问题，所以默认开。
     /// 用户仍可在设置里关掉。
-    private var showMenuBall: Bool { boolValue("showMenuBall", defaultWhenUnset: true) }
+    private var showMenuBall: Bool { boolValue("showMenuBall") }
     private var showFPS: Bool { boolValue("showFPS") }
     private var showMemory: Bool { boolValue("showMemory") }
 
@@ -190,9 +190,14 @@ struct GameOverlay: View {
         return CGPoint(x: point.0, y: point.1)
     }
 
-    private func boolValue(_ key: String, defaultWhenUnset: Bool = false) -> Bool {
-        guard let def = ZLSettings.def(key) else { return defaultWhenUnset }
-        if UserDefaults.standard.object(forKey: key) == nil { return defaultWhenUnset }
+    /// 读一个布尔设置。
+    ///
+    /// **默认值只认 `ZLSettings` 里声明的那个**（`store.bool` 内部就是按 def.defaultValue 兜底）。
+    /// 这里原来多了一道 `UserDefaults` 门：键没被写过就直接返回 false。
+    /// 而 `showFPS` 声明的默认值是 **true** —— 于是设置页显示「显示 FPS = 开」，
+    /// 游戏里却不显示，两边对不上。同一个设置在两个地方写死不同的默认值，迟早会拧。
+    private func boolValue(_ key: String) -> Bool {
+        guard let def = ZLSettings.def(key) else { return false }
         return store.bool(def)
     }
 
