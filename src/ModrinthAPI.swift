@@ -439,7 +439,7 @@ enum ZLFabricAPIInstaller {
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw ModrinthError.invalidURL
         }
-        try data.write(to: dst)
+        try data.write(to: dst, options: .atomic)
         onProgress("已保存到 mods/\(file.filename)", 1.0)
     }
 }

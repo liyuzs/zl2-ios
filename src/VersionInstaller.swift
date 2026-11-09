@@ -123,7 +123,7 @@ actor VersionInstaller {
                 "版本元数据不完整（缺少 id 或 mainClass）。可能是下载源返回了错误的文件，" +
                 "请换个下载源或稍后重试。为避免装出一个启动不了的版本，本次安装已中止。")
         }
-        try raw.write(to: jsonPath)
+        try raw.write(to: jsonPath, options: .atomic)
 
         // 2) client.jar
         guard let clientURL = detail.downloads?.client?.url else {

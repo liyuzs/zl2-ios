@@ -500,7 +500,7 @@ enum ZLLayoutStore {
         let n = name ?? layout.info.name.plainText
         let url = dir.appendingPathComponent("\(n).json")
         guard let data = try? layout.exportJSON() else { return false }
-        return (try? data.write(to: url)) != nil
+        return (try? data.write(to: url, options: .atomic)) != nil
     }
 
     /// 按名字读原始 JSON（编辑器用，保留编辑器自有格式）
@@ -513,7 +513,7 @@ enum ZLLayoutStore {
     @discardableResult
     static func saveRaw(name: String, data: Data) -> Bool {
         let url = dir.appendingPathComponent("\(name).json")
-        return (try? data.write(to: url)) != nil
+        return (try? data.write(to: url, options: .atomic)) != nil
     }
 
     static func load(_ url: URL) -> ZLControlLayout? {

@@ -94,7 +94,7 @@ struct ZLLoaderInstaller {
         let jsonURL = dir.appendingPathComponent("\(versionID).json")
         let out = try JSONSerialization.data(withJSONObject: profile,
                                              options: [.prettyPrinted, .sortedKeys])
-        try out.write(to: jsonURL)
+        try out.write(to: jsonURL, options: .atomic)
 
         // 下载库
         let libRoot = VersionRepository.shared.mcRoot.appendingPathComponent("libraries", isDirectory: true)
@@ -113,7 +113,7 @@ struct ZLLoaderInstaller {
                         try? FileManager.default.createDirectory(at: dest.deletingLastPathComponent(),
                                                                  withIntermediateDirectories: true)
                         if let d = try? await fetch(u) {
-                            try? d.write(to: dest)
+                            try? d.write(to: dest, options: .atomic)
                         }
                     }
                 }
@@ -128,7 +128,7 @@ struct ZLLoaderInstaller {
                                                      withIntermediateDirectories: true)
             do {
                 let d = try await fetch(url)
-                try d.write(to: dest)
+                try d.write(to: dest, options: .atomic)
             } catch {
                 // 单个库失败不中断
             }

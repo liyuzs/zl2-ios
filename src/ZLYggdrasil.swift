@@ -125,7 +125,7 @@ struct ZLYggdrasilClient {
             let fm = FileManager.default
             try? fm.createDirectory(at: gameDir, withIntermediateDirectories: true)
             let dst = gameDir.appendingPathComponent("skin.png")
-            try data.write(to: dst)
+            try data.write(to: dst, options: .atomic)
             return true
         } catch {
             return false
@@ -168,7 +168,7 @@ enum ZLAuthlibInjector {
             let (data, resp) = try await URLSession.shared.data(for: r2)
             guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
                   data.count > 100_000 else { return false }
-            try data.write(to: jarURL)
+            try data.write(to: jarURL, options: .atomic)
             NSLog("[ZL2] authlib-injector 已下载：\(data.count) 字节")
             return true
         } catch {

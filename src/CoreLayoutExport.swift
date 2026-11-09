@@ -85,6 +85,23 @@ enum CoreLayoutExporter {
         let data = try JSONSerialization.data(withJSONObject: coreDict,
                                               options: [.prettyPrinted, .sortedKeys])
         let url = controlMapDir.appendingPathComponent(name)
+
+        // 覆盖前先备份。
+        //
+        // `options: .atomic` 只保证"不会写出半个文件"，**不保证旧内容不丢**。
+        // 而同名布局很可能是用户已经在游戏内手工调过的（拖过按钮位置、改过透明度），
+        // 这里直接 write 就会把它静默覆盖掉 —— 不可恢复。
+        //
+        // 规则：**只有内容真的不一样时才备份**，否则每次启动都会多一份，
+        // 备份目录会被同样内容的副本塞满。同名只保留最近一份。
+        if let existing = try? Data(contentsOf: url), existing != data {
+            let backupDir = controlMapDir.appendingPathComponent(".backup", isDirectory: true)
+            try? FileManager.default.createDirectory(at: backupDir,
+                                                     withIntermediateDirectories: true)
+            try? existing.write(to: backupDir.appendingPathComponent(name),
+                                options: .atomic)
+        }
+
         try data.write(to: url, options: .atomic)
         return name
     }
