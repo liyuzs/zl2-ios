@@ -27,7 +27,7 @@ param(
     [string]$LocalRepo   = "D:\ios-zl2",
     [string]$DeliveryDir = "D:\ZL2-iOS交付包",
     [string]$Proxy       = "http://127.0.0.1:7897",
-    [int]$TimeoutMinutes = 30,
+    [int]$TimeoutMinutes = 45,   # 与 CI 的 timeout-minutes: 45 对齐
     [int]$MinIpaMB       = 100,
     [switch]$NoProxy
 )
@@ -100,9 +100,9 @@ while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 20
 }
 
-if (-not $run) { throw "超过 $TimeoutMinutes 分钟没等到构建，去 $Repo/actions 看看" }
+if (-not $run) { throw "超过 $TimeoutMinutes 分钟没等到构建，去 $Repo/actions 看看（CI 自身上限也是 45 分钟）" }
 if ($run.conclusion -ne "success") {
-    throw "构建没成功（conclusion = $($run.conclusion)）。打开 $($run.html_url) 看日志"
+    throw ("构建没成功（conclusion = $($run.conclusion)）。可能是编译前的静态检查没过。" + "打开 $($run.html_url) 先看 `"Static checks (50)`" 那一步的日志")
 }
 Write-Ok "构建成功：$($run.html_url)"
 
@@ -111,7 +111,7 @@ Write-Step 4 "下载 IPA"
 $areq = @{ Uri = "https://api.github.com/repos/$Repo/actions/runs/$($run.id)/artifacts"; Headers = $apiHeaders }
 if (-not $NoProxy) { $areq.Proxy = $Proxy }
 $arts = Invoke-RestMethod @areq
-$art = $arts.artifacts | Where-Object { $_.name -match "ipa|zl2" } | Select-Object -First 1
+$art = $arts.artifacts | Where-Object { $_.name -eq "ZL2-build" } | Select-Object -First 1
 if (-not $art) {
     $names = ($arts.artifacts | ForEach-Object { $_.name }) -join ", "
     throw "这次构建没有可下载的产物（有：$names）"
