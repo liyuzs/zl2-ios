@@ -40,23 +40,35 @@ enum CoreLayoutExporter {
 
     /// 核心当前使用的布局文件名
     ///
-    /// 核心真正读的是 PLProfiles 的 `defaultTouchCtrl` 偏好
-    /// （见 SurfaceViewController.m:464），不是 UserDefaults 的字典。
-    /// 这里三个都写，保证 Swift 侧查询和核心侧读取一致。
+    /// 这里有个踩过的坑，值得写清楚：这个项目里有**三套互不相通**的存储，
+    /// 光写 UserDefaults 是不能让核心知道该加载哪个布局的。
+    ///
+    /// 核心读布局名的位置是 SurfaceViewController.m:464：
+    ///     [PLProfiles resolveKeyForCurrentProfile:@"defaultTouchCtrl"]
+    /// 而 PLProfiles.m:35 的 resolveKey: 只查两处：
+    ///   ① profile["defaultTouchCtrl"] → <GAME_DIR>/launcher_profiles.json
+    ///   ② 兜底 getPrefObject("control.default_ctrl") → PLPreferences 的 plist
+    ///
+    /// 所以：UserDefaults 只是本 App 自己的记账本，
+    /// 真正要生效必须写 ② 处（这里用 setPrefObject）。① 处留给核心自己的界面改。
+    ///
+    /// 注：setPrefObject 在 bootstrap()（内部 loadPreferences）之前调用是安全的 ——
+    /// 全局 pref 还是 nil，ObjC 对 nil 发消息是静默无操作，不会崩，也不会写脏数据。
+    /// 启动时 syncControlLayoutIfNeeded() 会再补一次，那时 pref 一定已就绪。
     static var activeLayoutName: String {
         get { UserDefaults.standard.string(forKey: "control_layout") ?? "default.json" }
         set {
             UserDefaults.standard.set(newValue, forKey: "control_layout")
-            // 核心侧：写进 core 的偏好系统（PLPreferences 走同一个 UserDefaults 域）
-            UserDefaults.standard.set(newValue, forKey: "defaultTouchCtrl")
             // ZL2 设置项 controlLayout（安卓原生的同名字段）
             UserDefaults.standard.set(newValue, forKey: "controlLayout")
+            // 让核心真的去加载它（这才是生效的那一步）
+            setPrefObject("control.default_ctrl", newValue)
         }
     }
 
-    /// 读取核心当前用的布局文件名
+    /// 读取核心当前用的布局文件名 —— 从核心自己的偏好系统读，而不是我们的记账本
     static var coreActiveLayoutName: String {
-        UserDefaults.standard.string(forKey: "defaultTouchCtrl") ?? "default.json"
+        (getPrefObject("control.default_ctrl") as? String) ?? "default.json"
     }
 
     // MARK: 主入口

@@ -248,7 +248,10 @@ public final class ZLLayerSwitcher: NSObject {
         }
         _ = ctrlView.perform(sel, with: file)
 
-        // 同时更新核心读的偏好，下次启动仍用这层
+        // 同时更新核心读的偏好，下次启动仍用这层。
+        // 注意不能只写 UserDefaults —— 核心读的是 PLProfiles 的 defaultTouchCtrl
+        // （最终落到 getPrefObject("control.default_ctrl")），UserDefaults 那份只是本 App 的记账本。
+        setPrefObject("control.default_ctrl", file)
         UserDefaults.standard.set(file, forKey: "defaultTouchCtrl")
         return true
     }

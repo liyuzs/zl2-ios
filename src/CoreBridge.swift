@@ -73,6 +73,17 @@ enum CoreBridge {
         try? fm.createDirectory(atPath: gameDir, withIntermediateDirectories: true)
         setenv("GAME_DIR", gameDir, 1)
 
+        // 先把偏好加载出来，再做任何读写偏好的事。
+        //
+        // 这里踩过一个隐蔽的坑：loadPreferences() 会**新建**一个 PLPreferences 实例
+        // （`pref = [[PLPreferences alloc] initWithAutomaticMigrator]`）。
+        // 原来它在 applyUserSettings() 之后才调用，等于：
+        //   ① applyUserSettings 里的 setPrefObject 写在一个还没初始化的全局 pref 上
+        //      （ObjC 对 nil 发消息是静默无操作，不报错），全部丢失；
+        //   ② 后面即便写了，也会被新实例的磁盘加载覆盖。
+        // 顺序必须是：setenv（GAME_DIR 决定实例路径）→ loadPreferences → 再读写。
+        loadPreferences(false)
+
         // 应用用户设置（每次启动游戏都要重新读，不能只做一次）
         applyUserSettings()
 
@@ -85,19 +96,8 @@ enum CoreBridge {
         if getPrefObject("general.cosmetica") == nil {
             setPrefObject("general.cosmetica", false)
         }
-        // 4) 内存分配：优先用设置页的 ramAllocation，没设过才按物理内存推算
-        let userRam = UserDefaults.standard.object(forKey: "ramAllocation") as? Int ?? 0
-        if userRam > 0 {
-            // 用户明确设了，就用他的（同时同步给核心用的 key）
-            setPrefObject("general.allocated_memory", userRam)
-        } else if getPrefObject("general.allocated_memory") == nil {
-            let ramMB = Int(ProcessInfo.processInfo.physicalMemory / 1024 / 1024)
-            let alloc = max(512, min(2048, ramMB / 3))
-            setPrefObject("general.allocated_memory", alloc)
-        }
-
-        // 加载/创建偏好
-        loadPreferences(false)
+        // 4) 内存分配（统一走 syncMemorySetting，见那里的注释）
+        syncMemorySetting()
 
         // 配置 Java 运行时映射：
         // "0" = 当前 profile 的默认选择；版本号 → "internal" 表示用 bundle 内 java_runtimes/java-<ver>-openjdk
@@ -334,7 +334,21 @@ enum CoreBridge {
         guard !name.isEmpty else { return }   // 用户没选过自定义布局，用核心自带默认
         do {
             let synced = try CoreLayoutExporter.syncFromEditor(name: name)
-            NSLog("[ZL2] 控制布局已同步：%@", synced)
+            // 光把 JSON 写进 controlmap/ 是不够的 —— 还得告诉核心「去加载这个文件」。
+            //
+            // 核心读布局文件名的位置是 SurfaceViewController.m:464 的
+            //   [PLProfiles resolveKeyForCurrentProfile:@"defaultTouchCtrl"]
+            // 而 PLProfiles.m:35 的 resolveKey: 只查两个地方：
+            //   ① profile["defaultTouchCtrl"]  → <GAME_DIR>/launcher_profiles.json
+            //   ② 兜底 getPrefObject("control.default_ctrl") → PLPreferences 的 plist
+            // 原来这两处都没写（只写了 UserDefaults.standard，核心根本不看），
+            // 结果就是：布局文件导出成功，核心却还在加载默认布局。
+            //
+            // 这里写第 ② 处：用 setPrefObject 走核心的偏好系统。
+            // 必须在 bootstrap()（内部 loadPreferences）之后调用，否则 pref 还是 nil，
+            // ObjC 对 nil 发消息是静默无操作，写了也白写。
+            setPrefObject("control.default_ctrl", synced)
+            NSLog("[ZL2] 控制布局已同步：%@（已告知核心加载）", synced)
         } catch {
             NSLog("[ZL2] 控制布局同步失败（不影响启动）：%@", error.localizedDescription)
         }
@@ -483,15 +497,48 @@ enum CoreBridge {
                   storedRenderer, ZLRenderers.displayName(for: safeRenderer))
             UserDefaults.standard.set(safeRenderer, forKey: "renderer")
         }
+        // 只设环境变量不够。JavaLauncher.m:175 进到启动流程后会重新读一次：
+        //     NSString *renderer = [PLProfiles resolveKeyForCurrentProfile:@"renderer"];
+        //     setenv("RENDERER", renderer.UTF8String, 1);
+        // 而 resolveKey 的兜底是 getPrefObject("video.renderer")（默认 "auto"），
+        // 于是我们刚设的环境变量立刻被冲掉 —— 用户选的渲染器实际不生效，
+        // 最终总是回落到 auto。所以必须同时写进 video.renderer。
+        setPrefObject("video.renderer", safeRenderer)
         setenv("RENDERER", safeRenderer, 1)
 
-        // 2) 内存分配：用户设了就用他的，同时同步给核心
+        // 2) 内存分配
+        syncMemorySetting()
+    }
+
+    /// 把设置页的内存分配同步到核心真正读的键。
+    ///
+    /// 踩过的坑（两个叠在一起）：
+    ///  ① 原来写的是 `general.allocated_memory`，但核心读的是
+    ///     `java.allocated_memory`（JavaLauncher.m:217，SurfaceViewController.m:322
+    ///     算内存上限时也用这个键）。名字对不上 → 用户拖了滑块完全没用，
+    ///     JVM 一直拿默认值。这是典型的「写了没人读」。
+    ///  ② 核心在 `java.auto_ram` 为真时**根本不看** allocated_memory
+    ///     （JavaLauncher.m:213 走自动比例），而在没有内存 entitlement 的设备上
+    ///     `java.auto_ram` 默认就是真（PLPreferences.m:63）。所以即使用对了键名，
+    ///     不把它关掉也照样无效。
+    ///
+    /// 另外把值压到物理内存的一半以内：滑块的范围是 256...Int.max，
+    /// 填个离谱的数会让 JVM 申请不到连续内存，核心那边只会弹一句英文报错。
+    static func syncMemorySetting() {
         let userRam = UserDefaults.standard.object(forKey: "ramAllocation") as? Int ?? 0
-        if userRam > 0 {
-            setPrefObject("general.allocated_memory", userRam)
-        } else if getPrefObject("general.allocated_memory") == nil {
-            let ramMB = Int(ProcessInfo.processInfo.physicalMemory / 1024 / 1024)
-            setPrefObject("general.allocated_memory", max(512, min(2048, ramMB / 3)))
+        // 用户没设过：不插手，保持核心的自动策略（物理内存的 25%）
+        guard userRam > 0 else { return }
+
+        let ramMB = Int(ProcessInfo.processInfo.physicalMemory / 1024 / 1024)
+        let cap = max(512, ramMB / 2)
+        let alloc = min(max(256, userRam), cap)
+
+        setPrefObject("java.allocated_memory", alloc)
+        setPrefBool("java.auto_ram", false)
+
+        if alloc != userRam {
+            NSLog("[ZL2] 内存分配 %d MB 超出合理范围，已压到 %d MB（物理内存 %d MB）",
+                  userRam, alloc, ramMB)
         }
     }
 }
