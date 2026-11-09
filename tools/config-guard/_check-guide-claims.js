@@ -9,8 +9,14 @@
 // 找到支撑它的实现；找不到就报。
 //
 // **局限（必须写清，否则后人会高估它）**：
-//   只覆盖表里这些说法。表没列的操作教错了，这条检查发现不了 ——
+//   ① CLAIMS 表只覆盖表里这些说法。表没列的操作教错了，这条检查发现不了 ——
 //   它不是"文案与实现一致性"的完备证明，只是把踩过的坑钉住。
+//   ② 全仓手势扫描只判"整个 App 里有没有这个手势的实现"，
+//      判不了"这个手势在此处是否真的生效"（那需要语义，写不了可靠规则）。
+//      举例：`contextMenu` 与 `textSelection(.enabled)` 都算"长按"的证据 ——
+//      iOS 上本来就是长按触发，但具体落到哪个控件仍需人看。
+//   ③ 扫描排除 `ZLStrings.swift`：那是安卓文案整包提取（1536 条），
+//      多数没被界面引用，拿它判会一直误报。
 //   新增引导步骤时，请顺手往 CLAIMS 里加一条。
 
 const fs = require('fs');
@@ -80,7 +86,34 @@ for (const c of CLAIMS) {
   }
 }
 
-console.log(`检查了 ${checked} 条"文案里教了的操作"`);
+// ---- 全仓手势扫描 ----
+// 手势词出现在用户可见文案里，但整个 src 找不到对应实现 → 报。
+// 长按的证据放宽到 contextMenu / textSelection：iOS 上这两者本来就用长按触发。
+// 排除 ZLStrings.swift：那是从安卓源码整包提取的**文案库**（1536 条），
+// 里面绝大多数字符串根本没有被界面引用 —— 拿它判"教用户做了什么"会一直误报。
+// 只扫真正可能显示给用户的文件。
+const SWIFT_FILES = fs.readdirSync(SRC).filter(f => f.endsWith('.swift') && f !== 'ZLStrings.swift');
+const readAll = () => SWIFT_FILES.map(f => fs.readFileSync(path.join(SRC, f), 'utf8')).join('\n');
+const allSrc = readAll();
+
+const GESTURES = [
+  { word: '长按', ev: /onLongPressGesture|contextMenu|textSelection\(/ },
+  { word: '双击', ev: /onTapGesture\(\s*count:\s*2|TapGesture\(\s*count:\s*2/ },
+  { word: '拖动', ev: /DragGesture|\.onDrag|draggable/ },
+  { word: '滑动', ev: /DragGesture|swipeActions|MagnificationGesture/ },
+];
+
+// 全仓**字符串字面量**里是否出现这个手势词（剥掉注释，避免注释误触）
+const literalHas = w => new RegExp('"[^"\\n]*' + w).test(stripComments(readAll()));
+let swept = 0;
+for (const g of GESTURES) {
+  if (!literalHas(g.word)) continue;   // 没有任何用户可见文案提到这个手势
+  swept++;
+  if (!g.ev.test(allSrc)) {
+    problems.push(`文案里提到「${g.word}」，但整个 src 找不到承接它的实现`);
+  }
+}
+console.log(`检查了 ${checked} 条"文案里教了的操作"，${swept} 类手势`);
 console.log('');
 
 if (problems.length === 0) {
