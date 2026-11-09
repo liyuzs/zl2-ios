@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **新增 `_check-hstack-budget.js`（横向预算）**：原来的固定宽度检查只看单个 `.frame(width:)` 是否 ≥280pt，但"偏挤"是**同一行几个固定宽度相加**造成的——资源页 92（左栏）+210（筛选面板）+12+18 = 332pt，在 375pt 屏（可用 339pt）上只剩 7pt 给结果列表。新检查算每个 `HStack` 直接子层的宽度之和。**已如实写明局限**：只看 `HStack { }` 内联块，写在 computed property 里的宽度追不到（资源页那种挤压它抓不到）。
+- **资源页筛选面板 `maxWidth: 210 → 180`**：按上面的账，结果列表从 7pt 恢复到约 37pt，仍紧但能看。彻底改需两列或收进 sheet，没有视觉反馈不做盲改，STATUS 第 5 条继续挂着。
+
 - **原子写检查的 `'temp'` 子串匹配会漏报**：受控实验（同一注入、只改变量名）证明 `templateURL` / `attemptURL` 都被放过，而 `targetURL` 会报——因为判据是 `includes('temp')`。`TEMP_HINTS` 已从短通用词改成路径特征词（`temporaryDirectory` / `NSTemporaryDirectory` / `/tmp/` / `.tmp` / `trash` / `cachesDirectory`），`'stage'` 也去掉了（会被 `staging` 命中）。
 - 收紧后立刻抓到真实问题：`VersionManageScreens.swift:604` 往临时 `stage/` 写 `pack-info.json` 没加原子选项（原来正被 `'stage'` 放过），而紧邻的第 600 行写 txt 时用了 `atomically: true` —— 同一处两种写法，已统一。
 
