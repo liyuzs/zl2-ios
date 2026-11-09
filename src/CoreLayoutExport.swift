@@ -484,10 +484,15 @@ enum CoreLayoutExporter {
     // MARK: 工具
 
     private static func currentButtonScale() -> Double {
-        if let v = UserDefaults.standard.object(forKey: "control.button_scale") as? Double, v > 0 {
-            return v
-        }
-        return 100.0
+        // `control.button_scale` 是**核心侧**的设置：用户在游戏内的控制编辑里调，
+        // 存在核心的 PLPreferences（默认 100）。
+        //
+        // 原来这里从 UserDefaults 读 —— 那个键在 UserDefaults 里从来不存在，
+        // 所以永远返回 100，导出的 `scaledAt` 恒为 100。用户调过按钮缩放的话，
+        // 导出的布局就和实际看到的不一致。
+        // 改为从核心偏好读（这是审计脚本反方向检查抓出来的）。
+        let v = getPrefFloat("control.button_scale")
+        return v > 0 ? Double(v) : 100.0
     }
 
     private static func phpClamp<T: Comparable>(_ v: T, _ lo: T, _ hi: T) -> T {
