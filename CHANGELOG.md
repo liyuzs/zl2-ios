@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **清掉 5 个冗余死路由**：`.gameDirs` / `.cleanFiles` / `.exportPackNew` / `.controlLayout` / `.logView` —— 页面都有别的 sheet 入口，路由本身是纯死 case。`AppRoute` 29 → **24 个 case**，死路由豁免 7 → **2 个**（只剩 room 未接入、terracotta 演示页）。
+- **「控制编辑器首次引导」挂错地方**：`.zlGuide(.controlEditor)` 只挂在死路由 `.controlLayout` 的目的地上，所以引导从来没显示过；从真实入口（ControlManageScreen 的 sheet）进编辑器反而看不到。已挪到真实入口。
+
 - **「装 Fabric/Quilt 加载器」这条流程本来就不通**：`path.append(.downloadAddons(...))` 的唯一入口在 `SelectGameVersionScreen` 的 `onPick` 闭包里，而那个页面本身没有任何导航入口 —— 死路由检查按"有没有引用"算，被死页面骗过去了。已删该页面，并在下载页每个版本行加扳手按钮 → `onOpenAddons(v.id)`，这条链现在通了。
 - **搬运一个细节再删页面**：`SelectGameVersionScreen` 里的**愚人节版识别**（已知名单 + oneblock/potato/craftmine/shareware 后缀）已移植到 `DLVersion.isAprilFools`，下载列表会显示「愚人节版 🎭」。
 - `AppRoute` 32 → **29 个 case**；删 239 行，净减约 200 行；文件数 70 → 69。
