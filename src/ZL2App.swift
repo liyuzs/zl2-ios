@@ -60,7 +60,6 @@ enum AppRoute: Hashable {
     case searchID
     case controlManage
     case serverList
-    case selectGameVersion
     case downloadAddons(String)
     case logView
     case license
@@ -190,7 +189,8 @@ struct RootView: View {
                                    onSettings: { path.append(.settings) },
                                    onOpenAssets: { kind in path.append(.assets(kind.rawValue)) },
                                    onOpenSearch: { path.append(.search) },
-                                   onOpenSearchID: { path.append(.searchID) })
+                                   onOpenSearchID: { path.append(.searchID) },
+                                   onOpenAddons: { gv in path.append(.downloadAddons(gv)) })
                 case .settings:
                     SettingsScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() },
                                    onDownload: { path.append(.download) })
@@ -245,11 +245,6 @@ struct RootView: View {
                     SavesManagerScreen(versionID: vid,
                                        onBack: { path.removeLast() },
                                        onHome: { path.removeAll() })
-                case .selectGameVersion:
-                    SelectGameVersionScreen(
-                        onBack: { path.removeLast() },
-                        onHome: { path.removeAll() },
-                        onPick: { v in path.append(.downloadAddons(v.versionID)) })
                 case .downloadAddons(let gv):
                     DownloadAddonsScreen(
                         gameVersion: gv,
@@ -799,4 +794,5 @@ struct AboutScreen: View {
     }
 
 }
+
 

@@ -2,7 +2,7 @@
 
 > **非官方 iOS 移植版**，基于 [Zalith Launcher 2](https://github.com/ZalithLauncher/ZalithLauncher2) 重新实现的 SwiftUI 界面 + [Amethyst](https://github.com/AngelAuraMC/Amethyst-iOS) 启动核心。
 
-**作者：liyuzs** · 界面代码为原创重写（**70 个 Swift 文件**），交互与布局参照 ZL2
+**作者：liyuzs** · 界面代码为原创重写（**69 个 Swift 文件**），交互与布局参照 ZL2
 
 > **想快速了解项目现状？** 读 [STATUS.md](STATUS.md)（诚实版功能状态）和
 > [HANDOFF-20261108.md](HANDOFF-20261108.md)（交接文档：改了什么、验证了什么、下一步）。
@@ -98,7 +98,7 @@
 
 | 项目 | 状态 |
 |---|---|
-| 代码规模 | **70 个 Swift 文件** + 核心侧 69 个 `.m` + 13 个 jar |
+| 代码规模 | **69 个 Swift 文件** + 核心侧 69 个 `.m` + 13 个 jar |
 | 设置项 | 115 项中 36 项真正生效，75 项明确标注不可用 |
 | 已修缺陷 | **19 项致命/高危**（缺 Java 启动器 jar、控制布局格式、JNI 未导出、下载静默失败等） |
 | 自动化检查 | **25 个脚本**（语法 / JNI 契约 / 偏好键 / 假交互 / 资源完整性 / 文档死链…） |

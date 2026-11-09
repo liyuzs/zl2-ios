@@ -11,6 +11,11 @@ struct DownloadScreen: View {
     /// 按项目 ID 搜索（Modrinth / CurseForge）。
     /// 这个页面（SearchIDScreen）一直存在但从没有入口 —— 第75轮扫死路由时发现的。
     var onOpenSearchID: () -> Void = {}
+    /// 给某个游戏版本装 Fabric / Quilt 加载器（进 DownloadAddonsScreen）。
+    /// 这个流程原来唯一的入口在 SelectGameVersionScreen 的 onPick 里，
+    /// 而那个页面本身没有任何入口 —— 等于整条"装加载器"的路都不通。
+    /// 第77轮删掉那个死页面后，把入口直接放到下载列表里。
+    var onOpenAddons: (String) -> Void = { _ in }
 
     @State private var category = 0
     @State private var filter = 0          // 0 正式版 1 快照 2 愚人节 3 远古
@@ -282,7 +287,7 @@ struct DownloadScreen: View {
                                 Text(v.id)
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundStyle(ZLTheme.textPrimary)
-                                ZLTag(text: v.type)
+                                ZLTag(text: v.displayType)
                                 // ≤1.11 需要 Java 8，而包里只有 17/21/25 —— 装了也起不来。
                                 // 与其让用户白下几百 MB 再在启动时失败，不如在这里就说清楚。
                                 if CoreBridge.needsUnbundledJava8(v.id) {
@@ -294,6 +299,21 @@ struct DownloadScreen: View {
                                 .foregroundStyle(ZLTheme.textSecond)
                         }
                         Spacer()
+                        // 给这个版本装加载器（Fabric / Quilt）
+                        Button {
+                            ZLHaptic.light()
+                            onOpenAddons(v.id)
+                        } label: {
+                            Image(systemName: "wrench.and.screwdriver.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(ZLTheme.textSecond)
+                                .frame(width: 40, height: 40)
+                                .background(ZLTheme.surfaceAlt)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(installing != nil)
+
                         Button {
                             Task { await startInstall(v.id) }
                         } label: {
@@ -328,4 +348,19 @@ struct DLVersion: Identifiable {
     let id: String
     let type: String
     let date: String
+
+    /// 是不是愚人节版本。
+    /// 这段判定原来只活在 SelectGameVersionScreen（那个页面没有任何入口），
+    /// 现在把页面删掉、把这个细节搬到真正会显示的下载列表里。
+    var isAprilFools: Bool {
+        let known = ["15w14a", "1.rv-pre1", "3d shareware v1.34",
+                     "20w14∞", "22w13oneblockatatime", "23w13a_or_b",
+                     "24w14potato", "25w14craftmine"]
+        if known.contains(id.lowercased()) { return true }
+        let special = ["oneblock", "potato", "craftmine", "shareware"]
+        return special.contains { id.lowercased().contains($0) }
+    }
+
+    /// 列表里显示的类型（愚人节版优先）
+    var displayType: String { isAprilFools ? "愚人节版 🎭" : type }
 }
