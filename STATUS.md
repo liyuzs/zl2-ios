@@ -1,7 +1,7 @@
 # CraftLauncher 项目状态（诚实版）
 
 > 最后更新：2026-11-08 · 57 个提交
-> 代码：**71 个 Swift 文件** + 核心侧 67 个 `.m` + 13 个 jar（5.2 MB）
+> 代码：**71 个 Swift 文件** + 核心侧 69 个 `.m` + 13 个 jar（5.2 MB）
 > 文档：`docs/` 28 篇 + 根目录 6 篇 · 自动化检查 25 个脚本
 
 ---
@@ -99,7 +99,7 @@ src/
   ├─ ZLSettings.swift          115 个设置项（源码提取）
   └─ …（共 70 个文件）
 
-core/                          Amethyst 核心（ObjC/C），67 个 .m
+core/                          Amethyst 核心（ObjC/C），69 个 .m
 core/resources/libs/           Java 侧启动器 jar（主类在 launcher.jar）
 core/resources/libs_caciocavallo17/   Java 17+ 的 AWT 工具包
 jre/jre{17,21,25}-ios-aarch64.tar.xz  三套运行时（67 MB）
