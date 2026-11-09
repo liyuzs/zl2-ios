@@ -321,7 +321,12 @@ enum ZLDiagnostics {
         let fails = items.filter { $0.level == .fail }
         let warns = items.filter { $0.level == .warn }
 
-        if fails.isEmpty && warns.isEmpty {
+        // items 为空有两种可能：真的没有任何检查项，或者**检查还没跑完**。
+        // 原来看空就写「一切正常」——用户一进页面立刻点「打包日志分享」，
+        // 报告里就会写着"一切正常"，把最需要排查的时刻误导成没问题。
+        if items.isEmpty {
+            lines.append("结论：（检查尚未完成——这份报告是在诊断跑完之前生成的，不代表一切正常）")
+        } else if fails.isEmpty && warns.isEmpty {
             lines.append("结论：一切正常")
         } else {
             lines.append("结论：\(fails.count) 项异常，\(warns.count) 项需注意")
