@@ -39,6 +39,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-dead-routes.js` | 死路由：`AppRoute` 的 case 没有任何导航调用（append / onOpen / NavigationLink）。① 新增死路由判失败；② 已知的登记在 ALLOW；③ **对每个已知死路由，还会打印它的目的地上挂了什么**（修饰符 `xxx(...)` / 内部 `path.append` / `onOpen`）——因为挂在没人走的路由上的东西也永远不生效（第78轮实例：`.zlGuide(.controlEditor)` 编辑器首导挂错地方） |
 | `_check-pending-action.js` | 快捷指令待处理动作的结构完整性：唯一写入口 setRoute、consumeRoute 有过期判断、除 setRoute 外不许直接写 zl.pendingRoute、RootView 同时有冷启动与前台两条消费路径 |
 | `_check-fixed-widths.js` | 布局溢出：`.frame(width: N)` 里 N ≥ 280 必然超出手机竖屏（最窄 320pt − 两侧 18pt） |
+| `_check-hstack-budget.js` | 横向预算：同一 `HStack` **直接子层**多个固定宽度之和 ≥288pt（375pt 屏可用 339pt 的 85%）就报。⚠️ 只看内联块，写在 computed property 里的宽度追不到（已在文件头写明） |
 | `_check-dark-mode.js` | 深色模式链路：`ZLPalette.color` 必须会按 darkMode 把 `…Light` 换成 `…Dark`；RootView 必须把系统 colorScheme 同步给 ThemeManager；色板 Light/Dark 两组键必须成对 |
 | `_check-trademark-strings.js` | 命名合规：界面字符串不得把 App 自称 `ZL2` / `ZalithLauncher`（README 声明的 GPLv3 第 7 条）；上游署名、格式名、Bonjour 服务名等例外逐条登记理由 |
 | `_check-license-page.js` | 许可页 ↔ 实际打包内容：`Frameworks/`、`libs/*.jar`、`jre/` 里每个第三方都要在「关于与开源许可」页有署名；页面里列了但仓库没文件的也要报（第103轮：漏了 AltKit / FreeType / shaderc / Gson / jsr305 与 Java 21/25，还错列了不存在的 MobileGlues） |

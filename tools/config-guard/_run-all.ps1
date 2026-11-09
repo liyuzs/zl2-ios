@@ -36,6 +36,7 @@ $checks = @(
     @('_check-dead-routes.js',      'js',  '路由声明了但没人导航'),
     @('_check-pending-action.js',   'js',  '快捷指令待处理动作（写入/消费/时效）'),
     @('_check-fixed-widths.js',     'js',  '固定宽度 ≥280 必然溢出手机竖屏'),
+    @('_check-hstack-budget.js',   'js',  '一行内固定宽度之和'),
     @('_check-trademark-strings.js','js',  '界面自称 ZL2（违反 GPLv3 第7条）'),
     @('_check-license-page.js',     'js',  '许可页 ↔ 实际打包内容'),
     @('_check-readme-claims.js',    'js',  'README 声明 ↔ 代码实现'),
