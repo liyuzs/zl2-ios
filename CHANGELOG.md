@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **修正连续两轮的设置项统计错误**：`ZLUnsupportedSettings` 里有**四个**集合（`platformOnly` 57 / `notWired` 4 / `renderOnly` 14 / `launcherLook` 10），而第79、87轮的统计只解析了前两个，把已置灰的 24 项当成"可用"——"可用"数字因此虚高为 54、42，**真实一直是 30**。第87轮那次"归位 12 个假开关"实为把已在 `renderOnly` 里的键重复加进别的集合（还让说明文案走了错分支），**已全部撤销，重复归类归零**。
+- 生成器与检查器都改成读四个集合，文档总览扩成四类并补两节明细；检查器新增守卫：源文件里出现未被脚本覆盖的 `Set<String>` 声明就直接报错（注入验证会红）。
+
 - **12 个设置项「界面上能调、调了没用」**：排除定义文件与设置页后统计，这 12 项在代码里零引用，却既没置灰也没说明 —— `vulkanDriver` / `graphicsApi` / `sfpewPluginLayer` / `sfpewRelaxedContext` / `zinkPreferSystemDriver` / `vsyncInZink` / `dumpShaders` / `nativeLibPlugins` / `gameFullScreen`（→ 安卓专属置灰）、`sustainedPerformance` / `skipGameIntegrityCheck` / `logBufferFlushInterval`（→ 待接线置灰）。分类变为：**可用 42 / 安卓专属 66 / 待接线 7**。
 - 新增 `_gen-settings-audit.js`：从代码重新生成 `docs/设置项审计.md`（第79轮起该文档由代码生成，但生成逻辑写在一次性命令里，改分类时没法复用）。
 
