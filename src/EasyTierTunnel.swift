@@ -218,7 +218,7 @@ final class ZLTunnelManager {
         proto.providerBundleIdentifier = "com.zl2.ios.tunnel"   // ← 需与 NE target 一致
         proto.serverAddress = "EasyTier"
         m.protocolConfiguration = proto
-        m.localizedDescription = "ZL2 联机"
+        m.localizedDescription = "CraftLauncher 联机"
         m.isEnabled = true
         try await m.saveToPreferences()
         try await m.loadFromPreferences()

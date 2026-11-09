@@ -59,7 +59,7 @@ enum ZLSettings {
         .init(key: "skipGameIntegrityCheck", type: .bool, defaultValue: "false", range: nil, group: "game"),
         // 安卓默认 "${BuildKeys.LAUNCHER_IDENTIFIER}[zl_version]"；
         // BuildKeys 是安卓构建期生成的常量，iOS 端以 "ZalithLauncher" 作为标识（待确认）
-        .init(key: "versionCustomInfo", type: .string, defaultValue: "ZalithLauncher[zl_version]", range: nil, group: "game"),
+        .init(key: "versionCustomInfo", type: .string, defaultValue: "CraftLauncher[zl_version]", range: nil, group: "game"),
         .init(key: "javaRuntime", type: .string, defaultValue: "", range: nil, group: "game"),
         .init(key: "autoPickJavaRuntime", type: .bool, defaultValue: "true", range: nil, group: "game"),
         // 安卓为 NullableIntSettingUnit，默认 null，最小 256MB

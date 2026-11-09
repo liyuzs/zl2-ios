@@ -314,7 +314,7 @@ enum ZLDiagnostics {
     /// 生成可复制的纯文本报告
     static func exportText(_ items: [ZLDiagItem]) -> String {
         var lines: [String] = []
-        lines.append("=== ZL2-iOS 环境诊断 ===")
+        lines.append("=== CraftLauncher 环境诊断 ===")
         lines.append("生成时间：\(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .medium))")
         lines.append("")
 

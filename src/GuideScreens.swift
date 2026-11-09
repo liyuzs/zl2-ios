@@ -277,7 +277,7 @@ struct GuideManager: View {
 extension GuideManager {
     /// 主界面引导：首次启动时覆盖在首页上
     static let homeSteps: [GuideStep] = [
-        GuideStep(text: "欢迎使用 ZL2！我们来简单看看主界面的功能吧~",
+        GuideStep(text: "欢迎使用 CraftLauncher！我们来简单看看主界面的功能吧~",
                   icon: "hand.wave.fill"),
         GuideStep(text: "不太喜欢操作栏的位置？你可以长按卡片提起它，拖动并让它停靠到另一侧哦",
                   icon: "hand.draw.fill",

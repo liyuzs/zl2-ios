@@ -456,7 +456,7 @@ enum CoreBridge {
         // 尝试 mprotect 为可写可执行（JIT 未开时 iOS 会拒绝）
         let result = mprotect(page, 4096, PROT_READ | PROT_WRITE | PROT_EXEC)
         if result != 0 {
-            return "JIT 未启用：请在 StikDebug 里对 ZL2 启用 JIT 后再启动游戏，否则会非常卡或闪退"
+            return "JIT 未启用：请在 StikDebug 里对 CraftLauncher 启用 JIT 后再启动游戏，否则会非常卡或闪退"
         }
         return nil
     }

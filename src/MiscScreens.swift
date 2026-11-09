@@ -329,7 +329,7 @@ struct WelcomeScreen: View {
     @State private var checking = false
 
     private let pages: [(String, String, String)] = [
-        ("cube.fill", "欢迎使用 ZL2",
+        ("cube.fill", "欢迎使用 CraftLauncher",
          "开源的 Minecraft: Java 版启动器\n为 iOS 重新实现的界面"),
         ("wrench.and.screwdriver.fill", "先做个自检",
          "检查启动核心与 Java 运行时\n确保能正常启动游戏"),

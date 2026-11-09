@@ -271,7 +271,7 @@ struct FileManagerScreen: View {
         ZLEmptyState(
             icon: "folder",
             title: "这个文件夹是空的",
-            detail: "点右上角「⋯」新建文件夹，\n或者从其他 App 把文件分享到 ZL2 里",
+            detail: "点右上角「⋯」新建文件夹，\n或者从其他 App 把文件分享到 CraftLauncher 里",
             actionTitle: "新建文件夹",
             action: { showNewFolder = true })
     }

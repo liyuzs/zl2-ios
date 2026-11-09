@@ -118,7 +118,7 @@ enum ZLEasterEgg {
         "嗯？你点了我一下",
         "这个启动器是用 SwiftUI 从零写的",
         "Minecraft Java 能跑在 iPhone 上，靠的是 JIT",
-        "卡的话…先确认 StikDebug 里给 ZL2 开了 JIT",
+        "卡的话…先确认 StikDebug 里给 CraftLauncher 开了 JIT",
         "键位盘可以长按空白处新建按钮",
         "第 6 下，你还挺有耐心",
         "被你发现了。去玩游戏吧 🎮"
