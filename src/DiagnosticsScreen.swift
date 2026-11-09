@@ -18,6 +18,7 @@ struct DiagnosticsScreen: View {
     @State private var running = true
     @State private var copied = false
     @State private var packing = false
+    @State private var packError: String?
 
     private var fails: Int { items.filter { $0.level == .fail }.count }
     private var warns: Int { items.filter { $0.level == .warn }.count }
@@ -44,6 +45,14 @@ struct DiagnosticsScreen: View {
         .navigationBarHidden(true)
         .task {
             await runChecks()
+        }
+        .alert("打包失败", isPresented: Binding(
+            get: { packError != nil },
+            set: { if !$0 { packError = nil } }
+        )) {
+            Button("知道了", role: .cancel) { packError = nil }
+        } message: {
+            Text(packError ?? "")
         }
     }
 
@@ -241,19 +250,27 @@ struct DiagnosticsScreen: View {
             let zip = await Self.buildDiagnosticBundle(diagText: diagText)
             await MainActor.run {
                 packing = false
-                guard let zip else { return }
-                let av = UIActivityViewController(activityItems: [zip], applicationActivities: nil)
-                if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let root = scene.windows.first?.rootViewController {
-                    // iPad 上没有 popover 锚点会直接崩
-                    if let pop = av.popoverPresentationController {
-                        pop.sourceView = root.view
-                        pop.sourceRect = CGRect(x: root.view.bounds.midX,
-                                               y: root.view.bounds.midY, width: 0, height: 0)
-                        pop.permittedArrowDirections = []
-                    }
-                    root.present(av, animated: true)
+                guard let zip else {
+                    // 不能静默返回 —— 用户点了按钮却什么都没发生，只会以为是 App 卡了。
+                    packError = "打包失败。可能是临时目录写满，或日志文件正被占用。"
+                    return
                 }
+                let av = UIActivityViewController(activityItems: [zip], applicationActivities: nil)
+                // 找不到根视图时也不能静默 —— zip 已经生成了，但用户什么都没看到，
+                // 只会以为按钮坏了。把路径告诉用户，至少能自己去「文件」里找。
+                guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                      let root = scene.windows.first?.rootViewController else {
+                    packError = "打包好了但打不开分享面板。文件在：\(zip.lastPathComponent)"
+                    return
+                }
+                // iPad 上没有 popover 锚点会直接崩
+                if let pop = av.popoverPresentationController {
+                    pop.sourceView = root.view
+                    pop.sourceRect = CGRect(x: root.view.bounds.midX,
+                                           y: root.view.bounds.midY, width: 0, height: 0)
+                    pop.permittedArrowDirections = []
+                }
+                root.present(av, animated: true)
             }
         }
     }
