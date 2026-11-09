@@ -1302,7 +1302,17 @@ enum ZLUnsupportedSettings {
         "gestureLongPressMouseAction", "gestureTapMouseAction",
         "joystickControlMode", "requestMaxRefreshRate",
         "showSponsorship", "hideMouse", "enableMouseClick",
-    ]
+    
+
+        // 安卓渲染栈专属：iOS 走 Metal / ANGLE，Turnip、Zink、SFPEW、Vulkan 这些在 iOS 上
+        // 根本不存在对应实现，也没有任何代码消费这些键 —— 界面上曾经把它们当"可用"显示。
+        "vulkanDriver", "graphicsApi",
+        "sfpewPluginLayer", "sfpewRelaxedContext",
+        "zinkPreferSystemDriver", "vsyncInZink", "dumpShaders",
+        // 安卓把 .so 原生库塞进 APK；iOS 不能加载任意 dylib
+        "nativeLibPlugins",
+        // iOS App 天然全屏，没有窗口化开关
+        "gameFullScreen",]
 
     /// iOS 应该支持，但核心还没接线 —— 属于待办，不是永久不支持
     static let notWired: Set<String> = [
@@ -1326,7 +1336,12 @@ enum ZLUnsupportedSettings {
         //                    → ControlEditor.applySnap()
         //   controlLayout    → CoreLayoutExporter
         //   showFPS / showMemory / fpsDisplayMode → ZL2PerfSampler
-    ]
+    
+
+        // iOS 上做得成、但还没接线（不是平台限制）
+        "sustainedPerformance",     // 持续性能模式，需要自己实现功耗/温控策略
+        "skipGameIntegrityCheck",   // 跳过资源完整性校验
+        "logBufferFlushInterval",   // 日志落盘间隔]
 
     /// 安卓渲染/启动相关，iOS 的图形栈完全不同
     private static let renderOnly: Set<String> = [
