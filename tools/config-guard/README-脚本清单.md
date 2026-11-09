@@ -65,6 +65,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-script-inventory.js` | 脚本清单完整性（双向）：磁盘上每个脚本都要在清单里出现；清单与仓库文档里提到的脚本必须真的存在 |
 | `_paths.js` / `_paths.ps1` | **路径解析助手（不是检查）**：让脚本不写死 `D:\ios-zl2`。解析顺序：环境变量 `ZL2_REPO` → 从脚本位置向上找 `project.yml` → 本机默认值。JS 用 `require('./_paths')`，PS1 用 `. "$PSScriptRoot\_paths.ps1"` |
 | `_check-delivery-docs.js` | 交付包里的文档必须在仓库有来源（不许"孤本"），且副本内容必须与仓库一致（漏同步会报） |
+| `_check-delivery-index.js` | 交付包入口说明的完整性（双向）：交付包里每个文件都要在「从这里开始.md」里出现；说明里提到的文件必须真的存在 |
 
 ## 二、契约测试（改了对应模块才需要跑）
 

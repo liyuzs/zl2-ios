@@ -23,6 +23,7 @@ const DELIVERY = 'D:\\ZL2-iOS交付包';
 const ALIAS = {
   '交接文档-当前.md': path.join(REPO, 'HANDOFF-20261108.md'),
   '项目状态-当前.md': path.join(REPO, 'STATUS.md'),
+  '从这里开始.md':      path.join(REPO, 'docs', '交付包说明-从这里开始.md'),
   '脚本清单.md':       path.join(GUARD, 'README-脚本清单.md'),
 };
 
