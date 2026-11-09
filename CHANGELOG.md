@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **诊断报告的结论会误报「一切正常」**：`exportText` 原来看 `fails.isEmpty && warns.isEmpty` 就写「一切正常」，但 `items` 为空还有另一种原因——检查还没跑完（用户一进页面就点打包）。已改成三态：未完成 / 一切正常 / N 项异常。
+- **打包分享有两条静默失败路径**：组包失败、或拿不到根视图时都静默返回，用户点了按钮什么都不会发生。已都改成弹提示（拿不到根视图时还把 zip 文件名告诉用户）。
+
 - **【新增】环境诊断页「打包日志分享」**：一键把诊断报告 + `ame.log` + `latest.log` + 最近两个崩溃报告 + 目录清单打成 zip 分享。真机出问题时不用再让朋友进「文件」App 手动找日志。目录清单是刻意加的——即使日志为空也能看出 `bundle/libs` 有没有 jar、`java_runtimes` 有没有三套。
 
 - **10 个只声明没用的 `@State`**：`AssetsScreen.installedOnly`（想做「只看已安装」筛选但控件没做）、`DownloadAddonsScreen` 的三个 `show*Picker`、`HomeScreen.secretIdx`（彩蛋实际用 `versionTaps`）、`JavaManageScreen.importing`、`ModifyVersionScreen.showLoaderList`、`SkinCapeScreen.selectedCape`、`TerracottaScreen.playerName`、`ZL2App.lanTab`。已全部删除，无功能影响。
