@@ -99,6 +99,30 @@ enum CoreBridge {
         // 4) 内存分配（统一走 syncMemorySetting，见那里的注释）
         syncMemorySetting()
 
+        // 5) 控件布局目录 + 默认布局
+        //
+        // 核心里那个 generateAndSaveDefaultControl() **从来没有被任何地方调用过**，
+        // 而 defaultTouchCtrl 的默认值就是 "default.json"。
+        // 于是首次启动时核心会去读 <AME_HOME>/controlmap/default.json：
+        //   · 文件不存在 → parseJSONFromFile 返回 NSErrorObject
+        //   · ControlLayout loadControlFile: 弹 "Could not open ..."
+        //   · 而且屏幕上没有任何控件 —— 进游戏等于没法操作
+        //
+        // 这里主动把目录建好再调一次生成。注意顺序不能反：
+        // 该函数用 NSOutputStream 写文件，父目录不存在时会**静默失败**，
+        // 不报错也不生成，症状和没调用一样。
+        let controlMapDir = (home as NSString).appendingPathComponent("controlmap")
+        try? fm.createDirectory(atPath: controlMapDir, withIntermediateDirectories: true)
+        try? fm.createDirectory(atPath: (controlMapDir as NSString).appendingPathComponent("gamepads"),
+                                withIntermediateDirectories: true)
+        generateAndSaveDefaultControl()
+        let defaultLayoutPath = (controlMapDir as NSString).appendingPathComponent("default.json")
+        if fm.fileExists(atPath: defaultLayoutPath) {
+            NSLog("[ZL2] 默认控制布局已就位：%@", defaultLayoutPath)
+        } else {
+            NSLog("[ZL2] 警告：默认控制布局生成失败，进游戏会没有控件")
+        }
+
         // 配置 Java 运行时映射：
         // "0" = 当前 profile 的默认选择；版本号 → "internal" 表示用 bundle 内 java_runtimes/java-<ver>-openjdk
         // 注意 "1_17_newer" 这里必须写 17，不能写 21。
