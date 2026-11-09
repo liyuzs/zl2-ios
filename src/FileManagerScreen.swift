@@ -39,6 +39,9 @@ struct FileManagerScreen: View {
     @State private var loadError: String?
     /// 清空回收站前的确认（这一步是不可恢复的，必须二次确认）
     @State private var confirmEmptyTrash = false
+    /// 回收站占用（字节）。0 表示空或还没算出来。
+    /// 为什么要显示：`.trash` 是隐藏目录，用户删了东西看不到"空间去哪了"。
+    @State private var trashBytes: Int64 = 0
 
     private let fm = FileManager.default
     private var trashDir: URL {
@@ -61,6 +64,7 @@ struct FileManagerScreen: View {
                 current = p
             }
             reload()
+            refreshTrashSize()
         }
         // ⌘R（iPad 键盘）重新读当前目录
         .onReceive(NotificationCenter.default.publisher(for: .zlRefreshRequested)) { _ in
@@ -88,7 +92,9 @@ struct FileManagerScreen: View {
             Button("永久删除，不可恢复", role: .destructive) { emptyTrash() }
             Button("取消", role: .cancel) { }
         } message: {
-            Text("回收站里的所有文件会被永久删除，无法恢复。\n（平时删文件只是移到回收站，可以在这里找回）")
+            Text(trashBytes > 0
+                 ? "回收站占用 \(byteText(trashBytes))。里面所有文件会被永久删除，无法恢复。"
+                 : "回收站目前是空的。")
         }
         .sheet(item: $showProperty) { e in
             FilePropertySheet(entry: e, parent: current)
@@ -123,7 +129,10 @@ struct FileManagerScreen: View {
                 // 原来这里直接 emptyTrash() —— 点一下就把回收站永久清空。
                 // 回收站存在的意义就是「删错了还能捞回来」，一步误触就把这层保险毁了，
                 // 而且是不可恢复的。所以改成先确认。
-                Button("清空回收站", role: .destructive) { confirmEmptyTrash = true }
+                Button(trashBytes > 0
+                       ? "清空回收站（占用 \(byteText(trashBytes))）"
+                       : "清空回收站",
+                       role: .destructive) { confirmEmptyTrash = true }
             } label: {
                 Image(systemName: "ellipsis.circle").foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 36, height: 34)
@@ -428,11 +437,42 @@ struct FileManagerScreen: View {
             errorText = ZLFriendlyError.text(error)
         }
         reload()
+        refreshTrashSize()
     }
 
     private func emptyTrash() {
         guard let items = try? fm.contentsOfDirectory(at: trashDir, includingPropertiesForKeys: nil) else { return }
         for i in items { try? fm.removeItem(at: i) }
+        refreshTrashSize()
+    }
+
+    /// 后台算回收站占用，算完回主线程更新。
+    /// 大目录递归可能慢，所以不在主线程同步算。
+    private func refreshTrashSize() {
+        let dir = trashDir
+        DispatchQueue.global(qos: .utility).async {
+            var total: Int64 = 0
+            let fm2 = FileManager.default
+            if let en = fm2.enumerator(at: dir,
+                                      includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
+                                      options: []) {
+                for case let u as URL in en {
+                    let v = try? u.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+                    if v?.isRegularFile == true {
+                        total += Int64(v?.fileSize ?? 0)
+                    }
+                }
+            }
+            DispatchQueue.main.async { trashBytes = total }
+        }
+    }
+
+    /// 把字节数变成人看的大小字符串
+    private func byteText(_ b: Int64) -> String {
+        let f = ByteCountFormatter()
+        f.countStyle = .file
+        f.allowedUnits = [.useKB, .useMB, .useGB]
+        return f.string(fromByteCount: b)
     }
 
     private func fileIcon(_ name: String) -> String {
