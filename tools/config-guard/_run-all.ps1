@@ -60,6 +60,7 @@ $checks = @(
     @('_check-links.ps1',           'ps1', '文档死链'),
     @('_check-checklist-logs.js',   'js',  '清单日志文案 ↔ 代码契约'),
     @('_check-doc-stats.js',        'js',  '文档规模数字 ↔ 仓库实际'),
+    @('_check-hardcoded-stats.js','js',  '界面文案不许写死规模数字'),
     @('_check-script-inventory.js', 'js',  '脚本清单 ↔ 磁盘（双向）'),
     @('_check-delivery-docs.js',    'js',  '交付包文档 ↔ 仓库（不许孤本/漏同步）'),
     @('_check-delivery-index.js',  'js',  '交付包入口说明 ↔ 文件清单')

@@ -119,7 +119,7 @@ enum ZLEasterEgg {
         "这个启动器是用 SwiftUI 从零写的",
         "Minecraft Java 能跑在 iPhone 上，靠的是 JIT",
         "卡的话…先确认 StikDebug 里给 CraftLauncher 开了 JIT",
-        "键位盘可以长按空白处新建按钮",
+        "编辑器顶栏那个「＋」里能加按键、文本框和摇杆",
         "第 6 下，你还挺有耐心",
         "被你发现了。去玩游戏吧 🎮"
     ]
@@ -285,10 +285,7 @@ enum ZLFestival {
         default: break
         }
 
-        // 中秋/春节每年日期不同，用农历判断太复杂，这里按大致区间给一句
-        if m == 9 || m == 10 {
-            return nil  // 交给具体节日，不硬猜
-        }
+        // 中秋/春节每年日期不同，用农历判断太复杂，这里就不硬猜了
         return nil
     }
 }
@@ -298,7 +295,7 @@ enum ZLFestival {
 enum ZLSecretInfo {
     static let lines: [String] = [
         "😺 你找到了这里",
-        "这个启动器用了 55 个 Swift 文件",
+        "App 里自带 3 套 Java 运行时（17 / 21 / 25），按版本自动挑",
         "界面是照着安卓版 ZL2 逐像素对的",
         "Java 在 iPhone 上跑，靠 Amethyst 核心",
         "如果启动失败，先看日志里有没有 JIT 相关提示",

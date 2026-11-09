@@ -63,6 +63,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-links.ps1` | 文档内部死链 |
 | `_check-checklist-logs.js` | 验证清单里让用户搜的日志文案，在代码里是否真的存在（改了文案会静默失效） |
 | `_check-doc-stats.js` | README / STATUS 的规模数字（Swift 文件数 / 核心 `.m` 数 / jar 数）是否等于实际；行数与体积是假精度不查 |
+| `_check-hardcoded-stats.js` | 界面文案不许写死系统规模数字（「N 个 Swift 文件」这类一定会过时）。第102轮从彩蛋里抓出一句"这个启动器用了 55 个 Swift 文件"（实际 70） |
 | `_check-script-inventory.js` | 脚本清单完整性（双向）：磁盘上每个脚本都要在清单里出现；清单与仓库文档里提到的脚本必须真的存在 |
 | `_paths.js` / `_paths.ps1` | **路径解析助手（不是检查）**：让脚本不写死 `D:\ios-zl2`。解析顺序：环境变量 `ZL2_REPO` → 从脚本位置向上找 `project.yml` → 本机默认值。JS 用 `require('./_paths')`，PS1 用 `. "$PSScriptRoot\_paths.ps1"` |
 | `_check-delivery-docs.js` | 交付包里的文档必须在仓库有来源（不许"孤本"），且副本内容必须与仓库一致（漏同步会报） |
