@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **新增「参数标签」静态检查**（`_check-call-labels.js`）：调工程内类型的方法时，实参标签必须与声明一致。这是我自己犯过两次的错（`requiredJavaVersion(for:)` 标签不存在、`String.Replace` 传三参），而括号检查和导入检查都抓不到。当前 88 个方法声明 / 78 个调用点全部对得上。
+
+> 编译前置静态检查现在有四层：**括号配对**（swift-lint）→ **框架导入**（_check-imports）→ **标识符拼写**（_check-interpolation）→ **参数标签**（_check-call-labels）。挡不住的只剩类型系统与泛型约束。
+
 - **`VersionIconPicker` 缺 `import UIKit`**：用了 `UIImage` 但只导入 SwiftUI + PhotosUI（后者通常会把 UIKit 带进来，但"通常"不算保证）。已补；并新增 `_check-imports.js` 按符号→框架映射检查导入缺失（UIKit / CryptoKit / Compression / PhotosUI / AVFoundation）——没有本地编译器时，这是最划算的"编译前置"防线。
 
 - **服务器 MOTD 显示空白**：`description` 有纯字符串 / `{text}` / `{text, extra}` 三种形态，原来只取 `text`，而带彩色分段的服务器（最常见那种）会解析成空字符串，看起来像服务器没返回信息。已加 `flattenChat` 递归展开，配 `_test-motd.js` 11 条。
