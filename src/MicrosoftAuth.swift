@@ -148,8 +148,15 @@ actor MicrosoftAuth {
         let url = URL(string: "https://login.microsoftonline.com/consumers/oauth2/v2.0/token")!
         let deadline = Date().addingTimeInterval(TimeInterval(info.expiresIn))
 
+        // 轮询间隔必须可变：RFC 8628 规定服务端返回 `slow_down` 时，
+        // 客户端要把间隔**增加 5 秒**。原来这里是常量（max(info.interval, 3)），
+        // `slow_down` 也当 `authorization_pending` 一路 continue ——
+        // 服务端会持续要求放慢，直到 deadline 耗尽才报 "expired"。
+        // 表现就是：用户在手机上明明点完了授权，登录却失败。
+        var pollInterval = max(info.interval, 3)
+
         while Date() < deadline {
-            try await Task.sleep(nanoseconds: UInt64(max(info.interval, 3)) * 1_000_000_000)
+            try await Task.sleep(nanoseconds: UInt64(pollInterval) * 1_000_000_000)
             onWaiting()
 
             var req = URLRequest(url: url, timeoutInterval: 20)
@@ -171,12 +178,20 @@ actor MicrosoftAuth {
                                    expiresIn: json["expires_in"] as? Int ?? 3600)
             }
             switch json["error"] as? String {
-            case "authorization_pending": continue
-            case "slow_down": continue
+            case "authorization_pending":
+                continue
+            case "slow_down":
+                // 服务端明确要求放慢：按 RFC 8628 加 5 秒，否则它会一直拒绝
+                pollInterval += 5
+                NSLog("[ZL2] 微软登录要求放慢轮询，间隔调到 %d 秒", pollInterval)
+                continue
             case "authorization_declined": throw MSAuthError.declined
             case "expired_token": throw MSAuthError.expired
             case "bad_verification_code": throw MSAuthError.expired
-            default: continue
+            default:
+                // 未知错误也记一下，否则只会表现为"转很久然后说过期"
+                NSLog("[ZL2] 微软登录返回未知错误：%@", (json["error"] as? String) ?? "（无 error 字段）")
+                continue
             }
         }
         throw MSAuthError.expired
