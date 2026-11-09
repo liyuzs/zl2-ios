@@ -37,6 +37,8 @@ struct FileManagerScreen: View {
     @State private var showProperty: FileEntry?
     @State private var isLoading = true
     @State private var loadError: String?
+    /// 清空回收站前的确认（这一步是不可恢复的，必须二次确认）
+    @State private var confirmEmptyTrash = false
 
     private let fm = FileManager.default
     private var trashDir: URL {
@@ -81,6 +83,13 @@ struct FileManagerScreen: View {
             get: { errorText != nil },
             set: { if !$0 { errorText = nil } }
         )) { Button("好", role: .cancel) { } } message: { Text(errorText ?? "") }
+        .confirmationDialog("清空回收站？", isPresented: $confirmEmptyTrash,
+                            titleVisibility: .visible) {
+            Button("永久删除，不可恢复", role: .destructive) { emptyTrash() }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("回收站里的所有文件会被永久删除，无法恢复。\n（平时删文件只是移到回收站，可以在这里找回）")
+        }
         .sheet(item: $showProperty) { e in
             FilePropertySheet(entry: e, parent: current)
         }
@@ -111,7 +120,10 @@ struct FileManagerScreen: View {
                 Button(dirFirst ? "改为文件优先" : "改为目录优先") { dirFirst.toggle(); reload() }
                 Button(ascending ? "改为降序" : "改为升序") { ascending.toggle(); reload() }
                 Divider()
-                Button("清空回收站", role: .destructive) { emptyTrash() }
+                // 原来这里直接 emptyTrash() —— 点一下就把回收站永久清空。
+                // 回收站存在的意义就是「删错了还能捞回来」，一步误触就把这层保险毁了，
+                // 而且是不可恢复的。所以改成先确认。
+                Button("清空回收站", role: .destructive) { confirmEmptyTrash = true }
             } label: {
                 Image(systemName: "ellipsis.circle").foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 36, height: 34)
