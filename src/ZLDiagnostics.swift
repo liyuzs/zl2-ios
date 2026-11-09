@@ -77,7 +77,7 @@ enum ZLDiagnostics {
         let names = keys.map { $0.replacingOccurrences(of: ZLRecovery.prefix, with: "") }
         return [ZLDiagItem(
             title: "数据备份",
-            value: "\(keys.count) 份数据解码失败但已备份（\(names.joined(separator: "、"))）——原始内容仍在，可导出恢复",
+            value: "\(keys.count) 份数据解码失败但已备份（\(names.joined(separator: "、"))）——原始内容完好，打包日志时会一并带出",
             level: .warn
         )]
     }

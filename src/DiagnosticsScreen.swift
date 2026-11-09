@@ -349,6 +349,33 @@ struct DiagnosticsScreen: View {
         try? tree.write(to: stage.appendingPathComponent("目录清单.txt"),
                         atomically: true, encoding: .utf8)
 
+        // 5.5) 解码失败的原始数据（如果有）
+        //
+        // ZLRecovery 把解不开的数据原样存进了 plist。用户看不到 plist，
+        // 所以光"备份了"没用 —— 必须能带走。这里把每份备份写成 <key>.raw
+        // 放进同一个包，点「打包日志」就一起发出来了。
+        let backups = ZLRecovery.allBackupKeys()
+        if !backups.isEmpty {
+            let dir = stage.appendingPathComponent("损坏数据备份", isDirectory: true)
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            var list = "=== 解码失败但已备份的数据 ===\n"
+            for key in backups {
+                let short = key.replacingOccurrences(of: ZLRecovery.prefix, with: "")
+                if let d = ZLRecovery.backupData(for: key) {
+                    list += "\(short)   \(d.count) 字节\n"
+                    try? d.write(to: dir.appendingPathComponent(short + ".raw"), options: .atomic)
+                }
+            }
+            list += "\n说明：这些是 App 里存过、但某个版本之后解不开的原始数据。\n"
+            list += "原始内容完好，可由开发者按 schema 转回可读格式。\n"
+            try? list.write(to: dir.appendingPathComponent("说明.txt"),
+                            atomically: true, encoding: .utf8)
+            header += "\n\n" + list
+            // 报告正文也写一遍（虽然已在前面写盘，这里补上备份清单）
+            try? header.write(to: stage.appendingPathComponent("诊断报告.txt"),
+                              atomically: true, encoding: .utf8)
+        }
+
         // 6) 打成 zip（靠 NSFileCoordinator 的 forUploading 选项，系统会替我们压缩）
         var zipURL: URL?
         var coordError: NSError?
