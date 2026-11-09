@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **删掉两个被取代的死页面**：`ExportScreen`（154 行，被 `ExportPackScreen` 取代）、`CrashLogScreen`（94 行，功能已被 `LogViewScreen` 覆盖），连同 `AppRoute` 的 `.exportPack` / `.crashLog` 两个 case 与目的地分支。路由 32 → 30。
+- **「按项目 ID 搜索」接上入口**：`SearchIDScreen`（132 行，按 Modrinth/CurseForge 项目 ID 搜索）一直存在但无入口，现于下载页搜索框旁新增「#」按钮进入。
+- 剩余 8 个已知死路由（5 个页面另有入口、3 个未接入）登记在 `_check-dead-routes.js` 的 ALLOW 中。
+
 - **服务器列表页一直打不开，而界面上显示的是写死的假服务器**：`ServerListScreen`（带真实 Server List Ping）7 个不可达页面之一，用户点不到；`VersionContentScreen` 里那个「服务器列表」是硬编码的 Hypixel / 2b2t / 本地局域网（地址都是编的），行末 chevron 没有 Button，而「添加服务器」弹窗说"去多人游戏页管理"——那一页是联机页，没有服务器管理。已改为读 `ServerStore` 真实数据 + 点进去就是真实页面。
 - 新增 `_check-dead-routes.js`：`AppRoute` 的每个 case 必须有导航调用（append / onOpen / NavigationLink），已知 11 个死路由登记理由。
 - STATUS 已知问题段重排为 7 条（原来有两个 `4.`），新增「7 个页面用户点不到」。
