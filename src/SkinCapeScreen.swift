@@ -14,8 +14,6 @@ struct SkinCapeScreen: View {
     @State private var pickerItem: PhotosPickerItem?
     @State private var uploading = false
     @State private var message: String?
-    @State private var selectedCape: String?
-
     private var token: String? { AccountStore.shared.current?.accessToken }
     private var isMicrosoft: Bool { AccountStore.shared.current?.type == .microsoft }
 

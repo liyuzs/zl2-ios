@@ -437,8 +437,6 @@ struct MultiplayerScreen: View {
     var onHome: () -> Void = {}
     @State private var tab = 0
     @StateObject private var lan = LanDiscovery()
-    @State private var lanTab = false
-
     private let tabs = ["用户须知", "房主教程", "房客教程"]
 
     var body: some View {

@@ -115,10 +115,6 @@ struct DownloadAddonsScreen: View {
     @State private var loaderVersions: [String] = []
     @State private var apiVersions: [String] = []
     @State private var loading = false
-    @State private var showLoaderPicker = false
-    @State private var showVersionPicker = false
-    @State private var showAPIPicker = false
-
     var body: some View {
         VStack(spacing: 0) {
             ZLTopBar(title: "安装 \(gameVersion)", active: .download,

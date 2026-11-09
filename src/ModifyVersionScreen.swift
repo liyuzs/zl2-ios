@@ -15,7 +15,6 @@ struct ModifyVersionScreen: View {
     @State private var originalLoader: String = ""
     @State private var selectedLoader: String = ""
     @State private var showMCList = false
-    @State private var showLoaderList = false
     @State private var mcVersions: [String] = []
     @State private var loading = false
     @State private var working = false

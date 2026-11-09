@@ -85,7 +85,6 @@ struct AssetsScreen: View {
     @State private var query = ""
     @State private var sort = 0
     @State private var source = 0
-    @State private var installedOnly = false
     // ZL2 的四个筛选维度：目标平台 / 游戏版本 / 类别 / 模组加载器
     @State private var platform = 0
     @State private var gameVersion = 0

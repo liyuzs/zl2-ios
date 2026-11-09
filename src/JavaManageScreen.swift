@@ -19,7 +19,6 @@ struct JavaManageScreen: View {
     @State private var runtimes: [JavaRuntime] = []
     @State private var alertText = ""
     @State private var showAlert = false
-    @State private var importing = false
     @State private var isLoading = true
     @State private var loadError: String?
     @State private var toastText: String?

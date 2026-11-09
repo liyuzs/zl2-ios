@@ -30,7 +30,6 @@ struct HomeScreen: View {
     @State private var avatarSpinning = false
     @State private var iconBouncing = false
     @State private var versionTaps = 0
-    @State private var secretIdx = 0
     @State private var blankTaps = 0
     // 可爱彩蛋
 

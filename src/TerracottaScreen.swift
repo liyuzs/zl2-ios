@@ -78,7 +78,6 @@ struct TerracottaScreen: View {
     @State private var tab = 0                 // 0 联机 1 用户须知 2 房主教程 3 房客教程
     @State private var enabled = false
     @State private var roomInput = ""
-    @State private var playerName = ""
     @State private var state: ZLTerracottaState = .waiting
     @State private var roomType: ZLRoomType?
     @State private var myRoomCode = ""
