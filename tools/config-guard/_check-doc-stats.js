@@ -13,10 +13,11 @@
 // 为什么只查文件数：文件数是「项目规模」的有效信息，而且变化慢；
 // 行数是"看起来很精确其实没意义"的典型，任何一次编辑都会让它变成谎话。
 
+const PATHS = require('./_paths');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = 'D:\\ios-zl2';
+const ROOT = PATHS.REPO;
 const SRC = path.join(ROOT, 'src');
 
 // ---- 实际值 ----

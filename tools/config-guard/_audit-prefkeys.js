@@ -15,10 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const CORE = 'D:\\ios-zl2\\core';
-const SRC = 'D:\\ios-zl2\\src';
-
+const { CORE, SRC } = require('./_paths');
 function readFiles(dir, exts) {
   const out = [];
   for (const f of fs.readdirSync(dir)) {

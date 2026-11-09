@@ -11,10 +11,11 @@
 //   2. 检查 client jar 时必须考虑 inheritsFrom（加载器版本没有自己的 jar）
 // 另外把「结论三态」的判定逻辑镜像跑一遍。
 
+const PATHS = require('./_paths');
 const fs = require('fs');
 const path = require('path');
 
-const SRC = 'D:\\ios-zl2\\src\\ZLPreflight.swift';
+const SRC = path.join(PATHS.SRC, "ZLPreflight.swift");
 const text = fs.readFileSync(SRC, 'utf8');
 
 let pass = 0;

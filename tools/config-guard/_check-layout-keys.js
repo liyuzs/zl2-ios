@@ -14,10 +14,11 @@
 // 判据：`d["键"] = ...` 里的每个键，都要在 core/**/*.m|h 里出现过。
 // 例外必须登记理由（下面 ALLOW），不默默放过。
 
+const PATHS = require('./_paths');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = 'D:\\ios-zl2';
+const ROOT = PATHS.REPO;
 const EXPORT = path.join(ROOT, 'src', 'CoreLayoutExport.swift');
 
 // 核心暂不支持、但我们仍保留输出的键（将来核心支持时可无缝生效）

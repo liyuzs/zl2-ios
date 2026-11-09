@@ -8,10 +8,12 @@
 //   A. 核心源码里：当前格式版本号是多少、认哪些顶层列表、版本号不匹配会怎样
 //   B. 导出器源码里：实际写了哪个版本号、写了哪些顶层列表
 
+const path = require('path');
+const PATHS = require('./_paths');
 const fs = require('fs');
 
-const CORE_UTILS = 'D:\\ios-zl2\\core\\customcontrols\\CustomControlsUtils.m';
-const EXPORT_SWIFT = 'D:\\ios-zl2\\src\\CoreLayoutExport.swift';
+const CORE_UTILS = path.join(PATHS.CORE, "customcontrols/CustomControlsUtils.m");
+const EXPORT_SWIFT = path.join(PATHS.SRC, "CoreLayoutExport.swift");
 
 const core = fs.readFileSync(CORE_UTILS, 'utf8');
 const swift = fs.readFileSync(EXPORT_SWIFT, 'utf8');

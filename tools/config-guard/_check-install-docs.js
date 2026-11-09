@@ -16,10 +16,11 @@
 //
 // 不判断"哪个工具更好"，只暴露不一致，具体怎么改由人决定。
 
+const PATHS = require('./_paths');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = 'D:\\ios-zl2';
+const ROOT = PATHS.REPO;
 const DOCS = [
   { name: 'README.md',                  path: path.join(ROOT, 'README.md') },
   { name: '安装教程-超详细.md',          path: path.join(ROOT, 'docs', '安装教程-超详细.md') },

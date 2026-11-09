@@ -15,8 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SRC = 'D:\\ios-zl2\\src';
+const { SRC } = require('./_paths');
 const THRESHOLD = 280;
 
 // 这些文件是「不可达页面」或纯装饰，已知不修

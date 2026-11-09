@@ -16,8 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SRC = 'D:\\ios-zl2\\src';
+const { SRC } = require('./_paths');
 const WATCH_TYPES = [
   'CoreBridge', 'ZLRenderers', 'CoreLayoutExporter', 'VersionRepository',
   'ZLPreflight', 'ZLDiagnostics', 'MinecraftPing', 'ZLFriendlyError',

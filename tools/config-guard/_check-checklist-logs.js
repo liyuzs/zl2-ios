@@ -18,10 +18,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const DOC = 'D:\\ios-zl2\\docs\\真机验证清单-给朋友.md';
-const CORE = 'D:\\ios-zl2\\core';
-const SRC = 'D:\\ios-zl2\\src';
-
+const PATHS = require('./_paths');
+const { CORE, SRC } = PATHS;
+const DOC = path.join(PATHS.DOCS, "真机验证清单-给朋友.md");
 // ---- 收集全部源码文本 ----
 function readTree(dir, exts) {
   const out = [];

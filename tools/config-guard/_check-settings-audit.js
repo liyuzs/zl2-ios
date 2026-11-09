@@ -11,10 +11,11 @@
 // 权威来源永远是代码：`src/SettingsScreen.swift` 的 `ZLUnsupportedSettings`
 // 里 `platformOnly` / `notWired` 两个集合。这份检查把文档里的数字和代码对撞。
 
+const PATHS = require('./_paths');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = 'D:\\ios-zl2';
+const ROOT = PATHS.REPO;
 const SETTINGS_SWIFT = path.join(ROOT, 'src', 'ZLSettings.swift');
 const SCREEN_SWIFT = path.join(ROOT, 'src', 'SettingsScreen.swift');
 const AUDIT_DOC = path.join(ROOT, 'docs', '设置项审计.md');

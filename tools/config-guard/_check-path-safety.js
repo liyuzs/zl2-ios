@@ -17,8 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SRC = 'D:\\ios-zl2\\src';
+const { SRC } = require('./_paths');
 const read = f => fs.readFileSync(path.join(SRC, f), 'utf8');
 
 // ---- 1. 助手必须存在且完整 ----

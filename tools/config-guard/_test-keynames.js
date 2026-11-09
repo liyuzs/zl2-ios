@@ -7,10 +7,12 @@
 //
 // 这个脚本把核心的表抽出来，逐个确认我们的表能解析。
 
+const path = require('path');
+const PATHS = require('./_paths');
 const fs = require('fs');
 
-const CORE = 'D:\\ios-zl2\\core\\customcontrols\\CustomControlsUtils.m';
-const SWIFT = 'D:\\ios-zl2\\src\\GLFWKeyNames.swift';
+const CORE = path.join(PATHS.CORE, "customcontrols/CustomControlsUtils.m");
+const SWIFT = path.join(PATHS.SRC, "GLFWKeyNames.swift");
 
 const coreSrc = fs.readFileSync(CORE, 'utf8');
 const swiftSrc = fs.readFileSync(SWIFT, 'utf8');
@@ -75,7 +77,7 @@ const hasPositiveOnly = /GLFWKeyNames\.code\(for:[^)]*\)\s*,\s*code\s*>\s*0/.tes
 const okFilter = /GLFWKeyNames\.code\(for:[^)]*\)\s*,\s*code\s*!=\s*0/.test(swiftSrc);
 
 // 过滤逻辑在 CoreLayoutExport 里，不在 GLFWKeyNames
-const exportSrc = fs.readFileSync('D:\\ios-zl2\\src\\CoreLayoutExport.swift', 'utf8');
+const exportSrc = fs.readFileSync(path.join(PATHS.SRC, "CoreLayoutExport.swift"), 'utf8');
 const filterPositive = /code\s*>\s*0/.test(exportSrc);
 const filterNotZero = /code\s*!=\s*0/.test(exportSrc);
 

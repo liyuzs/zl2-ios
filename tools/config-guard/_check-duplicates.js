@@ -14,9 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SRC = 'D:\\ios-zl2\\src';
-
+const { SRC } = require('./_paths');
 // 抹掉注释与字符串，保留长度（这样索引对得上，报错行号才准）
 function stripNoise(s) {
   let out = '';

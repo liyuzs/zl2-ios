@@ -13,9 +13,8 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const GUARD = 'C:\\Users\\21793\\.dsh\\config-guard';
-const REPO = 'D:\\ios-zl2';
+const GUARD = require('./_paths').GUARD;
+const { REPO } = require('./_paths');
 const LIST = path.join(GUARD, 'README-脚本清单.md');
 
 const onDisk = fs.readdirSync(GUARD)
@@ -83,6 +82,18 @@ if (repoNames) {
   for (const f of extraInRepo) problems.push(`仓库副本里有 ${f}，本机已不存在（仓库该清理）`);
 }
 
+// ---- E. 不许写死仓库绝对路径（第96轮加：曾有 53 个脚本把仓库路径写死在常量里，入仓却不便携） ----
+// 允许的只有 _paths.js / _paths.ps1 —— 它们是**唯一**该知道默认位置的地方。
+// 豁免：_paths.* 是唯一该知道默认位置的地方；本文件自己是**检测器**，
+// 必须包含那个模式串才能检测（否则没法写出这条判据）。
+const PATH_EXEMPT = ['_paths.js', '_paths.ps1', '_check-script-inventory.js'];
+for (const f of onDisk) {
+  if (PATH_EXEMPT.includes(f)) continue;
+  const text = fs.readFileSync(path.join(GUARD, f), 'utf8');
+  if (/D:\\\\?ios-zl2/.test(text)) {
+    problems.push(`${f} 里写死了仓库绝对路径 D:\\ios-zl2 —— 应改用 _paths（否则换机器就跑不了）`);
+  }
+}
 console.log(`磁盘 ${onDisk.length} 个脚本 · 清单提到 ${mentioned.size} 个 · 仓库副本 ${repoNames ? repoNames.length : 0} 个`);
 console.log('');
 

@@ -1,5 +1,5 @@
-﻿$d = 'D:\ios-zl2'
-
+﻿. "$PSScriptRoot\_paths.ps1"
+﻿$d = $ZL2Repo
 Write-Output "=== 第 7 轮：死代码清理 + 孤儿组件启用 ==="
 Write-Output ""
 

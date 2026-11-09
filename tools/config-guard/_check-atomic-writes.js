@@ -16,8 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SRC = 'D:\\ios-zl2\\src';
+const { SRC } = require('./_paths');
 // 这些路径关键字代表"临时/暂存"，不要求原子写
 const TEMP_HINTS = ['stage', 'tmp', 'temp', 'trash', 'temporaryDirectory', 'probe'];
 

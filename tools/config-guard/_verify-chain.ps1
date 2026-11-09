@@ -1,5 +1,5 @@
-﻿$d = 'D:\ios-zl2'
-
+﻿. "$PSScriptRoot\_paths.ps1"
+﻿$d = $ZL2Repo
 Write-Output "=== FPS 链路完整性验证 ==="
 $chain = @(
     @{ step = '1. 核心每帧调用';        file = 'core\egl_bridge.m';              pat = 'ZL2FrameStatsTick' },

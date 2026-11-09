@@ -1,5 +1,5 @@
-﻿$d = 'D:\ios-zl2'
-
+﻿. "$PSScriptRoot\_paths.ps1"
+﻿$d = $ZL2Repo
 Write-Output "=== 文档内部链接检查 ==="
 $docs = Get-ChildItem "$d\docs" -Filter '*.md'
 $root = Get-ChildItem $d -Filter '*.md'

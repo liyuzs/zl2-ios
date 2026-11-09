@@ -15,8 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SRC = 'D:\\ios-zl2\\src';
+const { SRC } = require('./_paths');
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.swift')).map(f => ({
   name: f,
   text: fs.readFileSync(path.join(SRC, f), 'utf8'),

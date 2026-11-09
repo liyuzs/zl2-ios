@@ -13,9 +13,11 @@
 //   3. 轮询必须有 deadline（不能无限循环）
 //   4. 未知错误要有日志，不能纯 continue
 
+const path = require('path');
+const PATHS = require('./_paths');
 const fs = require('fs');
 
-const SRC = 'D:\\ios-zl2\\src\\MicrosoftAuth.swift';
+const SRC = path.join(PATHS.SRC, "MicrosoftAuth.swift");
 const text = fs.readFileSync(SRC, 'utf8');
 
 let pass = 0;

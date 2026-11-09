@@ -10,10 +10,11 @@
 //
 // 只登记「能明确对应到某段代码」的声明，笼统的形容词不查。
 
+const PATHS = require('./_paths');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = 'D:\\ios-zl2';
+const ROOT = PATHS.REPO;
 const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 const readme = read('README.md');

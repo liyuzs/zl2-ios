@@ -1,9 +1,7 @@
 // 逐字符扫描 Swift 文件，跳过字符串、注释、字符字面量，统计真实括号深度
 const fs = require('fs');
 const path = require('path');
-
-const dir = 'D:\\ios-zl2\\src';
-
+const dir = require('./_paths').SRC;
 function scan(file) {
   const src = fs.readFileSync(file, 'utf8');
   let i = 0;

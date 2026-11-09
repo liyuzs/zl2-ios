@@ -1,4 +1,5 @@
-﻿$d = 'D:\ios-zl2'
+﻿. "$PSScriptRoot\_paths.ps1"
+﻿$d = $ZL2Repo
 $settingsFile = Join-Path $d 'src\ZLSettings.swift'
 $screenFile   = Join-Path $d 'src\SettingsScreen.swift'
 

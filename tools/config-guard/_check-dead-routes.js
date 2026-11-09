@@ -15,9 +15,7 @@
 // 注意：这不是"错误"，是清理线索。有些路由可能是留给未来的，那也应该有注释说明。
 
 const fs = require('fs');
-const path = require('path');
-
-const SRC = 'D:\\ios-zl2\\src';
+const path = require('path');const { SRC } = require('./_paths');
 const APP = path.join(SRC, 'ZL2App.swift');
 
 const appSrc = fs.readFileSync(APP, 'utf8');

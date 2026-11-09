@@ -12,8 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
-
-const REPO = 'D:\\ios-zl2';
+const { REPO } = require('./_paths');
 const CORE = path.join(REPO, 'core');
 const LIBS_DIRS = [
   path.join(CORE, 'resources', 'libs'),

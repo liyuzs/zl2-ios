@@ -17,9 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SRC = 'D:\\ios-zl2\\src';
-
+const { SRC } = require('./_paths');
 // 持久化用户数据、且用 try? 解码的文件（新加这类文件时往这里加）
 const WATCH = [
   'AccountService.swift',      // 账号

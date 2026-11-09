@@ -23,9 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SRC = 'D:\\ios-zl2\\src';
-
+const { SRC } = require('./_paths');
 // 允许出现的例外：字符串片段 → 理由
 const ALLOW = [
   { match: '不是有效的 ZL2 控制布局文件', why: '指的是上游的**布局文件格式**，不是 App 名称' },

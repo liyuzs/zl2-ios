@@ -16,8 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SRC = 'D:\\ios-zl2\\src';
+const { SRC } = require('./_paths');
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.swift'));
 
 const problems = [];

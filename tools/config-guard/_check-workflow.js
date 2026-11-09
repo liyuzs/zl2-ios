@@ -1,8 +1,10 @@
 // 极简 YAML 结构校验：专门针对 GitHub Actions workflow 的 block scalar 缩进。
 // 不追求完整 YAML 规范，只要能抓出「步骤缩进错、run 内容被截断、块标量丢失」这几类致命错。
 const fs = require('fs');
-const path = process.argv[2] || 'D:\\ios-zl2\\.github\\workflows\\build.yml';
-const raw = fs.readFileSync(path, 'utf8');
+const nodePath = require('path');
+const PATHS = require('./_paths');
+const wfPath = process.argv[2] || nodePath.join(PATHS.REPO, '.github/workflows/build.yml');
+const raw = fs.readFileSync(wfPath, 'utf8');
 const lines = raw.split(/\r?\n/);
 
 let fail = 0;

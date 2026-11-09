@@ -10,7 +10,8 @@
 #   ③ 关键文件校验，对应 CI 里的 test -f 断言
 
 $ErrorActionPreference = 'Continue'
-$d = 'D:\ios-zl2'
+. "$PSScriptRoot\_paths.ps1"
+$d = $ZL2Repo
 $work = 'D:\ci-simulate'
 
 Write-Output "=== 模拟 CI 装配流程 ==="

@@ -13,8 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const REPO = 'D:\\ios-zl2';
+const { REPO } = require('./_paths');
 const CORE = path.join(REPO, 'core');
 const SRC = path.join(REPO, 'src');
 

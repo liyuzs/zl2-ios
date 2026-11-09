@@ -13,10 +13,11 @@
 // 配套检查：_check-settings-audit.js 会核对文档数字是否等于代码实际。
 // 所以流程是：改完集合 → 跑本脚本 → 跑检查。
 
+const PATHS = require('./_paths');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = 'D:\\ios-zl2';
+const ROOT = PATHS.REPO;
 const OUT = path.join(ROOT, 'docs', '设置项审计.md');
 
 const settingsSrc = fs.readFileSync(path.join(ROOT, 'src', 'ZLSettings.swift'), 'utf8');

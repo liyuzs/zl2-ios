@@ -21,9 +21,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SRC = 'D:\\ios-zl2\\src';
-
+const { SRC } = require('./_paths');
 // 系统/框架隐式实例化 —— 名字只出现一次是正常的
 const FRAMEWORK_MARKERS = [
   '@main',

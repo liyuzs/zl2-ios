@@ -15,9 +15,8 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const REPO = 'D:\\ios-zl2';
-const GUARD = 'C:\\Users\\21793\\.dsh\\config-guard';
+const { REPO } = require('./_paths');
+const GUARD = require('./_paths').GUARD;
 const DELIVERY = 'D:\\ZL2-iOS交付包';
 
 // 交付包里的别名 → 仓库里的真身

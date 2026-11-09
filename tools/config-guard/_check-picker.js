@@ -2,8 +2,10 @@
 // picker 签名: picker(_ key: String, _ title: String, _ summary: String?, options: [ZLOption])
 // 无标签参数必须是 3 个，加 options: 一个。多一个少一个都编译不过。
 
+const path = require('path');
+const PATHS = require('./_paths');
 const fs = require('fs');
-const src = fs.readFileSync('D:\\ios-zl2\\src\\SettingsScreen.swift', 'utf8');
+const src = fs.readFileSync(path.join(PATHS.SRC, "SettingsScreen.swift"), 'utf8');
 
 // 找到所有 picker( 开头的调用
 const re = /\bpicker\(/g;
