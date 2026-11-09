@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **_check-ci-contract.js 扩到六条**：新增「CI 打包引用的 `core/resources/*` 四个目录必须存在」（目录改名不报错，只让 IPA 缺 jar，启动时 `UnsatisfiedLinkError`）与「`project.yml` 里提到的 `*.sh` 必须找得到」。
+- **修掉一处指向不存在脚本的注释**：`project.yml` 写着「版本号由 CI 用 `zl2-version.sh` 注入」，但该脚本不存在 —— CI 实际是「Inject version」那步的内联 sed。已改准确。
+- 顺带核对全部通过：`Frameworks`/`libs`/`libs_caciocavallo`/`libs_caciocavallo17` 四个打包目录、`libs/launcher.jar`、`*.js`(2)、`log4j-rce-patch-*.xml`(2)、`jre/jre{17,21,25}-ios-aarch64.tar.xz` 与 CI 引用完全一致；`src/Info.plist` 不存在但正确（XcodeGen 按 `info: path:` 生成）。
+
 - **新增 `_check-ci-contract.js`**：核对 `推送并取回IPA.ps1` 与 `.github/workflows/build.yml` 之间的隐含契约 —— ①脚本等待时间不得短于 CI 的 `timeout-minutes`（本轮从 30 提到 45，否则构建慢时脚本先判失败）②脚本必须认识 CI 上传的 artifact 名 `ZL2-build`（原来模糊匹配，可能抓错）③CI 必须真的产出 `.ipa` ④CI 有静态检查时脚本的失败提示要提到它。注入验证两条都过。
 - 两套执行器都绿：`_run-all.ps1` 与 `run-checks.js --with-tests` 各 51 项。
 
