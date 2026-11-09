@@ -63,6 +63,8 @@
 
 ### 已知问题
 
+- **Fabric API 安装会「找不到就用别的凑」**：`ZLFabricAPIInstaller` 里搜不到 `fabric-api` 项目就取搜索结果第一条（可能是完全无关的模组），找不到指定版本就取该项目第一个版本（版本与游戏版本绑定，装错多半加载失败）。两处都已改成精确匹配 + 明确报错。同类扫描后确认其余 `?? xxx.first` 都是同一实体内的兜底（换个文件），可以接受。
+
 - **安装失败时会静默写一份「启动不了」的版本 JSON**：`VersionInstaller` 在元数据下载失败时，兜底用「自己重组」的 JSON 落盘，而那份缺 `arguments` / `minecraftArguments` / `assets` / `javaVersion` / `libraries.rules` —— Java 侧拼不出启动命令。更糟的是不报错，用户以为装好了、点启动才失败，且残缺 JSON 已落盘只能重装。已改成明确报错并删除该兜底。
 
 - **`CallbackBridge` 两个 native 未导出**：`nativeSetInputReady(Z)Z` 由 `GLFW.class` 引用（真实路径），`nativeSendData(ZILjava/lang/String;)V` 是安卓那套 Java→native 输入入口。都已补上 JNI 导出；`nativeSendData` 是只记日志的占位实现（iOS 输入方向相反），若真机日志出现该行则说明确有代码走这条路。
