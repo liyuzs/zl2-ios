@@ -279,9 +279,12 @@ extension GuideManager {
     static let homeSteps: [GuideStep] = [
         GuideStep(text: "欢迎使用 CraftLauncher！我们来简单看看主界面的功能吧~",
                   icon: "hand.wave.fill"),
-        GuideStep(text: "不太喜欢操作栏的位置？你可以长按卡片提起它，拖动并让它停靠到另一侧哦",
-                  icon: "hand.draw.fill",
-                  spot: GuideSpot(x: 0.78, y: 0.57, width: 0.40, height: 0.79, radius: 26))
+        // 这一条原来教的是「长按卡片提起、拖动停靠到另一侧」——
+        // 而主界面唯一的长按是头像转圈（HomeScreen 的 onLongPressGesture），
+        // 没有任何拖动停靠的实现。教不存在的操作比不教更糟，已改成右上角那排真按钮。
+        // 不给 spot：位置估算错会高亮到别的地方，纯文字更稳。
+        GuideStep(text: "右上角这一排是常用入口：文件管理、多人联机、版本下载、设置",
+                  icon: "square.grid.2x2.fill")
     ]
 
     /// 控制布局编辑器引导：首次进入编辑器时
