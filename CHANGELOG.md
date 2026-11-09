@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **「显示 FPS」设置页显示「开」，游戏里却不显示**：`ZLSettings` 声明 `showFPS` 默认 `true`，而 `GameOverlay.boolValue` 自带一套默认值并多了一道「`UserDefaults` 里没写过就当 false」的门 —— 两处默认值打架，用户看到开关是开的、画面里没有 FPS。已删掉自带默认值，统一由 `ZLSettingsStore` 按 `def.defaultValue` 兜底。新增 `_check-setting-defaults.js` 锁住（不许出现 `defaultWhenUnset`；`boolValue/intValue/stringValue(_ key:)` 必须委托给 `store.xxx(`）。
+
 - **根视图写死 `.preferredColorScheme(.light)`，把深色模式钉死了**：第84轮修了色板与系统同步，但这一行让 `RootView` 读到的 `colorScheme` 永远是 `.light`，同步逻辑永远得到 false —— 深色模式依然打不开。内层还有一句按 `darkMode` 反推配色的，与系统值互相拉扯，一并去掉。
 - **清掉 11 个零使用类型（-477 行）**：`ZLKeycode.swift` 整个文件（101 个键码常量零引用，真正在用的是 `GLFWKeyNames.swift`）、协议 `MicrosoftAuthenticating` / `AuthlibAuthenticating`、`ShareBox` / `ShareSheet`、`ZLWaveShape`（第67轮删 `ZLWaveLine` 后的孤儿）、`ZLSideRail` / `ZLGlassCard` / `ZLQCard`、`ZLCrashAnalyzer`、`AuthlibCredentials`。
 - **`ZLCuteGreeting` 没删，接上了**：「可爱彩蛋 3：按时间变化的问候」，启动屏现在显示「早上好 · 正在搬方块…」（彩蛋 4 早就用在那里）。
