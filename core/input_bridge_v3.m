@@ -462,8 +462,42 @@ void CallbackBridge_nativeSetInputReady(BOOL inputReady) {
             GLFW_invoke_FramebufferSize((void*) showingWindow, windowWidth, windowHeight);
         }
         if (GLFW_invoke_WindowSize) {
-            GLFW_invoke_FramebufferSize((void*) showingWindow, windowWidth, windowHeight);
+            // ZL2-iOS: 原代码这里调的是 GLFW_invoke_FramebufferSize（复制粘贴笔误），
+            // 导致 window-size 回调从来没被触发过。改成正确的那个。
+            GLFW_invoke_WindowSize((void*) showingWindow, windowWidth, windowHeight);
         }
+    }
+}
+
+// MARK: - 补两个 Java 侧声明了、核心没导出的 native
+//
+// 从 jar 的 CallbackBridge.class 解析出来（ACC_NATIVE）：
+//   nativeSetInputReady(Z)Z
+//   nativeSendData(ZILjava/lang/String;)V
+// 都在 org/lwjgl/glfw/CallbackBridge 上，且 GLFW.class 也引用 nativeSetInputReady。
+// 缺符号 → 被调用时 UnsatisfiedLinkError。
+
+// nativeSetInputReady：我们本来就有同名 C 函数（ObjC 内部调用），
+// 这里只是补一层 JNI 导出，把布尔值转发过去，返回当前状态。
+JNIEXPORT jboolean JNICALL Java_org_lwjgl_glfw_CallbackBridge_nativeSetInputReady(
+        JNIEnv* env, jclass clazz, jboolean inputReady) {
+    (void)env; (void)clazz;
+    CallbackBridge_nativeSetInputReady(inputReady == JNI_TRUE);
+    return isInputReady ? JNI_TRUE : JNI_FALSE;
+}
+
+// nativeSendData：安卓那套「从 Java 往 native 发输入事件」的入口
+// （签名带 String，用来传字符/文本）。iOS 版的输入方向是反的 ——
+// native 直接调 GLFW_invoke_* 回调，不经过这条路径，所以这里没有对应实现。
+// 留一个只记日志的空实现：不崩；而且如果真机日志里出现这一行，
+// 就说明确实有代码在走这条路，那时再按 type 补。
+JNIEXPORT void JNICALL Java_org_lwjgl_glfw_CallbackBridge_nativeSendData(
+        JNIEnv* env, jclass clazz, jboolean isAndroid, jint type, jstring data) {
+    (void)env; (void)clazz; (void)isAndroid; (void)data;
+    static BOOL logged = NO;
+    if (!logged) {
+        logged = YES;
+        NSLog(@"[ZL2] CallbackBridge.nativeSendData 被调用（type=%d）—— iOS 输入走反向路径，这里是占位实现", (int)type);
     }
 }
 
