@@ -63,6 +63,11 @@
 
 ### 已知问题 / 新增
 
+- **根视图写死 `.preferredColorScheme(.light)`，把深色模式钉死了**：第84轮修了色板与系统同步，但这一行让 `RootView` 读到的 `colorScheme` 永远是 `.light`，同步逻辑永远得到 false —— 深色模式依然打不开。内层还有一句按 `darkMode` 反推配色的，与系统值互相拉扯，一并去掉。
+- **清掉 11 个零使用类型（-477 行）**：`ZLKeycode.swift` 整个文件（101 个键码常量零引用，真正在用的是 `GLFWKeyNames.swift`）、协议 `MicrosoftAuthenticating` / `AuthlibAuthenticating`、`ShareBox` / `ShareSheet`、`ZLWaveShape`（第67轮删 `ZLWaveLine` 后的孤儿）、`ZLSideRail` / `ZLGlassCard` / `ZLQCard`、`ZLCrashAnalyzer`、`AuthlibCredentials`。
+- **`ZLCuteGreeting` 没删，接上了**：「可爱彩蛋 3：按时间变化的问候」，启动屏现在显示「早上好 · 正在搬方块…」（彩蛋 4 早就用在那里）。
+- 新增 `_check-dead-types.js`：顶层类型标识符在整个 src 只出现 1 次即报；**排除框架隐式实例化的类型**（`@main` App / `AppShortcutsProvider` / `NEPacketTunnelProvider` / `UIApplicationDelegate` / SceneDelegate）—— 差点把 App 入口当死代码删掉。
+
 - **「深色模式」是死开关**：`ZLColorTheme` 所有取色访问器传的都是 `…Light` 键名，色板里 35 组 `…Dark` 数据完整存在却从没被用过（连 `primaryDark` 等四个深色访问器都是零调用），`ThemeManager.darkMode` 也只被赋值没人读 —— 开深色模式界面颜色一点不变。已改 `ZLPalette.color`：深色时把 `…Light` 换成 `…Dark`（缺键退回 Light），并用 `RootView` 把系统 `colorScheme` 同步给 ThemeManager（设置页那项写着"iOS 跟随系统外观"，现在才成立）。新增 `_check-dark-mode.js`。
 
 - **推送做成一条命令**：`scripts/推送并取回IPA.ps1` —— 检查工作区干净 → 推 master→main → 轮询 Actions → 下载 .ipa → 校验体积（<100 MB 视为 JRE 没打进去，直接失败）→ 备份并替换交付包旧 IPA → 记 run 号。干跑验证了"不带 token 立刻拒"「工作区脏就停」两种保护。
