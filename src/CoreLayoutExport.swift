@@ -111,27 +111,49 @@ enum CoreLayoutExporter {
             layerIndexByUUID[layer.uuid] = i
         }
 
-        var list: [[String: Any]] = []
+        // 核心把控件分成三个**互不相通**的列表，放错列表就不会被实例化：
+        //   mControlDataList  → ControlButton（普通按钮 / 文本框）
+        //   mJoystickDataList → ControlJoystick（方向摇杆）
+        //   mDrawerDataList   → ControlDrawer（抽屉）
+        // 见 core/customcontrols/CustomControlsUtils.m:435 起的 loadControlObject()。
+        var buttons: [[String: Any]] = []
+        var joysticks: [[String: Any]] = []
 
-        // 核心没有图层概念，把不隐藏的图层平铺成一个列表
+        // 核心没有图层概念，把不隐藏的图层平铺成一组控件
         for layer in layout.layers where layer.hide == false {
             for btn in layer.normalButtons {
-                list.append(convertButton(btn,
-                                          style: resolveStyle(btn.buttonStyle, styleByUUID),
-                                          layerIndexByUUID: layerIndexByUUID))
+                buttons.append(convertButton(btn,
+                                             style: resolveStyle(btn.buttonStyle, styleByUUID),
+                                             layerIndexByUUID: layerIndexByUUID))
             }
             for txt in layer.textBoxes {
-                list.append(convertTextBox(txt, style: resolveStyle(txt.buttonStyle, styleByUUID)))
+                buttons.append(convertTextBox(txt, style: resolveStyle(txt.buttonStyle, styleByUUID)))
             }
             for joy in layer.joystickButtons {
-                list.append(convertJoystick(joy, layout: layout))
+                // 摇杆以前被塞进 mControlDataList，于是核心把它当普通按钮创建，
+                // 方向摇杆行为完全没有 —— 进游戏等于没法走路。
+                joysticks.append(convertJoystick(joy, layout: layout))
             }
         }
 
+        // version 必须是 8。
+        //
+        // 核心的 convertLayoutIfNecessary()（CustomControlsUtils.m:199）按这个字段
+        // 决定要不要跑旧格式迁移：
+        //   case 0/1 → convertV1Layout → V2 → V5 → V7 → V8 整条链
+        //   case 8   → break（不动）
+        // 原来写的是 1，等于把我们刚生成的 v8 格式当成 v1 去迁移，后果：
+        //   · width/height 被 ÷scaledAt×50 → 所有控件尺寸减半
+        //   · bgColor / strokeWidth / opacity 被强制覆盖 → 样式全毁
+        //   · [keycodes addObject:btnDict[@"keycode"]] 而我们没有 keycode 这个键，
+        //     nil 加进 NSMutableArray 会抛 NSInvalidArgumentException → 直接崩
+        // 也就是说：只要用户保存过一次自定义布局，进游戏就会崩。
         return [
-            "mControlDataList": list,
+            "mControlDataList": buttons,
+            "mJoystickDataList": joysticks,
+            "mDrawerDataList": [[String: Any]](),
             "scaledAt": currentButtonScale(),
-            "version": 1,
+            "version": 8,
         ]
     }
 
