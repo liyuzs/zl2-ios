@@ -29,9 +29,9 @@ final class ZLAppDelegate: NSObject, UIApplicationDelegate {
             d.set(true, forKey: "zl.pendingLaunch")
             d.set(Date().timeIntervalSince1970, forKey: "zl.pendingLaunchAt")
         case "com.liyuzs.craftlauncher.download":
-            d.set("download", forKey: "zl.pendingRoute")
+            ZLPendingAction.setRoute("download")
         case "com.liyuzs.craftlauncher.settings":
-            d.set("settings", forKey: "zl.pendingRoute")
+            ZLPendingAction.setRoute("settings")
         default:
             completionHandler(false)
             return
@@ -81,6 +81,10 @@ struct RootView: View {
     /// （`ZLUnsupportedSettings.platformOnly` 里写着"iOS 跟随系统外观"），
     /// 所以这里直接把系统外观同步给 ThemeManager，再由色板决定取 Light 还是 Dark 那一组。
     @Environment(\.colorScheme) private var colorScheme
+    /// 前后台状态。快捷指令把待处理路由写进 UserDefaults 后会把 App 拉到前台，
+    /// 但如果 App 本来就在运行，RootView 的 `.task` 不会重跑 —— 路由就没人消费，
+    /// 于是"用 Siri 说打开下载页"看起来毫无反应。这里在回到前台时再消费一次。
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -104,7 +108,30 @@ struct RootView: View {
             }
         }
         .onAppear { syncAppearance() }
+        .onChange(of: scenePhase) { phase in
+            // 回到前台时再看一眼有没有新的快捷指令指令
+            if phase == .active { handlePendingAction() }
+        }
         .onChange(of: colorScheme) { _ in syncAppearance() }
+    }
+
+    /// 消费 Siri / 快捷指令留下的待处理动作。
+    /// 冷启动（`.task`）和回到前台（`scenePhase == .active`）都会调。
+    private func handlePendingAction() {
+        if let route = ZLPendingAction.consumeRoute() {
+            switch route {
+            case "download": path.append(.download)
+            case "versionList": path.append(.versionList)
+            case "multiplayer": path.append(.multiplayer)
+            default: break
+            }
+        }
+        if ZLPendingAction.consumeLaunchFlag() {
+            // 稍等一下让首页把版本读出来，再自动开始
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                NotificationCenter.default.post(name: .zlAutoLaunch, object: nil)
+            }
+        }
     }
 
     /// 把系统亮/暗交给主题层。
@@ -167,20 +194,7 @@ struct RootView: View {
                 ZLLogRetention.cleanup()
 
                 // 处理 Siri / 快捷指令留下的指令
-                if let route = ZLPendingAction.consumeRoute() {
-                    switch route {
-                    case "download": path.append(.download)
-                    case "versionList": path.append(.versionList)
-                    case "multiplayer": path.append(.multiplayer)
-                    default: break
-                    }
-                }
-                if ZLPendingAction.consumeLaunchFlag() {
-                    // 稍等一下让首页把版本读出来，再自动开始
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                        NotificationCenter.default.post(name: .zlAutoLaunch, object: nil)
-                    }
-                }
+                handlePendingAction()
 
                 // 启动后静默检查一次（不打扰，有新版才提示）
                 let checker = ZLUpdateChecker()

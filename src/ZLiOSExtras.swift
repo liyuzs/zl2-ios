@@ -29,7 +29,7 @@ struct OpenDownloadIntent: AppIntent {
     static var openAppWhenRun: Bool = true
 
     func perform() async throws -> some IntentResult {
-        UserDefaults.standard.set("download", forKey: "zl.pendingRoute")
+        ZLPendingAction.setRoute("download")
         return .result()
     }
 }
@@ -51,7 +51,7 @@ struct SwitchGameDirIntent: AppIntent {
         }
         // activate 会改 @Published，必须在主线程
         await MainActor.run { store.activate(name) }
-        UserDefaults.standard.set("versionList", forKey: "zl.pendingRoute")
+        ZLPendingAction.setRoute("versionList")
         return .result(dialog: "已切换到 \(name)")
     }
 }
@@ -135,11 +135,24 @@ enum ZLPendingAction {
         return true
     }
 
-    /// 检查有没有要跳转的页面
+    /// 记下"下次打开时要跳到哪个页面"（同时记时间戳，供 consumeRoute 判断时效）
+    static func setRoute(_ route: String) {
+        let d = UserDefaults.standard
+        d.set(route, forKey: "zl.pendingRoute")
+        d.set(Date().timeIntervalSince1970, forKey: "zl.pendingRouteAt")
+    }
+
+    /// 检查有没有要跳转的页面。
+    ///
+    /// **和启动标志一样要过期**：原来没有时效，于是"App 在运行中收到快捷指令 → 没被消费 →
+    /// 这条路由一直留着 → 下次冷启动突然跳到那个页面"。用户会莫名其妙。
     static func consumeRoute() -> String? {
         let d = UserDefaults.standard
         guard let r = d.string(forKey: "zl.pendingRoute") else { return nil }
+        let at = d.double(forKey: "zl.pendingRouteAt")
         d.removeObject(forKey: "zl.pendingRoute")
+        d.removeObject(forKey: "zl.pendingRouteAt")
+        guard Date().timeIntervalSince1970 - at < 120 else { return nil }
         return r
     }
 }
