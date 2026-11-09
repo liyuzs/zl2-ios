@@ -228,7 +228,9 @@ static GameSurfaceView* pojavWindow;
         mouse.mouseInput.rightButton.pressedChangedHandler = nil;
         [mouse.mouseInput.auxiliaryButtons makeObjectsPerformSelector:@selector(setPressedChangedHandler:) withObject:nil];
         [self setNeedsUpdateOfPrefersPointerLocked];
-        if (getPrefBool(@"controll.hardware_hide")) {
+        // ZL2-iOS: 原代码这里把 control 拼成了 controll，getPrefBool 永远拿到 nil，
+        // 结果连接鼠标后控制层不会恢复显示（同文件 248/256/707 行都是正确写法）。
+        if (getPrefBool(@"control.hardware_hide")) {
             self.ctrlView.hidden = NO;
         }
     }];

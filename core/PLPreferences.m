@@ -96,6 +96,10 @@
         }.mutableCopy;
         // TODO: isolate this or add account picker into profile editor(?)
         defaults[@"internal"][@"selected_account"] = @"";
+        // ZL2-iOS: 这个键原来只在代码里被读写，却从没在默认字典里定义过 ——
+        // PLPreferences 的 setObject 只写"已存在的键"，未定义就 NSLog 一句然后静默失败，
+        // 于是「启动后自动进游戏」的开关永远不会被记住。
+        defaults[@"internal"][@"internal_launch_on_boot"] = @NO;
     }
 
     return defaults;
