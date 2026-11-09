@@ -197,50 +197,6 @@ struct ZLTopBar: View {
 }
 
 // MARK: - 左侧竖排图标导航（下载页 / 设置页同款）
-struct ZLSideRail<Item: Identifiable & Equatable>: View {
-    let items: [Item]
-    let label: (Item) -> String
-    let icon: (Item) -> String
-    @Binding var selection: Item
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        VStack(spacing: 6) {
-            ForEach(items) { item in
-                Button {
-                    selection = item
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: icon(item))
-                            .font(.system(size: 19, weight: .medium))
-                        Text(label(item)).font(.system(size: 11))
-                    }
-                    .foregroundStyle(selection == item ? ZLTheme.primaryDeep : ZLTheme.textSecond)
-                    .frame(width: 76, height: 62)
-                    .background(selection == item ? ZLTheme.primarySoft : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-            Spacer()
-        }
-        .padding(.vertical, 8)
-        .frame(width: 92)
-        // 侧边栏整条加玻璃底（圆角面板），选中项的高亮仍然是主题色
-        .background(
-            ZStack {
-                Rectangle().fill(.ultraThinMaterial)
-                Rectangle().fill(ZLTheme.surface.opacity(colorScheme == .dark ? 0.80 : 0.55))
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(ZLTheme.stroke.opacity(0.18), lineWidth: 1)
-        )
-    }
-}
-
 // MARK: - 筛选芯片（"正式版 / 快照版 …"）
 struct ZLChip: View {
     let title: String

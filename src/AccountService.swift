@@ -541,12 +541,6 @@ struct MicrosoftProfile: Codable, Sendable, Equatable {
 }
 
 /// 微软登录流程。实现方负责 OAuth → Xbox Live → XSTS → Minecraft 三步换取。
-protocol MicrosoftAuthenticating: AnyObject {
-    func signIn(configuration: MicrosoftOAuthConfiguration) async throws -> MicrosoftProfile
-    func refresh(profile: MicrosoftProfile) async throws -> MicrosoftProfile
-    func signOut()
-}
-
 // MARK: - 外置认证（authlib-injector / yggdrasil）
 
 struct AuthlibConfiguration: Codable, Sendable, Equatable {
@@ -560,10 +554,6 @@ struct AuthlibConfiguration: Codable, Sendable, Equatable {
     )
 }
 
-struct AuthlibCredentials: Sendable, Equatable {
-    var username: String
-    var password: String
-}
 
 /// 外置认证会话（yggdrasil 的 accessToken / clientToken）
 struct AuthlibSession: Codable, Sendable, Equatable {
@@ -575,13 +565,6 @@ struct AuthlibSession: Codable, Sendable, Equatable {
 }
 
 /// 外置登录流程（authlib-injector 的 yggdrasil 协议）
-protocol AuthlibAuthenticating: AnyObject {
-    func signIn(configuration: AuthlibConfiguration,
-                credentials: AuthlibCredentials) async throws -> AuthlibSession
-    func refresh(session: AuthlibSession) async throws -> AuthlibSession
-    func invalidate(session: AuthlibSession) async throws
-}
-
 // MARK: - 认证结果 → Account
 
 extension Account {

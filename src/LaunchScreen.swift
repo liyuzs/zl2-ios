@@ -68,7 +68,9 @@ struct LaunchScreen: View {
                     .font(.system(size: 12))
                     .foregroundStyle(failed ? ZLTheme.danger : ZLTheme.textSecond)
                 if !failed {
-                    Text(cuteTip)
+                    // 「可爱彩蛋 4」原本就接在这里；「彩蛋 3」（按时间变化的问候）一直没接线，
+                    // 现在一并显示 —— 早上/下午/晚上各一句，加载时间也就不那么干等了。
+                    Text("\(ZLCuteGreeting.now) · \(cuteTip)")
                         .font(.system(size: 10))
                         .foregroundStyle(ZLTheme.textSecond.opacity(0.65))
                         .transition(.opacity)

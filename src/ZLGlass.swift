@@ -259,40 +259,6 @@ extension View {
 
 // MARK: - 玻璃卡片（和 ZLCard 同构，底板换成玻璃）
 
-struct ZLGlassCard<Content: View>: View {
-    var padding: CGFloat
-    var cornerRadius: CGFloat
-    var tint: Color
-    var tintOpacity: Double
-    var sheen: Bool
-    private let content: Content
-
-    init(padding: CGFloat = 16,
-         cornerRadius: CGFloat = ZLTheme.cardRadius,
-         tint: Color = ZLTheme.primary,
-         tintOpacity: Double = 0.06,
-         sheen: Bool = false,
-         @ViewBuilder content: () -> Content) {
-        self.padding = padding
-        self.cornerRadius = cornerRadius
-        self.tint = tint
-        self.tintOpacity = tintOpacity
-        self.sheen = sheen
-        self.content = content()
-    }
-
-    var body: some View {
-        content
-            .padding(padding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .zlGlass(cornerRadius: cornerRadius,
-                     tint: tint,
-                     tintOpacity: tintOpacity,
-                     shadow: true,
-                     sheen: sheen)
-    }
-}
-
 // MARK: - 设备倾斜视差（iOS 独有）
 
 /// 监听重力方向，让玻璃上的光斑随手机倾斜轻微移动。

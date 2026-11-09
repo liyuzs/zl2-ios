@@ -10,27 +10,6 @@ import Combine
 // 模组 / 存档 / 资源包三个管理页共用，避免三处样式漂移
 
 /// 空状态波浪线（真机：两端波浪 + 中间直线）
-private struct ZLWaveShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let midY = rect.midY
-        let amp = rect.height / 2
-        let waveW: CGFloat = 26
-        let gap = max(0, rect.width - waveW * 2)
-        path.move(to: CGPoint(x: 0, y: midY))
-        path.addQuadCurve(to: CGPoint(x: waveW / 2, y: midY),
-                          control: CGPoint(x: waveW / 4, y: midY - amp))
-        path.addQuadCurve(to: CGPoint(x: waveW, y: midY),
-                          control: CGPoint(x: waveW * 0.75, y: midY + amp))
-        path.addLine(to: CGPoint(x: waveW + gap, y: midY))
-        path.addQuadCurve(to: CGPoint(x: waveW + gap + waveW / 2, y: midY),
-                          control: CGPoint(x: waveW + gap + waveW / 4, y: midY - amp))
-        path.addQuadCurve(to: CGPoint(x: waveW + gap + waveW, y: midY),
-                          control: CGPoint(x: waveW + gap + waveW * 0.75, y: midY + amp))
-        return path
-    }
-}
-
 /// 小胶囊标签（浅色底 + 深主色字）
 struct ZLCardTag: View {
     let text: String

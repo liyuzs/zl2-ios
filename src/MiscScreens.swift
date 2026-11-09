@@ -168,11 +168,6 @@ struct SearchScreen: View {
 // MARK: - 版本导出
 // MARK: - 导出用的小工具
 
-private struct ShareBox: Identifiable {
-    let url: URL
-    var id: String { url.path }
-}
-
 private extension FileManager {
     /// 把临时文件拷到另一个带名字的临时路径（forUploading 给的是随机名）
     func copyItemToTemp(_ src: URL, named name: String) throws -> URL {
@@ -538,12 +533,3 @@ struct SearchIDScreen: View {
 
 // MARK: - 系统分享面板（SwiftUI 包装）
 
-struct ShareSheet: UIViewControllerRepresentable {
-    var items: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
-}

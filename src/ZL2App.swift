@@ -9,8 +9,11 @@ struct ZL2StyleApp: App {
 
     var body: some Scene {
         WindowGroup {
+            // 这里**不要**再写 .preferredColorScheme。
+            // 原来写死 .light，会把整个 App 的系统外观钉在浅色：
+            // 于是 RootView 读到的 colorScheme 永远是 .light，
+            // 「跟随系统外观」的同步逻辑读到的也是 .light —— 深色模式永远打不开。
             RootView()
-                .preferredColorScheme(.light)
         }
     }
 }
@@ -356,7 +359,9 @@ struct RootView: View {
         }
         .tint(ZLTheme.primary)
         .environmentObject(themeManager)
-        .preferredColorScheme(themeManager.darkMode ? .dark : .light)
+        // 同理：这里也不再按 darkMode 反推配色。
+        // 那一句会让 colorScheme 由 darkMode 决定，而 darkMode 又由 colorScheme 同步而来 ——
+        // 两者互相拉扯，系统外观切换反而传不进来。让系统值自然流入即可。
         // ZLTheme 是静态读取（不走 SwiftUI 观察），换主题时要强制重建视图树
         .id("theme-\(themeManager.themeName)-\(themeManager.darkMode)")
         // 键盘快捷键挂在导航栈上：所有页面都能用（iPad / 外接键盘）
