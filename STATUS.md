@@ -73,6 +73,7 @@
 | 功能 | 为什么 |
 |---|---|
 | Forge / NeoForge | 需运行 `installer.jar`，iOS 禁止 fork 子进程 |
+| **MC 1.11 及更早** | 需要 Java 8，而包里只带 17 / 21 / 25。下载页会把这类版本标灰并禁用下载（`CoreBridge.needsUnbundledJava8`） |
 | Terracotta 远程联机 | 需 EasyTier P2P 内核 + Network Extension（付费开发者账号）。界面已如实标注「尚未接入」，只保留可用的局域网发现 |
 | 按版本隔离游戏目录 | 核心启动时自己算游戏目录、忽略 `GAME_DIR`，改了版本反而找不到。已置灰并写明原因 |
 | 上架 App Store | 大陆区不允许此类应用 |

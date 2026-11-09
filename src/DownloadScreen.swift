@@ -266,6 +266,11 @@ struct DownloadScreen: View {
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundStyle(ZLTheme.textPrimary)
                                 ZLTag(text: v.type)
+                                // ≤1.11 需要 Java 8，而包里只有 17/21/25 —— 装了也起不来。
+                                // 与其让用户白下几百 MB 再在启动时失败，不如在这里就说清楚。
+                                if CoreBridge.needsUnbundledJava8(v.id) {
+                                    ZLTag(text: "需 Java 8 · 不支持")
+                                }
                             }
                             Text(v.date)
                                 .font(.system(size: 12))
@@ -288,7 +293,8 @@ struct DownloadScreen: View {
                             }
                         }
                         .buttonStyle(.plain)
-                        .disabled(installing != nil)
+                        .disabled(installing != nil || CoreBridge.needsUnbundledJava8(v.id))
+                        .opacity(CoreBridge.needsUnbundledJava8(v.id) ? 0.4 : 1)
                     }
                     .padding(14)
                     .background(ZLTheme.surface)

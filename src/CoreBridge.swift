@@ -486,6 +486,18 @@ enum CoreBridge {
         try? content.write(toFile: path, atomically: true, encoding: .utf8)
     }
 
+    /// 只知道版本 id 时（比如下载列表里的条目）也能判 Java 版本。
+    /// 复用上面那份映射，避免两处各写一套（版本→Java 的规则有过 1.20.5 分界这种细节）。
+    static func requiredJavaVersion(forVersionID id: String) -> Int {
+        requiredJavaVersion(["id": id])
+    }
+
+    /// 这个版本是否需要包里没带的 Java 8（≤1.11）。
+    /// 下载列表用它来标注"装了也起不来"，避免用户白下几百 MB。
+    static func needsUnbundledJava8(_ versionID: String) -> Bool {
+        requiredJavaVersion(forVersionID: versionID) <= 8
+    }
+
     static func requiredJavaVersion(_ metadata: [String: Any]) -> Int {
         if let jv = metadata["javaVersion"] as? [String: Any],
            let major = jv["majorVersion"] as? Int, major > 0 {
