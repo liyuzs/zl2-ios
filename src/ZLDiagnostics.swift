@@ -109,17 +109,10 @@ enum ZLDiagnostics {
     private static func checkRuntime() -> [ZLDiagItem] {
         var out: [ZLDiagItem] = []
 
-        // 三套 JRE 各自检查
-        let versions = [17, 21, 25]
-        var found: [Int] = []
-
-        for v in versions {
-            let path = "java_runtimes/java-\(v)-openjdk/lib/libjli.dylib"
-            let full = Bundle.main.bundlePath + "/" + path
-            if FileManager.default.fileExists(atPath: full) {
-                found.append(v)
-            }
-        }
+        // 统一走 CoreBridge 的判定，不再在这里另写一份路径规则。
+        // 之前这里写死 [17,21,25] 且只认 lib/libjli.dylib，
+        // 而 CoreBridge 还认 Java 8 和 lib/jli/libjli.dylib —— 两处迟早会对不上。
+        let found: [Int] = CoreBridge.bundledJavaVersions()
 
         if found.isEmpty {
             out.append(ZLDiagItem(
@@ -149,6 +142,14 @@ enum ZLDiagnostics {
                     value: "缺失",
                     level: .warn,
                     advice: "MC 1.20.5 及更新版本需要 Java 21"
+                ))
+            }
+            if !found.contains(25) {
+                out.append(ZLDiagItem(
+                    title: "Java 25",
+                    value: "缺失",
+                    level: .warn,
+                    advice: "MC 26 及更新版本需要 Java 25"
                 ))
             }
         }

@@ -101,8 +101,20 @@ enum CoreBridge {
 
         // 配置 Java 运行时映射：
         // "0" = 当前 profile 的默认选择；版本号 → "internal" 表示用 bundle 内 java_runtimes/java-<ver>-openjdk
+        // 注意 "1_17_newer" 这里必须写 17，不能写 21。
+        //
+        // 核心 getSelectedJavaHome() 的逻辑是：先取 java_homes["0"][tag] 的版本，
+        // 只有当 minVersion **大于**它时才往上调（遍历 allKeys 找第一个 >= minVersion 的）。
+        // 也就是说这个值是"下限"，不是一个"固定选择"。
+        //
+        // 写成 21 的后果：MC 1.17 ~ 1.20.4 传进来的 minVersion 是 17，
+        // 17 不大于 21 → 保持 21 → 拿 Java 21 去跑 1.20.1（最热门的模组版本）。
+        // 而 1.17 用 Java 21 会直接崩（当时的 LWJGL 3.2.2 与 Mixin 不支持新字节码）。
+        //
+        // 写成 17 之后，1.20.5+ 传 minVersion=21、26+ 传 25，
+        // 核心的向上调整逻辑会正确挑到 21 / 25，两种情况都对。
         let homes: [String: Any] = [
-            "0": ["1_17_newer": "21", "1_16_5_older": "8", "execute_jar": "17"],
+            "0": ["1_17_newer": "17", "1_16_5_older": "8", "execute_jar": "17"],
             "8": "internal",
             "17": "internal",
             "21": "internal",
@@ -114,6 +126,15 @@ enum CoreBridge {
             var merged = existing
             for (k, v) in homes where merged[k] == nil {
                 merged[k] = v
+            }
+            // 定向纠正：修复前的版本会把 "1_17_newer" 写成 "21"，
+            // 而 "21" 只有我们自己会写进去（用户在 JRE 管理界面里改的是各版本条目，
+            // 不是这个 tag）。留着它会让 1.17~1.20.4 被拉去 Java 21 而崩。
+            if var zero = merged["0"] as? [String: Any],
+               (zero["1_17_newer"] as? String) == "21" {
+                zero["1_17_newer"] = "17"
+                merged["0"] = zero
+                NSLog("[ZL2] 已纠正 java_homes 的 1_17_newer: 21 -> 17（旧版本写错了）")
             }
             setPrefObject("java.java_homes", merged)
         } else {
@@ -203,9 +224,6 @@ enum CoreBridge {
             NSLog("[ZL2] \(jitNote)")
         }
         #if ZL2_CORE_LINKED
-        guard runtimeCheck() else {
-            throw CoreLaunchError.bootstrapFailed("找不到内置 JRE（java_runtimes/java-17-openjdk/lib/libjli.dylib）")
-        }
         // 宽高为 0 时按设置自动计算
         let (w0, h0) = (width > 0 && height > 0) ? (width, height) : Self.renderSize()
         let width = w0
@@ -219,6 +237,14 @@ enum CoreBridge {
             minJava = mv
         } else {
             minJava = Self.requiredJavaVersion(metadata)
+        }
+        // JRE 自检必须按 minJava 查 —— 只要"任意一个 JRE 在"就放行，
+        // 会在缺对应版本时一路走到 launchJVM 才失败，且报错看不出是版本挑错了。
+        guard Self.runtimeCheck(forJava: minJava) else {
+            let have = Self.bundledJavaVersions().map { "Java \($0)" }
+            throw CoreLaunchError.bootstrapFailed(
+                "这个版本需要 Java \(minJava)，但包里只有：\(have.isEmpty ? "一套都没有" : have.joined(separator: "、"))"
+            )
         }
         // Amethyst 的 launchJVM 内部会弹对话框、操作 UI，必须在主线程调用
         let code: Int32 = await withCheckedContinuation { cont in
@@ -258,8 +284,12 @@ enum CoreBridge {
             throw CoreLaunchError.bootstrapFailed("jar 不存在：\(jarPath)")
         }
         #if ZL2_CORE_LINKED
-        guard runtimeCheck() else {
-            throw CoreLaunchError.bootstrapFailed("找不到内置 JRE")
+        // launchJar 固定用 Java 17，所以按 17 查
+        guard Self.runtimeCheck(forJava: 17) else {
+            let have = Self.bundledJavaVersions().map { "Java \($0)" }
+            throw CoreLaunchError.bootstrapFailed(
+                "运行 jar 需要 Java 17，但包里只有：\(have.isEmpty ? "一套都没有" : have.joined(separator: "、"))"
+            )
         }
         let code: Int32 = await withCheckedContinuation { cont in
             DispatchQueue.main.async {
@@ -322,22 +352,36 @@ enum CoreBridge {
         return "Player"
     }
 
-    /// 运行时自检：JRE 是否就位
+    /// 某个 Java 大版本的内置运行时是否就位。
+    ///
+    /// 为什么要按版本查：`runtimeCheck()` 只要任意一个 JRE 在就返回 true，
+    /// 但真正启动时用的是按游戏版本算出来的 minJava（MC 26+ 要 25，1.20.5+ 要 21）。
+    /// 三个 JRE 里恰好缺了要用的那个时，「自检通过」会一路放行到 launchJVM 才失败，
+    /// 报错还看不出来是版本挑错了。
+    static func hasRuntime(java major: Int) -> Bool {
+        let base = "\(Bundle.main.bundlePath)/java_runtimes/java-\(major)-openjdk"
+        // Java 8 的 jli 在 lib/jli/ 下，17+ 在 lib/ 下；两个都试，别让布局差异造成误判
+        let rels = ["lib/libjli.dylib", "lib/jli/libjli.dylib"]
+        return rels.contains { FileManager.default.fileExists(atPath: base + "/" + $0) }
+    }
+
+    /// 按需要的 Java 大版本自检。
+    static func runtimeCheck(forJava major: Int) -> Bool {
+        guard hasRuntime(java: major) else { return false }
+        // 映射表里写明某版本用 internal，但 internal 指的是"用包里自带的那套"。
+        // 这里只校验文件在不在，映射对不对由 bootstrap 的 java.java_homes 负责。
+        return true
+    }
+
+    /// 包里实际带了的 Java 大版本（升序），用于报错时告诉用户"你有这些，但需要那个"
+    static func bundledJavaVersions() -> [Int] {
+        [8, 17, 21, 25].filter { hasRuntime(java: $0) }
+    }
+
+    /// 运行时自检（通用）：只要有任何一套 JRE 就返回 true。
+    /// 界面上的"环境自检"用它；真正启动前必须用 runtimeCheck(forJava:)。
     static func runtimeCheck() -> Bool {
-        let bundle = Bundle.main.bundlePath
-        // Java 17+: lib/libjli.dylib；Java 8: lib/jli/libjli.dylib
-        let candidates: [(String, String)] = [
-            ("17", "lib/libjli.dylib"),
-            ("21", "lib/libjli.dylib"),
-            ("25", "lib/libjli.dylib"),
-            ("8",  "lib/jli/libjli.dylib"),
-            ("8",  "lib/libjli.dylib"),
-        ]
-        for (v, rel) in candidates {
-            let p = "\(bundle)/java_runtimes/java-\(v)-openjdk/\(rel)"
-            if FileManager.default.fileExists(atPath: p) { return true }
-        }
-        return false
+        !bundledJavaVersions().isEmpty
     }
     /// 检查 JIT 是否已启用（iOS 上需要 StikDebug 等外部工具附加）
     /// 返回 nil 表示正常；返回字符串表示需要提示用户
@@ -388,11 +432,21 @@ enum CoreBridge {
             let parts = id.split(separator: ".")
             if parts.count >= 2, let ma = Int(parts[0]), let mi = Int(parts[1]) {
                 if ma == 1 {
-                    if mi >= 21 { return 21 }
-                    if mi >= 20 { return 21 }   // 1.20.5+ 要 Java 21
-                    if mi >= 17 { return 17 }
+                    if mi >= 21 { return 21 }            // 1.21+ 要 Java 21
+                    if mi == 20 {
+                        // 1.20 这条线要拆开：分界点是 1.20.5。
+                        // 1.20.0 ~ 1.20.4（含很常见的 1.20.1）要 Java 17，
+                        // 1.20.5 起才改要 21。只看次版本号会把整个 1.20.x 都判成 21，
+                        // 拿 21 跑 1.20.1 时部分 Fabric/Sodium 模组会出问题。
+                        let patch = parts.count >= 3 ? (Int(parts[2]) ?? 0) : 0
+                        return patch >= 5 ? 21 : 17
+                    }
+                    if mi >= 17 { return 17 }            // 1.17 ~ 1.19.x 要 Java 17
+                    // 1.12 ~ 1.16 官方要求 Java 8。包里没有 Java 8，这里仍然返回 17：
+                    // 原版在 17 上能跑，返回 8 只会让这批版本一律启动失败。
+                    // 真需要 Java 8 的场景（老 Forge）由用户自己配运行时的开关兜。
                     if mi >= 12 { return 17 }
-                    return 8
+                    return 8                              // ≤1.11 必须 Java 8，包里没有 → 明确报错
                 }
                 if ma >= 26 { return 25 }        // MC 26+ 要 Java 25
                 if ma >= 22 { return 25 }
