@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **交付包加「从这里开始.md」**：11 个文件（含 93 MB 的 bundle 与源码 zip）此前没有任何一页说"该先看哪个"。新文件按收件人身份分四段（装来玩 / 接着开发 / 推上 GitHub / 每个文件是什么），并加 `_check-delivery-index.js` 双向校验：交付包每个文件都要被说明提到、说明提到的文件必须存在。注入验证两条都过。
+- `_check-delivery-docs.js` 的副本映射加了这一份（否则判"孤本"）；`_check-doc-stats` 抓到 docs 30→31、脚本 67→68 两处数字变化并已同步。
+
 - **_check-ci-contract.js 扩到六条**：新增「CI 打包引用的 `core/resources/*` 四个目录必须存在」（目录改名不报错，只让 IPA 缺 jar，启动时 `UnsatisfiedLinkError`）与「`project.yml` 里提到的 `*.sh` 必须找得到」。
 - **修掉一处指向不存在脚本的注释**：`project.yml` 写着「版本号由 CI 用 `zl2-version.sh` 注入」，但该脚本不存在 —— CI 实际是「Inject version」那步的内联 sed。已改准确。
 - 顺带核对全部通过：`Frameworks`/`libs`/`libs_caciocavallo`/`libs_caciocavallo17` 四个打包目录、`libs/launcher.jar`、`*.js`(2)、`log4j-rce-patch-*.xml`(2)、`jre/jre{17,21,25}-ios-aarch64.tar.xz` 与 CI 引用完全一致；`src/Info.plist` 不存在但正确（XcodeGen 按 `info: path:` 生成）。
