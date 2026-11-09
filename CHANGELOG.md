@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **「深色模式」是死开关**：`ZLColorTheme` 所有取色访问器传的都是 `…Light` 键名，色板里 35 组 `…Dark` 数据完整存在却从没被用过（连 `primaryDark` 等四个深色访问器都是零调用），`ThemeManager.darkMode` 也只被赋值没人读 —— 开深色模式界面颜色一点不变。已改 `ZLPalette.color`：深色时把 `…Light` 换成 `…Dark`（缺键退回 Light），并用 `RootView` 把系统 `colorScheme` 同步给 ThemeManager（设置页那项写着"iOS 跟随系统外观"，现在才成立）。新增 `_check-dark-mode.js`。
+
 - **推送做成一条命令**：`scripts/推送并取回IPA.ps1` —— 检查工作区干净 → 推 master→main → 轮询 Actions → 下载 .ipa → 校验体积（<100 MB 视为 JRE 没打进去，直接失败）→ 备份并替换交付包旧 IPA → 记 run 号。干跑验证了"不带 token 立刻拒"「工作区脏就停」两种保护。
 - **推送手册里的数字改成现查**：原文写「4 个提交」「十三轮的改动」早已过时，改成 `git rev-list --count HEAD` / `git log origin/main..HEAD`；`.bundle` 体积也改成约数。
 - `_check-delivery-docs.js` 现在认 `scripts/` 作为仓库来源，脚本入仓后不再是孤本。
