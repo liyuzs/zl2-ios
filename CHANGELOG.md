@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **远端文件名直接拼路径（目录穿越）**：`ModrinthAPI`（`file.filename`）、`MojangAPI`（`relativePath`）、`VersionInstaller` / `LoaderInstaller`（`artifact.path`、`versionID`）、`FileManagerScreen`（用户手输的新建/重命名）共 7 处把外部字符串直接 `appendingPathComponent`，含 `../` 时会写到目标目录之外。新增 `src/ZLPathSafety.swift`（`safeComponent` / `safeRelativePath` / `validateNewName`）统一处置：网络数据净化、不合法跳过或抛错；用户输入**报错而不静默改名**。新增 `_check-path-safety.js` 锁住这条规则。
+
 - **设置项审计文档数字严重过时**：`docs/设置项审计.md` 写着「真正生效 13 项（11%）/ 待接线 14 项 / 安卓专属 60 项」，而代码实际是 **54 / 4 / 57** —— 把能力低估了约 4 倍（`showFPS`、`showMemory`、`controlLayout`、账号与游戏目录桥接、编辑器吸附三项后来都接上了，文档没回头改）。已按 `ZLUnsupportedSettings` 两个集合**重写整篇**，并同步 `设置项接线进度.md`（36 → 54）与文档索引。新增 `_check-settings-audit.js` 把这些数字变成契约。
 - 顺带核实：115 个设置项里 112 个在 Swift 或核心代码中有引用；剩下 3 个（`terracottaNoticeVer` / `lastUpgradeCheck` / `lastSponsorReportMonth`）是从安卓搬来的内部状态位，**不在 UI 中显示**，无用户影响。
 
