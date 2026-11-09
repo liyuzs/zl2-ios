@@ -344,10 +344,17 @@ enum ZLFabricAPIInstaller {
         onProgress("查找 Fabric API…", 0.1)
 
         // 1) 在 Modrinth 上找 fabric-api 这个项目
-        let search = try await ModrinthAPI.shared.search(query: "fabric-api", type: .mod, limit: 5)
-        guard let project = search.hits.first(where: { $0.slug == "fabric-api" })
-                ?? search.hits.first else {
-            throw ModrinthError.invalidURL
+        //
+        // 这里原来写的是 `first(where: slug) ?? search.hits.first` ——
+        // 搜不到 fabric-api 就退而取搜索结果第一条。那可能是一个**完全无关的模组**
+        // （只要名字里带 fabric / api 就会命中），于是用户勾了「Fabric API」，
+        // 装进去的是别的东西，游戏里当然没有 API。
+        // 改成只认准确 slug，找不到就明确报错。
+        let search = try await ModrinthAPI.shared.search(query: "fabric-api", type: .mod, limit: 10)
+        guard let project = search.hits.first(where: { $0.slug == "fabric-api" }) else {
+            throw ModrinthError.decode(
+                "在 Modrinth 上没找到 fabric-api 项目（可能被改名或下架）。" +
+                "为避免装错模组，本次安装已中止。")
         }
 
         // 2) 拉它适配当前游戏版本的发行
@@ -357,10 +364,21 @@ enum ZLFabricAPIInstaller {
             gameVersion: gameVersion,
             loader: "fabric"
         )
-        let target = versions.first(where: { $0.versionNumber == apiVersion }) ?? versions.first
-        guard let v = target,
-              let file = v.files.first(where: \.primary) ?? v.files.first else {
-            throw ModrinthError.invalidURL
+        // 同样：原来找不到指定版本就退而取第一条，等于悄悄装成别的版本。
+        // 而 Fabric API 的版本和游戏版本是绑定的，装错版本多半加载失败。
+        let target: ModrinthVersion?
+        if apiVersion.isEmpty {
+            target = versions.first
+        } else {
+            target = versions.first(where: { $0.versionNumber == apiVersion })
+        }
+        guard let v = target else {
+            throw ModrinthError.decode(
+                "没有找到适配 \(gameVersion) 的 Fabric API \(apiVersion)。" +
+                "请回到下载页重新选一个版本。")
+        }
+        guard let file = v.files.first(where: \.primary) ?? v.files.first else {
+            throw ModrinthError.decode("该 Fabric API 版本没有可下载的文件")
         }
 
         // 3) 下载到 mods/（开了版本隔离时落到该版本自己的目录）
