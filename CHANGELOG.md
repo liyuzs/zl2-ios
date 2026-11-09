@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **用 Siri / 快捷指令启动游戏可能毫无反应**：`RootView` 靠 `asyncAfter(0.8)` 之后发一条通知把首页叫醒，而首页收到通知时第一句就是 `guard !selectedVersion.isEmpty` —— 0.8 秒只是猜"版本列表已读完"，版本多或磁盘慢时列表还没出来就直接 return，**通知是一次性的，启动意图就此消失**。已改成带 2 分钟时效的持久标志（`markAutoLaunchPending` / `hasPendingAutoLaunch` / `consumeAutoLaunchPending`），首页在**收到通知**与**读完版本列表之后**两处都尝试启动。`_check-pending-action.js` 相应加了四条判据（含"至少两处调用"）。
+
 - **Siri / 快捷指令跳转失灵，且未消费的路由会在下次冷启动突然跳页**：`consumeRoute()` 只在 `RootView` 的 `.task` 里调（首次出现才跑），App 已在运行中收到快捷指令时没人消费；而 `zl.pendingRoute` 又没有时效（`consumeLaunchFlag` 有 2 分钟过期、路由没有），于是过期的路由一直留着。已改：`ZLPendingAction.setRoute(_:)` 作唯一写入口（同时写时间戳）、`consumeRoute()` 加 2 分钟时效、`RootView` 抽出 `handlePendingAction()` 由 `.task` 与 `scenePhase == .active` 共用。新增 `_check-pending-action.js` 锁住这四处结构。
 - 顺带核对（无问题）：`ZLSettingType` 的 7 种类型中，`stringList` / `long` / `parcelable` 没有专门的读取方法，但相关项要么在置灰名单里、要么由 `parsePoint` 读取；也没注册任何 URL scheme，深链接走的是 `ZLPendingAction` 而非 URL 回调。
 
