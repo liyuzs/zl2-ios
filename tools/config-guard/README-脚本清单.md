@@ -20,6 +20,8 @@ cd C:\Users\21793\.dsh\config-guard
 退出码：全通过 0，有失败 1。它内置了下面这份清单，所以「该跑哪些」只有一处权威定义。
 
 ---
+| `run-checks.js` | **跨平台执行器（不是检查）**：解析 `_run-all.ps1` 里的清单并逐个执行，供 macOS CI 用。清单只有一份来源，避免两份漂移。`node run-checks.js [--with-tests] [--quiet]` |
+
 
 ## 一、当前必跑（每轮改完代码后跑；条数以 `_run-all.ps1` 的输出为准）
 
