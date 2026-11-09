@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **设置项审计文档数字严重过时**：`docs/设置项审计.md` 写着「真正生效 13 项（11%）/ 待接线 14 项 / 安卓专属 60 项」，而代码实际是 **54 / 4 / 57** —— 把能力低估了约 4 倍（`showFPS`、`showMemory`、`controlLayout`、账号与游戏目录桥接、编辑器吸附三项后来都接上了，文档没回头改）。已按 `ZLUnsupportedSettings` 两个集合**重写整篇**，并同步 `设置项接线进度.md`（36 → 54）与文档索引。新增 `_check-settings-audit.js` 把这些数字变成契约。
+- 顺带核实：115 个设置项里 112 个在 Swift 或核心代码中有引用；剩下 3 个（`terracottaNoticeVer` / `lastUpgradeCheck` / `lastSponsorReportMonth`）是从安卓搬来的内部状态位，**不在 UI 中显示**，无用户影响。
+
 - **_check-dead-routes 增加一项输出**：对每个「已知死路由」，还会打印它的**目的地上挂了什么**（修饰符 `.xxx(...)` / 内部 `path.append` / `onOpen`）——因为挂在没人走的路由上的东西同样永远不生效。第78轮的实例就是 `.zlGuide(.controlEditor)`（控制编辑器首次引导）挂错在死路由上。
 
 - **清掉 5 个冗余死路由**：`.gameDirs` / `.cleanFiles` / `.exportPackNew` / `.controlLayout` / `.logView` —— 页面都有别的 sheet 入口，路由本身是纯死 case。`AppRoute` 29 → **24 个 case**，死路由豁免 7 → **2 个**（只剩 room 未接入、terracotta 演示页）。
