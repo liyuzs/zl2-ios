@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **「清空回收站」没有二次确认**：`Button("清空回收站", role: .destructive) { emptyTrash() }` 在溢出菜单里，点一下就把回收站**永久**清空。回收站的意义就是「删错了能捞回来」，一步误触把这层保险毁掉且不可恢复。已改为 `confirmationDialog` 二次确认（其余 4 处删除本来就有确认）。新增 `_check-destructive-confirm.js`：`role: .destructive` 的按钮不得直接调用执行 `removeItem` 的函数。
+
 - **新增「重复声明」静态检查**（`_check-duplicates.js`）：顶层类型重名会报 `Invalid redeclaration`，而前四层检查都发现不了。判据按花括号深度**只查顶层**——`CodingKeys`、`GuideManager.Kind` / `ZLSettingRow.Kind` 这类嵌套同名不会误报（当前 348 个顶层类型全部唯一）。
 
 > 编译前置静态检查现在有五层：**括号配对** → **框架导入** → **标识符拼写** → **参数标签** → **重复声明**。
