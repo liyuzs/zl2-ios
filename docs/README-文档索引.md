@@ -29,7 +29,9 @@
 | [README.md](../README.md) | 项目简介、能做什么不能做什么 |
 | [CHANGELOG.md](../CHANGELOG.md) | 每个版本改了什么 |
 | [STATUS.md](../STATUS.md) | 当前功能状态（诚实版：哪些真能用、哪些没验证） |
-| [HANDOFF.md](../HANDOFF.md) | 交接备忘：环境、凭据状态、待办 |
+| [HANDOFF-20261108.md](../HANDOFF-20261108.md) | **交接文档（新会话先读这份）**：现状、19 项修复、已验证清单、解卡步骤 |
+| [HANDOFF.md](../HANDOFF.md) | ⚠️ 已废弃（停在 2026-11-04），留作历史 |
+| [缺失组件-Java启动器jar.md](缺失组件-Java启动器jar.md) | Java 侧启动器 jar 的来源、兼容性核对、明确不补的两个文件 |
 | [体检报告-20261108.md](体检报告-20261108.md) | 对照上游 ZL2 2.8.2 的差距分析 |
 
 ### 2.2 架构与设计
@@ -42,7 +44,7 @@
 | [联机方案.md](联机方案.md) | Terracotta / EasyTier 在 iOS 的可行性 |
 | [EasyTier集成设计.md](EasyTier集成设计.md) | EasyTier 隧道骨架设计 |
 
-### 2.3 九轮改造的技术记录
+### 2.3 历次改造的技术记录
 
 每篇都写清了「原来什么问题 → 怎么改的 → 怎么验证的」：
 
@@ -118,5 +120,6 @@
 |---|---|
 | [README.md](../README.md) | 项目门面 |
 | [STATUS.md](../STATUS.md) | 功能状态总表 |
-| [HANDOFF.md](../HANDOFF.md) | 交接备忘 |
+| [HANDOFF-20261108.md](../HANDOFF-20261108.md) | **交接文档（当前版）** |
+| [HANDOFF.md](../HANDOFF.md) | 交接备忘（⚠️ 已废弃，停在 2026-11-04） |
 | [SETTINGS_AUDIT.md](../SETTINGS_AUDIT.md) | 设置项审计的早期版本（已被 docs/设置项审计.md 取代） |
