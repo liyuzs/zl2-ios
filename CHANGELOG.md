@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **验证清单有一行失效指引**：清单教朋友搜 `找不到内置 JRE`，而代码里根本没有这句话——真实的失败信息是 `CoreBridge.swift:295` 抛出的「这个版本需要 Java N，但包里只有：…」，且显示在**启动失败那一屏**、不写进 `ame.log`。文案和位置都错了。已改正，并新增 `_check-checklist-logs.js` 锁住「清单里让用户搜的每一句都必须在代码里存在」。
+
 - **导出布局的 `scaledAt` 恒为 100**：`CoreLayoutExport.currentButtonScale()` 从 UserDefaults 读 `control.button_scale`，但这个键是**核心侧**设置（用户在游戏内控制编辑里调，存在 PLPreferences，默认 100），UserDefaults 里从来没有它 → 永远返回 100。用户调过按钮缩放时，导出的布局与实际比例不一致。已改为 `getPrefFloat("control.button_scale")`。这条是 `_audit-stores.js` 新增的「反方向检查」抓出来的（读了一个核心拥有、但从没写进 UserDefaults 的键）。
 
 - **【新增】启动前预检**：点「尝试启动」之前先列出七项必崩条件（版本 JSON/mainClass、client jar（含 `inheritsFrom` 父版本）、libraries、资源索引、对应 Java 运行时、渲染器、控制布局），只提示不阻止。配套 `_test-preflight.js` 11 条契约测试，锁住「布局名必须从核心偏好读」「jar 检查必须考虑 inheritsFrom」等约定。
