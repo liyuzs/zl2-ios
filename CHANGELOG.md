@@ -63,6 +63,8 @@
 
 ### 已知问题
 
+- **10 个只声明没用的 `@State`**：`AssetsScreen.installedOnly`（想做「只看已安装」筛选但控件没做）、`DownloadAddonsScreen` 的三个 `show*Picker`、`HomeScreen.secretIdx`（彩蛋实际用 `versionTaps`）、`JavaManageScreen.importing`、`ModifyVersionScreen.showLoaderList`、`SkinCapeScreen.selectedCape`、`TerracottaScreen.playerName`、`ZL2App.lanTab`。已全部删除，无功能影响。
+
 - **导出整合包整屏有一半是摆设**：①三个格式（MCBBS / Modrinth / CurseForge）三选一，但 `startExport()` 从没读过 `format`，三者产出同一个普通 zip，也没有任何清单文件；②「一并打包远程资源」是个死 Toggle（绑定的状态没人读）；③名称/版本/作者/描述/最小内存五个字段各自只出现 1 次（就是绑定本身），导出时一个都没用。已去掉假格式与死开关，并让元数据真的写进 zip（`整合包说明.txt` + `pack-info.json`）。
 
 - **多人联机页三个假交互**：「启用多人联机」Toggle 绑的是本地 `@State`（没持久化、没人读）；「分享联机核心日志」和「关于 EasyTier」都有图标/箭头暗示可点，但没有 `Button` 也没有目标页。远程联机需要 EasyTier 内核（iOS 未接入），已把这一组换成明确标注「尚未接入」的说明卡，并删掉无用的 `enabled` 状态。
