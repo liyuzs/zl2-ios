@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **「装 Fabric/Quilt 加载器」这条流程本来就不通**：`path.append(.downloadAddons(...))` 的唯一入口在 `SelectGameVersionScreen` 的 `onPick` 闭包里，而那个页面本身没有任何导航入口 —— 死路由检查按"有没有引用"算，被死页面骗过去了。已删该页面，并在下载页每个版本行加扳手按钮 → `onOpenAddons(v.id)`，这条链现在通了。
+- **搬运一个细节再删页面**：`SelectGameVersionScreen` 里的**愚人节版识别**（已知名单 + oneblock/potato/craftmine/shareware 后缀）已移植到 `DLVersion.isAprilFools`，下载列表会显示「愚人节版 🎭」。
+- `AppRoute` 32 → **29 个 case**；删 239 行，净减约 200 行；文件数 70 → 69。
+
 - **删掉两个被取代的死页面**：`ExportScreen`（154 行，被 `ExportPackScreen` 取代）、`CrashLogScreen`（94 行，功能已被 `LogViewScreen` 覆盖），连同 `AppRoute` 的 `.exportPack` / `.crashLog` 两个 case 与目的地分支。路由 32 → 30。
 - **「按项目 ID 搜索」接上入口**：`SearchIDScreen`（132 行，按 Modrinth/CurseForge 项目 ID 搜索）一直存在但无入口，现于下载页搜索框旁新增「#」按钮进入。
 - 剩余 8 个已知死路由（5 个页面另有入口、3 个未接入）登记在 `_check-dead-routes.js` 的 ALLOW 中。
