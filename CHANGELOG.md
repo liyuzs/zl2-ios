@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **Siri / 快捷指令跳转失灵，且未消费的路由会在下次冷启动突然跳页**：`consumeRoute()` 只在 `RootView` 的 `.task` 里调（首次出现才跑），App 已在运行中收到快捷指令时没人消费；而 `zl.pendingRoute` 又没有时效（`consumeLaunchFlag` 有 2 分钟过期、路由没有），于是过期的路由一直留着。已改：`ZLPendingAction.setRoute(_:)` 作唯一写入口（同时写时间戳）、`consumeRoute()` 加 2 分钟时效、`RootView` 抽出 `handlePendingAction()` 由 `.task` 与 `scenePhase == .active` 共用。新增 `_check-pending-action.js` 锁住这四处结构。
+- 顺带核对（无问题）：`ZLSettingType` 的 7 种类型中，`stringList` / `long` / `parcelable` 没有专门的读取方法，但相关项要么在置灰名单里、要么由 `parsePoint` 读取；也没注册任何 URL scheme，深链接走的是 `ZLPendingAction` 而非 URL 回调。
+
 - **编辑器吸附的两个设置项一直没有界面**：`editorSnapInAllLayers`（是否吸附到其它图层，默认关）与 `editorWidgetSnapMode`（全屏/小范围吸附）**行为代码早就在读**（`ControlEditor.applySnap`），却没有任何入口能改 —— 功能存在、永远停在默认值。已在顶栏「吸附」胶囊上挂菜单：全局开关 / 吸附范围 / 吸附模式（点按仍是会话内开关）。
 - **`ControlEditor.readSettingBool` 也自带默认值那道门**：与第86轮 `GameOverlay.boolValue` 同一毛病（`default` 参数 + `UserDefaults == nil` 兜底），已删掉，默认值只认 `ZLSettings.defaultValue`。
 - `_check-setting-defaults.js` 加固：纳入 `readSettingBool`，并要求这些 helper **体内不许出现 `UserDefaults`**（旧判据只要求"调用了 store"，在委托前加道门它看不出来）。
