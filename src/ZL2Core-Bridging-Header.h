@@ -45,5 +45,18 @@ void setPrefInt(NSString *key, NSInteger value);
 // 前提：<AME_HOME>/controlmap/ 目录必须已存在 ——
 // 该函数用 NSOutputStream 写文件，父目录不存在时会静默失败。
 void generateAndSaveDefaultControl();
+void generateAndSaveDefaultControlForGamepad();
+
+// MARK: - UIKit 钩子（core/UIKit+hook.m）
+//
+// 上游 Amethyst 在 main.m 里调它，而我们用的是 SwiftUI @main，没有 main.m，
+// 所以这个钩子**从来没被安装过**。它做两件事：
+//   · swizzle UIImageView.setImage: 与 UIImage._imageWithSize:
+//     —— 让图片按视图尺寸等比例缩放（不装的话某些图标会被拉伸）
+//   · 强制 UIUserInterfaceIdiom 为 phone/pad（读 debug.debug_ipad_ui）
+//
+// 依赖偏好系统，必须在 loadPreferences 之后调用。
+// swizzle() 找不到方法时只 NSLog 一句、不抛异常，属于安全失败。
+void init_hookUIKitConstructor(void);
 
 #endif

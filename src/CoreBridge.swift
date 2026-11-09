@@ -115,6 +115,12 @@ enum CoreBridge {
         try? fm.createDirectory(atPath: controlMapDir, withIntermediateDirectories: true)
         try? fm.createDirectory(atPath: (controlMapDir as NSString).appendingPathComponent("gamepads"),
                                 withIntermediateDirectories: true)
+        // 手柄默认布局也生成一份（没有手柄时用不到，但目录和文件先备好）
+        generateAndSaveDefaultControlForGamepad()
+
+        // UIKit 钩子：上游在 main.m 里调，我们用 SwiftUI @main 所以从没装过。
+        // 放在这里是因为它依赖偏好（debug.debug_ipad_ui），而偏好刚在上面加载完。
+        init_hookUIKitConstructor()
         generateAndSaveDefaultControl()
         let defaultLayoutPath = (controlMapDir as NSString).appendingPathComponent("default.json")
         if fm.fileExists(atPath: defaultLayoutPath) {
