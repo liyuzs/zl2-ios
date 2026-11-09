@@ -47,7 +47,9 @@ for (const name of files) {
     if (body.includes('removeItem')) deleters.add(name2);
   }
 
-  if (deleters.size === 0) continue;
+  // 第104轮：这里原来有「if (deleters.size === 0) continue;」—— 会让
+  // “只有内联删除、没有具名删除函数”的文件被整个跳过，连按钮都不看。
+  // 现在不再提前跳过：deleters 为空时下面的循环自然不迭代，内联判定照常执行。
 
   // ①.5 先算出所有确认弹窗的区间 —— 弹窗**里面**的 destructive 按钮
   // 正是"确认之后执行删除"的地方，不该被报。
@@ -85,11 +87,19 @@ for (const name of files) {
   }
   const insideDialog = (idx) => dialogRanges.some(([a, b]) => idx > a && idx < b);
 
+  // ①.8 内联删除：按钮动作里直接写 removeItem / moveItem(to: nil) 之类
+  // 第104轮补：原来只查"调命名函数"，内联写法完全漏掉（注入验证证实不报）。
+  const INLINE_DELETE = [/removeItem\s*\(/, /deleteFile\s*\(/, /\.remove\s*\(at:/, /removeItem\(atPath:/];
   // ② 找 role: .destructive 的按钮，看它直接调用了谁
   const btnRe = /Button\s*\([^)]{0,80}?role:\s*\.destructive[^)]{0,40}?\)\s*\{\s*([^{}]{0,120}?)\s*\}/g;
   while ((m = btnRe.exec(flat)) !== null) {
     if (insideDialog(m.index)) continue;      // 确认弹窗里的执行按钮，正常
     const action = m[1].trim();
+    // 内联删除：动作里直接出现 removeItem 等调用（且不在确认弹窗里）
+    if (INLINE_DELETE.some(re => re.test(action))) {
+      problems.push({ file: name, fn: '(内联删除)', action, deleters: [...deleters] });
+      continue;
+    }
     for (const d of deleters) {
       // 直接调用：`emptyTrash()` / `emptyTrash() ` / `self.emptyTrash()`
       const direct = new RegExp(`(?:^|\\s|self\\.)${d}\\s*\\(\\s*\\)\\s*$`).test(action);

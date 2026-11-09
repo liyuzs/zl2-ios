@@ -18,7 +18,10 @@ const fs = require('fs');
 const path = require('path');
 const { SRC } = require('./_paths');
 // 这些路径关键字代表"临时/暂存"，不要求原子写
-const TEMP_HINTS = ['stage', 'tmp', 'temp', 'trash', 'temporaryDirectory', 'probe'];
+// 只放"临时/暂存路径"的线索词。**不要把测试用的探针名字放进来** ——
+// 早期这里曾有 'probe'：某次注入测试为了避开误报加进去的，结果让这条检查
+// 对任何名字含 probe 的真实代码视而不见（第104轮靠"注入后回读确认"才发现）。
+const TEMP_HINTS = ['stage', 'tmp', 'temp', 'trash', 'temporaryDirectory'];
 
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.swift'));
 const problems = [];

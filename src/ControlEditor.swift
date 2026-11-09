@@ -789,6 +789,8 @@ struct ControlEditorScreen: View {
     @State private var showLayoutInfo = false
     @State private var toast: String? = nil
     @State private var sheet: ControlEditorSheet? = nil
+    /// 待确认删除的控件：右键菜单点「删除控件」只存这里，弹确认后才真删
+    @State private var pendingDelete: ControlItem? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -802,6 +804,21 @@ struct ControlEditorScreen: View {
         .navigationBarHidden(true)
         .task(id: "editor-load") { loadLayout() }
         .onDisappear { saveLayout() }
+        // 删除控件前先确认：删掉没有撤销，位置/大小/样式都得重建
+        .confirmationDialog("删除这个控件？",
+                            isPresented: Binding(
+                                get: { pendingDelete != nil },
+                                set: { if !$0 { pendingDelete = nil } }
+                            ),
+                            titleVisibility: .visible) {
+            Button("删除", role: .destructive) {
+                if let t = pendingDelete { deleteItem(t) }
+                pendingDelete = nil
+            }
+            Button("取消", role: .cancel) { pendingDelete = nil }
+        } message: {
+            Text("删掉之后没有撤销，需要的话得重新添加并手动调位置和样式。")
+        }
         .sheet(item: $sheet, onDismiss: { selected = nil }) { which in
             switch which {
             case .inspector:
@@ -1176,7 +1193,7 @@ struct ControlEditorScreen: View {
                 }
             }
             Divider()
-            Button("删除控件", role: .destructive) { deleteItem(item) }
+            Button("删除控件", role: .destructive) { pendingDelete = item }
         }
         .onTapGesture {
             if editing {
