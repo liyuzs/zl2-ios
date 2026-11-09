@@ -95,7 +95,11 @@ struct ControlManageScreen: View {
         }
         .sheet(isPresented: $showCreate) { createSheet }
         .sheet(isPresented: $showEditor) {
+            // 首次进入编辑器时的引导。
+            // 这句原来只挂在 AppRoute.controlLayout 的目的地上，而那个路由没有任何
+            // 导航过去（死路由），所以引导永远不显示 —— 从这里的真实入口进编辑器反而看不到。
             ControlEditorScreen(onBack: { showEditor = false }, onHome: { showEditor = false })
+                .zlGuide(.controlEditor)
         }
     }
 

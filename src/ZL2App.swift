@@ -49,10 +49,6 @@ enum AppRoute: Hashable {
     case search
     case diagnostics
     case room
-    case gameDirs
-    case cleanFiles
-    case exportPackNew
-    case controlLayout
     case skinCape
     case fileManager
     case versionList
@@ -61,7 +57,6 @@ enum AppRoute: Hashable {
     case controlManage
     case serverList
     case downloadAddons(String)
-    case logView
     case license
     case terracotta
     case modsManager(String)
@@ -222,15 +217,6 @@ struct RootView: View {
                     DiagnosticsScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .room:
                     MultiplayerRoomScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
-                case .gameDirs:
-                    GameDirsScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
-                case .cleanFiles:
-                    CleanFilesScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
-                case .exportPackNew:
-                    ExportPackScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
-                case .controlLayout:
-                    ControlEditorScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
-                        .zlGuide(.controlEditor)
                 case .skinCape:
                     SkinCapeScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .fileManager:
@@ -329,8 +315,6 @@ struct RootView: View {
                                 }
                             }
                         })
-                case .logView:
-                    LogViewScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .license:
                     LicenseScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .terracotta:
@@ -794,5 +778,6 @@ struct AboutScreen: View {
     }
 
 }
+
 
 
