@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **原子写检查的 `'temp'` 子串匹配会漏报**：受控实验（同一注入、只改变量名）证明 `templateURL` / `attemptURL` 都被放过，而 `targetURL` 会报——因为判据是 `includes('temp')`。`TEMP_HINTS` 已从短通用词改成路径特征词（`temporaryDirectory` / `NSTemporaryDirectory` / `/tmp/` / `.tmp` / `trash` / `cachesDirectory`），`'stage'` 也去掉了（会被 `staging` 命中）。
+- 收紧后立刻抓到真实问题：`VersionManageScreens.swift:604` 往临时 `stage/` 写 `pack-info.json` 没加原子选项（原来正被 `'stage'` 放过），而紧邻的第 600 行写 txt 时用了 `atomically: true` —— 同一处两种写法，已统一。
+
 - **抽查旧检查，发现两条本身有问题**（用第103轮的"注入后回读确认"）：
   - `_check-atomic-writes.js` 的 `TEMP_HINTS` 里混着 `'probe'` —— 早期某次注入测试为了避开误报加的，结果让检查对任何名字含 probe 的真实代码视而不见。已移除。
   - `_check-destructive-confirm.js` 有两个盲区：①只查"按钮调用了本文件内定义的删除函数"，**内联删除**（按钮里直接 `removeItem`）不在范围 ②入口处 `if (deleters.size === 0) continue;` 让"只有内联删除"的文件被整个跳过。两处都补了。
