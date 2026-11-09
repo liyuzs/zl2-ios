@@ -508,6 +508,30 @@ enum CoreBridge {
 
         // 2) 内存分配
         syncMemorySetting()
+
+        // 3) 游戏目录：必须让核心算出来的路径 = 我们实际安装的路径
+        //
+        // 核心（JavaLauncher.m:179-182）自己拼：
+        //   <AME_HOME>/instances/<general.game_directory>/<profile.gameDir>
+        // 而我们把版本装在 <Documents>/instances/<实例名>/.minecraft/
+        //
+        // 这两个值核心都有硬编码默认：「general.game_directory」默认 "default"、
+        // profile 的 gameDir 默认 "."（PLProfiles.m:44）。拼出来是
+        //   <Documents>/instances/default/.
+        // 经 stringByStandardizingPath 去掉 "/." 之后变成
+        //   <Documents>/instances/default
+        // —— 比我们的实际目录少一层 .minecraft。
+        //
+        // 后果：Java 侧去 instances/default/versions/<id>/<id>.json 找版本，
+        // 而文件在 instances/default/.minecraft/versions/<id>/<id>.json，
+        // 表现是「版本明明装好了，启动却说找不到」。
+        //
+        // 修法：把 general.game_directory 设成 "<实例名>/.minecraft"，
+        // 与默认的 gameDir "." 拼起来正好是我们要的目录。
+        // 这里不写 launcher_profiles.json —— 那要多一套 JSON 读写，
+        // 而 profile 里 gameDir 不填就走默认 "."，一个 pref 就够。
+        let instance = VersionRepository.shared.instanceName
+        setPrefObject("general.game_directory", "\(instance)/.minecraft")
     }
 
     /// 把设置页的内存分配同步到核心真正读的键。
