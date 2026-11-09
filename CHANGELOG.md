@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **服务器列表页一直打不开，而界面上显示的是写死的假服务器**：`ServerListScreen`（带真实 Server List Ping）7 个不可达页面之一，用户点不到；`VersionContentScreen` 里那个「服务器列表」是硬编码的 Hypixel / 2b2t / 本地局域网（地址都是编的），行末 chevron 没有 Button，而「添加服务器」弹窗说"去多人游戏页管理"——那一页是联机页，没有服务器管理。已改为读 `ServerStore` 真实数据 + 点进去就是真实页面。
+- 新增 `_check-dead-routes.js`：`AppRoute` 的每个 case 必须有导航调用（append / onOpen / NavigationLink），已知 11 个死路由登记理由。
+- STATUS 已知问题段重排为 7 条（原来有两个 `4.`），新增「7 个页面用户点不到」。
+
 - **控制编辑器里 4 类外观设置进游戏不生效**：核心只从布局 JSON 读 `bgColor` / `cornerRadius` / `opacity` / `strokeColor` / `strokeWidth`，而 `textSize`（核心按控件大小自动缩放）、`joystickColor`、`joystickSize`、`pressedBgColor`（核心无"按下态外观"概念）**全核心零命中**。编辑器里这些都有滑杆、预览还能看到变化，用户调完进游戏发现没变。已在外观面板顶部与不透明度区加如实说明；新增 `_check-layout-keys.js`（导出键必须能在核心源码里找到，例外登记理由）。
 
 - **删掉 230 行完全没用的重复色板**：`src/ZLPalette.swift` 里的 `ZLThemeType` / `ZLPaletteV2` / `ZLPaletteLight` / `ZLPaletteDark` 全项目零引用，却存了**第二份 490 个颜色值**（真正在用的是 `ColorThemes.swift` 的 `ZLPalette.raw`）。同一份数据两处各存一遍，改了 A 不改 B 就会静默分叉；而且 `ZLThemeType` 有 8 个主题（多一个"动态"）与在用的 7 个不一致，容易误以为有 8 套。已删除，文件数 71 → 70。
