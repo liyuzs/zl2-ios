@@ -10,6 +10,9 @@
 //        value 形如 "sf:cube.fill" 或 "file:<沙盒内相对路径>"
 
 import SwiftUI
+// UIImage 来自 UIKit。虽然 PhotosUI 通常会把它带进来，
+// 但那是"通常"——显式导入为零成本，去掉这个不确定性。
+import UIKit
 import PhotosUI
 
 // MARK: - 图标存储
