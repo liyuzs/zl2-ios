@@ -457,8 +457,12 @@ final class ServerStore {
     private let key = "zl.servers"
 
     func load() -> [ZLServerData] {
-        guard let d = UserDefaults.standard.data(forKey: key),
-              let arr = try? JSONDecoder().decode([ServerCodable].self, from: d) else { return [] }
+        guard let d = UserDefaults.standard.data(forKey: key) else { return [] }
+        guard let arr = try? JSONDecoder().decode([ServerCodable].self, from: d) else {
+            // 解不开就先备份，别让下一次 save() 把整份列表覆盖掉
+            ZLRecovery.preserveRawData(d, for: key)
+            return []
+        }
         return arr.map { $0.toModel() }
     }
 

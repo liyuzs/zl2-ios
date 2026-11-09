@@ -454,9 +454,14 @@ final class AccountStore: ObservableObject, AccountProviding {
     // MARK: 持久化
 
     private func load() {
-        if let data = defaults.data(forKey: Keys.accounts),
-           let saved = try? decoder.decode([Account].self, from: data) {
-            accounts = saved
+        if let data = defaults.data(forKey: Keys.accounts) {
+            if let saved = try? decoder.decode([Account].self, from: data) {
+                accounts = saved
+            } else {
+                // 解不开（比如新版本加了非可选字段）——先把原始字节备份下来，
+                // 否则用户下次加/删账号时 save() 会把这份数据覆盖掉，账号永久消失。
+                ZLRecovery.preserveRawData(data, for: Keys.accounts)
+            }
         }
         if let raw = defaults.string(forKey: Keys.current) {
             currentID = UUID(uuidString: raw)

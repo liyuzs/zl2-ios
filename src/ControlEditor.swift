@@ -737,9 +737,17 @@ final class ControlStyleVault: ObservableObject {
     }
 
     private func load() {
-        guard let data = UserDefaults.standard.data(forKey: Self.storageKey),
-              let decoded = try? JSONDecoder().decode([ControlAppearance].self, from: data),
-              !decoded.isEmpty else {
+        guard let data = UserDefaults.standard.data(forKey: Self.storageKey) else {
+            styles = ControlAppearance.presets
+            return
+        }
+        guard let decoded = try? JSONDecoder().decode([ControlAppearance].self, from: data) else {
+            // 解不开：先备份（用户自己调的外观不能因为一次 schema 变动就没了）
+            ZLRecovery.preserveRawData(data, for: Self.storageKey)
+            styles = ControlAppearance.presets
+            return
+        }
+        guard !decoded.isEmpty else {
             styles = ControlAppearance.presets
             return
         }

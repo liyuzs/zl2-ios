@@ -59,8 +59,27 @@ enum ZLDiagnostics {
         items.append(contentsOf: checkCore())
         items.append(contentsOf: checkSandbox())
         items.append(contentsOf: checkGameData())
+        items.append(contentsOf: checkRecoveryBackups())
 
         return items
+    }
+
+    /// 有没有"解码失败被备份下来"的数据。
+    ///
+    /// 平时应该是 0 项。一旦不为 0，说明某份持久化数据解不开了（多半是升级后字段变了），
+    /// 原始字节被 `ZLRecovery` 存进了 plist —— 数据还在，但 App 里看不到。
+    /// 不报出来的话，用户只会觉得"我的账号/服务器/布局突然没了"。
+    private static func checkRecoveryBackups() -> [ZLDiagItem] {
+        let keys = ZLRecovery.allBackupKeys()
+        if keys.isEmpty {
+            return [ZLDiagItem(title: "数据备份", value: "无异常备份", level: .ok)]
+        }
+        let names = keys.map { $0.replacingOccurrences(of: ZLRecovery.prefix, with: "") }
+        return [ZLDiagItem(
+            title: "数据备份",
+            value: "\(keys.count) 份数据解码失败但已备份（\(names.joined(separator: "、"))）——原始内容仍在，可导出恢复",
+            level: .warn
+        )]
     }
 
     // MARK: 设备与环境

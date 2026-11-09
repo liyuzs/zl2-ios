@@ -394,9 +394,13 @@ struct ControlManageScreen: View {
     }
 
     private func load() {
-        if let data = UserDefaults.standard.data(forKey: storeKey),
-           let list = try? JSONDecoder().decode([ControlLayoutMeta].self, from: data) {
-            layouts = list
+        if let data = UserDefaults.standard.data(forKey: storeKey) {
+            if let list = try? JSONDecoder().decode([ControlLayoutMeta].self, from: data) {
+                layouts = list
+            } else {
+                // 解析失败先备份，别让后面的保存覆盖掉用户的布局清单
+                ZLRecovery.preserveRawData(data, for: storeKey)
+            }
         }
         if layouts.isEmpty {
             layouts = [
