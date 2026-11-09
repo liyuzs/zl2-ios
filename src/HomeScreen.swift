@@ -420,6 +420,16 @@ struct HomeScreen: View {
 
     private func refreshInstalledVersion() {
         let list = VersionRepository.shared.listVersions()
+
+        // 顺手把「上次玩的版本 / 已装数量」写进 App Group。
+        //
+        // 为什么要写：`ZLSharedStore.sync` 原来**全项目零调用**，也就是说 App Group 里
+        // 永远没有数据 —— 将来加桌面小组件时，读到的会是空的。
+        // 免费签名没有 App Group 时会自动回退到 App 自己的存储（不会崩），所以这里可以放心调。
+        ZLSharedStore.sync(versionName: list.first?.id ?? "",
+                          installedCount: list.count,
+                          lastPlayed: UserDefaults.standard.object(forKey: "lastLaunchDate") as? Date)
+
         guard !list.isEmpty else {
             selectedVersion = "还没有安装版本"
             return

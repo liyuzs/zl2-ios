@@ -139,10 +139,11 @@ git push   # 本地分支 master → 线上 main
 1. **真机零验证** —— 所有功能只在编译与静态检查层面通过，没在 iPhone 上跑过
 2. **能不能启动未知** —— 启动链路已补齐 19 项致命缺陷，但 `UnsatisfiedLinkError` / 版本 JSON 处理 / 渲染管线只有真机日志能回答
 3. **UI 还原度** —— 对照录屏补过 20 处差异，26 个页面做了合并简化
-4. **7 个页面用户点不到**（代码写了、路由也声明了，但没有任何导航过去）：`ExportScreen`（已被 `ExportPackScreen` 取代）、`CrashLogScreen`（功能已被 `LogViewScreen` 覆盖）、`MultiplayerRoomScreen`（远程联机未接入）、`SearchIDScreen`、`SelectGameVersionScreen`、`TerracottaScreen`（自身声明为界面演示）。`ServerListScreen` 本轮已接上入口。另有 5 个路由是死的但页面另有入口，详见 `_check-dead-routes.js` 的 ALLOW 清单。
+4. **2 个页面还没接入** —— `MultiplayerRoomScreen`（远程联机需 Network Extension，等付费账号）与 `TerracottaScreen`（自身声明为界面演示）。第75轮发现过 7 个不可达页面，其中 `ServerListScreen` / `SearchIDScreen` 已接上入口、`ExportScreen` / `CrashLogScreen` / `SelectGameVersionScreen` 已删除，另清掉 5 个冗余死路由（详见 `_check-dead-routes.js` 的 ALLOW）。
 5. **部分三列布局在手机竖屏上偏挤** —— 如「下载-模组/资源」页（左栏 92pt + 筛选栏 ≤210pt + 结果列表自适应）、「游戏目录」页（左栏 ≤258pt），在 375pt 宽的手机上结果区会偏窄。app 最初按 iPad 设计；**没有视觉反馈的情况下不做盲改**，已把必然溢出的固定宽度（≥280pt）全部改成 `maxWidth`。
 6. **`patchjna_agent.jar` 与 `libjnidispatch.dylib` 没放** —— 它们只服务 Forge/NeoForge，而 iOS 不支持 Forge（详见 `docs/缺失组件-Java启动器jar.md`）
-7. **MC 1.11 及更早不支持** —— 需要 Java 8，包里只带 17/21/25；下载页已把这类版本标灰并禁用
+7. **没有桌面小组件** —— 项目里有 `ZLSharedStore`（App Group 写入 `widget.version` / `widget.count` / `widget.lastPlayed`），首页每次刷新版本列表时都会写；但**没有 Widget 扩展 target**，所以现在没有任何东西读它。这是为将来加小组件留的骨架，不是已实现的功能。
+8. **MC 1.11 及更早不支持** —— 需要 Java 8，包里只带 17/21/25；下载页已把这类版本标灰并禁用
 
 ---
 
