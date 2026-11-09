@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **许可页与实际打包内容严重不符**：①列了 `MobileGlues`，但仓库里一个文件都没有（`CoreBridge` 注释还写着"iOS 上根本不存在的 MobileGlues"）②漏了 5 个随包分发的第三方署名：`AltKit/CAltKit`、`FreeType`、`shaderc`、`Gson`、`jsr305` ③只写「OpenJDK 17」，实际打包 17/21/25 三个运行时。已修正，组件数 15 → 20。
+- 新增 `_check-license-page.js`：`Frameworks/`、`libs/*.jar`、`jre/` 里每个第三方都要在许可页有署名（MAP 表登记映射），反向也查"页面列了但没文件"。注入验证两条都过。对 GPL 衍生项目来说，署名缺失不报错但是实质合规问题——本项目第 69 轮已因 GPL 第 7 条栽过一次。
+
 - **彩蛋里写着过时数字和一句不存在的功能**：`ZLSecretInfo` 说「这个启动器用了 55 个 Swift 文件」（实际 70，用户点 5 下版本号就看到）；`ZLEasterEgg` 说「键位盘可以长按空白处新建按钮」（编辑器没有这个手势，真实入口是顶栏「＋」菜单）。已分别改成不会变的描述与准确入口；顺带清掉 `ZLFestival` 里一个两个分支都 `return nil` 的空操作。
 - 新增 `_check-hardcoded-stats.js`：**src 的字符串字面量不许出现「N 个 Swift 文件 / .m 文件 / jar」**——这类数字写在代码里，`_check-doc-stats` 管不到，也没有任何路径会校验，而用户会当成准确信息。注入验证会报。
 
