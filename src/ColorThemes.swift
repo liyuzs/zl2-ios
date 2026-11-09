@@ -121,8 +121,22 @@ enum ZLPalette {
         "surfaceContainerHighestDark": [0xFF3F322E, 0xFF393335, 0xFF333535, 0xFF313538, 0xFF37352C, 0xFF353434, 0xFF323630],
     ]
 
+    /// 取一个颜色。
+    ///
+    /// **深色模式在这里统一生效**：色板里每个角色都有 `xxxLight` / `xxxDark` 两份
+    /// （35 组 × 7 主题，实测两组都在），而上面所有访问器传的都是 `...Light` 的键名。
+    /// 以前 `darkMode` 只被赋值、没人读，`...Dark` 那 35 组颜色一次都没用过 ——
+    /// 也就是「深色模式」开关是死的。
+    ///
+    /// 现在统一在这一处把 `Light` 换成 `Dark`：调用方一个字都不用改，
+    /// 找不到对应的 Dark 键时自动退回 Light（不会变灰、不会崩）。
     static func color(_ group: String, _ index: Int) -> Color {
-        guard let arr = raw[group], index >= 0, index < arr.count else { return .gray }
+        var key = group
+        if ThemeManager.shared.darkMode, key.hasSuffix("Light") {
+            let darkKey = String(key.dropLast("Light".count)) + "Dark"
+            if raw[darkKey] != nil { key = darkKey }
+        }
+        guard let arr = raw[key], index >= 0, index < arr.count else { return .gray }
         return Color(hex: arr[index])
     }
 }

@@ -74,6 +74,10 @@ struct RootView: View {
     @State private var showWelcome = !UserDefaults.standard.bool(forKey: "zl.welcomeShown")
     /// 启动闪屏（同理，SplashScreen 写好了但没挂）
     @State private var showSplash = true
+    /// 跟随系统外观。设置页里「深色模式」那一项在 iOS 上是置灰的
+    /// （`ZLUnsupportedSettings.platformOnly` 里写着"iOS 跟随系统外观"），
+    /// 所以这里直接把系统外观同步给 ThemeManager，再由色板决定取 Light 还是 Dark 那一组。
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
@@ -96,6 +100,14 @@ struct RootView: View {
                 .zIndex(10)
             }
         }
+        .onAppear { syncAppearance() }
+        .onChange(of: colorScheme) { _ in syncAppearance() }
+    }
+
+    /// 把系统亮/暗交给主题层。
+    private func syncAppearance() {
+        let dark = (colorScheme == .dark)
+        if themeManager.darkMode != dark { themeManager.darkMode = dark }
     }
 
     private var mainStack: some View {
