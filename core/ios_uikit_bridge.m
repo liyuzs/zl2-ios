@@ -6,6 +6,7 @@
 #import "LauncherSplitViewController.h"
 #import "PLLogOutputView.h"
 #import "SurfaceViewController.h"
+#import "MinecraftOptionUtils.h"
 
 #include <objc/runtime.h>
 #include "ios_uikit_bridge.h"
@@ -82,6 +83,33 @@ dispatch_async(dispatch_get_main_queue(), ^{
     
     [currentVC() presentViewController:alert animated:YES completion:nil];
 });
+}
+
+// ZL2-iOS: 补上 UIKit 的两个 native 方法。
+//
+// 从 jar 的字节码反查发现：org/lwjgl/glfw/GLFW.class 引用了
+// net/kdt/pojavlaunch/uikit/UIKit.updateMCGuiScale —— 也就是说 LWJGL
+// 在创建/缩放窗口时会调它。而我们原来只导出了 Java_..._UIKit_showError，
+// 这个方法缺失，被调用时就是 UnsatisfiedLinkError（启动或改窗口尺寸时崩）。
+//
+// 核心本来就有等价实现（MinecraftOptionUtils 的 updateMCGuiScale，
+// 按窗口尺寸重算 guiScale），直接转发即可。
+JNIEXPORT void JNICALL Java_net_kdt_pojavlaunch_uikit_UIKit_updateMCGuiScale(
+        JNIEnv* env, jclass clazz, jint height) {
+    (void)env; (void)clazz; (void)height;
+    @autoreleasepool {
+        [MinecraftOptionUtils.sharedInstance updateMCGuiScale];
+    }
+}
+
+// 推送式的 AWT 画面刷新。Amethyst 把显示改成了拉取式
+// （SurfaceView 主动调 CTCScreen.getCurrentScreenRGB()），这条路径本来就没人走 ——
+// 全部 jar 里也只有 UIKit.class 自己声明了它、没有任何调用者。
+// 但既然 Java 侧声明了 native，留个空实现比让它 UnsatisfiedLinkError 安全。
+JNIEXPORT void JNICALL Java_net_kdt_pojavlaunch_uikit_UIKit_refreshAWTBuffer(
+        JNIEnv* env, jclass clazz, jintArray buf) {
+    (void)env; (void)clazz; (void)buf;
+    // 故意留空：画面由 SurfaceView 的拉取式路径负责。
 }
 
 jstring UIKit_accessClipboard(JNIEnv* env, jint action, jbyteArray copySrc) {
