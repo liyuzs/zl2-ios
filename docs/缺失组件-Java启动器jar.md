@@ -94,6 +94,28 @@ if ([NSFileManager.defaultManager fileExistsAtPath:patchJna]) {
 
 ---
 
+## 四之二、明确**不补**的两个文件（已核实不需要）
+
+上游 IPA 的 `Frameworks/` 里还有 `libjnidispatch.dylib`（JNA 的原生库，157 KB），
+我们没有放进来。**这是有意的，不是漏的。**
+
+核实过程：
+
+1. 把 13 个 jar 的 2918 个 class 全扫一遍，**没有任何类引用 `com/sun/jna` /
+   `jnidispatch` / `Native.load`** —— 也就是说 Java 侧根本没有代码会去加载 JNA。
+2. 唯一提到 JNA 的地方是核心的 `core/MinecraftResourceUtils.m:83`：
+   它把版本 JSON 里的 `net.java.dev.jna:jna` 依赖**改写成固定 5.13.0**，
+   这是给 **Forge / NeoForge 安装器**用的。
+3. 而本项目**不支持 Forge**（iOS 禁止 fork 子进程，见 CHANGELOG 已知问题）。
+
+所以 `libjnidispatch.dylib` 和 `patchjna_agent.jar` 属于同一条用不到的链路 ——
+前者没放、后者已降级为存在性判断（见第四节）。
+
+**如果将来要支持 Forge**，这两个都要补，而且版本必须和
+`MinecraftResourceUtils` 里钉的 `jna-5.13.0.jar` 对得上。
+
+---
+
 ## 五、还没验证的风险
 
 **这是上游 2.2 的 jar 配我们这代核心，没有真机跑过。**
