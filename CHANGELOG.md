@@ -63,6 +63,8 @@
 
 ### 已知问题
 
+- **JNI 注册拿 NULL 的 jclass 去调 RegisterNatives（每次 JVM 启动都会崩）**：`registerOpenHandler()` 在 `JNI_OnLoad` 里注册 `CTCClipboard` 的 native 方法，而两个包名的 `CTCClipboard` 在我们用的 cacio jar 里都不存在 → `FindClass` 返回 NULL 且留下未清理的异常 → `RegisterNatives(env, NULL, ...)` 让 HotSpot abort。已在两处 `RegisterNatives` 加判空；代价是游戏内复制粘贴不可用（需要带 `CTCClipboard` 的 cacio 构建才能恢复）。
+
 - **Java 侧环境变量回退分支曾被漏掉**：`libs/launcher.jar` 的 `Tools.class` 同时引用 `GAME_DIR` / `POJAV_GAME_DIR`、`AME_HOME` / `POJAV_HOME`，做的是"读一个、没有退回另一个"。我们原来只设了不带前缀的那份，走 `POJAV_` 分支会拿到 null。已把两份都设上（`setGameEnv`），并新增 `_audit-env.js` 自动对撞。
 
 - **缺 Java 侧启动器 jar（最严重）**：`core/JavaLauncher.m` 拉起 JVM 时要用 `<bundle>/libs/patchjna_agent.jar`（`-javaagent`）、`<bundle>/libs/*.jar`（`-cp`，主类 `net.kdt.pojavlaunch.PojavLauncher`）、`<bundle>/libs_caciocavallo17/*.jar`（`-Xbootclasspath/a`），而**仓库里一个 jar 都没有，也没有 Java 构建步骤**，已发布的 build-235 IPA 解包后同样没有 `libs/`。JVM 连启动都完不成。详见 [缺失组件-Java启动器jar](docs/缺失组件-Java启动器jar.md)，`_check-runtime-assets.js` 会自动检出。
