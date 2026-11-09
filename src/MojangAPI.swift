@@ -881,7 +881,14 @@ public struct MojangAPI: @unchecked Sendable {
     public func download(artifact: VersionDetail.Artifact,
                          toDirectory directory: URL,
                          onProgress: (@Sendable (Double) -> Void)? = nil) async throws -> URL {
-        let destination = directory.appendingPathComponent(artifact.relativePath)
+        // relativePath 来自版本 JSON（远端数据），形如 "org/lwjgl/.../x.jar"。
+        // 允许分目录，但不允许绝对路径、空段、`.`、`..` —— 否则会把文件写到 directory 之外。
+        guard let safeRel = ZLPathSafety.safeRelativePath(artifact.relativePath) else {
+            throw NSError(domain: "ZLPathSafety", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "资源路径不合法：\(artifact.relativePath)"
+            ])
+        }
+        let destination = directory.appendingPathComponent(safeRel)
         try await self.downloadFile(from: artifact.url, to: destination, onProgress: onProgress)
         return destination
     }

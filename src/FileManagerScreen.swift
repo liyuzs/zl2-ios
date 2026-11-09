@@ -414,7 +414,13 @@ struct FileManagerScreen: View {
 
     private func doRename() {
         guard let e = renaming else { return }
-        let dst = current.appendingPathComponent(newName)
+        // 用户手输的名字必须校验：输入 `..` 会把文件挪到上一层甚至 App 数据目录，
+        // 输入 `/` 会变成"移动到别的目录"而不是改名。
+        if let why = ZLPathSafety.validateNewName(newName, kind: "文件名") {
+            errorText = why
+            return            // 保留输入框，让用户改
+        }
+        let dst = current.appendingPathComponent(newName.trimmingCharacters(in: .whitespacesAndNewlines))
         do { try fm.moveItem(at: e.url, to: dst) }
         catch { errorText = ZLFriendlyError.text(error) }
         renaming = nil
@@ -422,7 +428,11 @@ struct FileManagerScreen: View {
     }
 
     private func doCreateFolder() {
-        let dst = current.appendingPathComponent(folderName)
+        if let why = ZLPathSafety.validateNewName(folderName, kind: "文件夹名") {
+            errorText = why
+            return
+        }
+        let dst = current.appendingPathComponent(folderName.trimmingCharacters(in: .whitespacesAndNewlines))
         do { try fm.createDirectory(at: dst, withIntermediateDirectories: true) }
         catch { errorText = ZLFriendlyError.text(error) }
         reload()

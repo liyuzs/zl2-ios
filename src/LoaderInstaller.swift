@@ -89,6 +89,11 @@ struct ZLLoaderInstaller {
 
         // 写版本目录
         onProgress("写入版本配置…", 0.2)
+        // versionID 会直接变成目录名和 JSON 文件名。它由「游戏版本 + 加载器版本」拼成，
+        // 后两段来自远端元数据 —— 里面若出现 `/` 或 `..`，文件就会落到 versions/ 之外。
+        if let why = ZLPathSafety.validateNewName(versionID, kind: "版本 ID") {
+            throw ZLLoaderInstallerError.profileFailed(why)
+        }
         let dir = VersionRepository.shared.versionsDir.appendingPathComponent(versionID, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let jsonURL = dir.appendingPathComponent("\(versionID).json")
@@ -108,7 +113,10 @@ struct ZLLoaderInstaller {
                 // 没有 downloads 段的（Quilt 常见），按 maven 规则拼路径
                 if let maven = lib["url"] as? String,
                    let u = URL(string: maven + "/" + mavenPath(name)) {
-                    let dest = libRoot.appendingPathComponent(mavenPath(name))
+                    // mavenPath 由 group:artifact:version 拼出，本身就是单层安全的；
+                    // 仍过一遍校验，避免 group 里混进奇怪字符（远端元数据可控）。
+                    let mavenRel = ZLPathSafety.safeRelativePath(mavenPath(name))
+                    let dest = libRoot.appendingPathComponent(mavenRel ?? ZLPathSafety.safeComponent(mavenPath(name)))
                     if !FileManager.default.fileExists(atPath: dest.path) {
                         try? FileManager.default.createDirectory(at: dest.deletingLastPathComponent(),
                                                                  withIntermediateDirectories: true)
@@ -119,7 +127,9 @@ struct ZLLoaderInstaller {
                 }
                 continue
             }
-            let dest = libRoot.appendingPathComponent(path)
+            // path 来自加载器元数据（远端）。不合法就跳过这个库。
+            guard let safeRel = ZLPathSafety.safeRelativePath(path) else { continue }
+            let dest = libRoot.appendingPathComponent(safeRel)
             if FileManager.default.fileExists(atPath: dest.path) {
                 done += 1
                 continue

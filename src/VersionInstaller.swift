@@ -159,7 +159,10 @@ actor VersionInstaller {
         for lib in libs {
             // 只下主 artifact（跳过 natives/classifiers，iOS 不吃原生库）
             guard let artifact = lib.downloads?.artifact, let path = artifact.path else { continue }
-            let dest = libRoot.appendingPathComponent(path)
+            // path 来自版本 JSON 的 downloads.artifact.path（远端数据）。
+            // 不合法就跳过这个库（宁可少一个库，也不要写到 libraries 之外）。
+            guard let safePath = ZLPathSafety.safeRelativePath(path) else { continue }
+            let dest = libRoot.appendingPathComponent(safePath)
             if fm.fileExists(atPath: dest.path) { continue }
             tasks.append((artifact.url, dest, artifact.sha1))
         }

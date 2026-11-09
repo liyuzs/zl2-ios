@@ -211,7 +211,9 @@ actor ModrinthAPI {
     /// 下载文件到指定目录
     func download(_ file: ModrinthVersionFile, to dir: URL, onProgress: ((Double) -> Void)? = nil) async throws -> URL {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let dest = dir.appendingPathComponent(file.filename)
+        // filename 来自接口返回的 JSON。如果它是 "../../x" 这种，直接拼会写到 dir 之外，
+        // 所以先净化成单层安全文件名（正常名字原样通过）。
+        let dest = dir.appendingPathComponent(ZLPathSafety.safeComponent(file.filename))
 
         // 「存在就跳过」要加个条件：必须是**非空**才算已下载。
         // 原来只要文件存在就 return —— 如果上次下到一半被打断，留下 0 字节或半截文件，
@@ -431,7 +433,7 @@ enum ZLFabricAPIInstaller {
         onProgress("下载 \(file.filename)…", 0.6)
         let modsDir = VersionRepository.shared.modsDir(for: versionID)
         try FileManager.default.createDirectory(at: modsDir, withIntermediateDirectories: true)
-        let dst = modsDir.appendingPathComponent(file.filename)
+        let dst = modsDir.appendingPathComponent(ZLPathSafety.safeComponent(file.filename))
 
         var req = URLRequest(url: file.url, timeoutInterval: 60)
         req.setValue("ZL2-iOS/1.0", forHTTPHeaderField: "User-Agent")
