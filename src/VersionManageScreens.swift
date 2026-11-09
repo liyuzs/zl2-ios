@@ -400,7 +400,6 @@ struct CleanFilesScreen: View {
 struct ExportPackScreen: View {
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
-    @State private var format = 1
     // 导出内容选择（对齐 ZL2 的 7 类文件夹）
     @State private var includeOptions = true
     @State private var includeResourcePacks = true
@@ -416,41 +415,37 @@ struct ExportPackScreen: View {
     @State private var author = ""
     @State private var desc = ""
     @State private var minMemory = 1024.0
-    @State private var includeRemote = false
 
-    private let formats = ["MCBBS 整合包", "Modrinth 整合包", "CurseForge 整合包"]
-    private let formatHints = [
-        "可被 HMCL 等启动器导入",
-        "可被常见第三方启动器导入",
-        "可被 CurseForge 生态导入",
-    ]
 
     var body: some View {
         VStack(spacing: 0) {
             ZLTopBar(title: "导出整合包", onBack: onBack, onHome: onHome)
             ScrollView {
                 VStack(spacing: ZLTheme.cardGap) {
+                    // 这里原来是三选一：「MCBBS 整合包 / Modrinth 整合包 / CurseForge 整合包」，
+                    // 还各自写着「可被 HMCL 等启动器导入」。但 startExport() 从头到尾**没读过
+                    // format 这个变量** —— 三个选项产出同一个普通 zip，里面也没有
+                    // manifest.json / modrinth.index.json / mcbbs.packmeta 任何一种清单。
+                    // 也就是说三个选项是假的，而且「可被导入」的承诺也不成立。
+                    //
+                    // 与其保留三个假选项，不如说清楚这个导出到底做什么：
+                    // 把下面勾选的文件夹原样压成 zip，附一份说明和元数据。
                     ZLCard {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("格式").font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(ZLTheme.textPrimary)
-                            ForEach(formats.indices, id: \.self) { i in
-                                Button { format = i } label: {
-                                    HStack(spacing: 10) {
-                                        Image(systemName: format == i ? "largecircle.fill.circle" : "circle")
-                                            .foregroundStyle(format == i ? ZLTheme.primary : ZLTheme.textSecond)
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(formats[i]).font(.system(size: 13, weight: .medium))
-                                                .foregroundStyle(ZLTheme.textPrimary)
-                                            Text(formatHints[i]).font(.system(size: 10))
-                                                .foregroundStyle(ZLTheme.textSecond)
-                                        }
-                                        Spacer()
-                                    }
-                                    .padding(.vertical, 4)
-                                }
-                                .buttonStyle(.plain)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "shippingbox")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(ZLTheme.primaryDeep)
+                                Text("导出为普通 zip")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(ZLTheme.textPrimary)
                             }
+                            Text("把下面勾选的文件夹原样打包，并附上你填写的名称/版本/作者的说明文件。\n" +
+                                 "这**不是** CurseForge / Modrinth / MCBBS 的清单格式 —— 那几种需要联网查询"
+                                 + "每个模组的 projectID 才能生成，本地做不到。对方拿到 zip 后手动解压到游戏目录即可。")
+                                .font(.system(size: 11))
+                                .foregroundStyle(ZLTheme.textSecond)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
 
@@ -475,9 +470,7 @@ struct ExportPackScreen: View {
                                 Text("\(Int(minMemory)) MB").font(.system(size: 13, weight: .semibold))
                                     .foregroundStyle(ZLTheme.primaryDeep).frame(width: 76)
                             }
-                            Toggle("一并打包远程资源（CurseForge）", isOn: $includeRemote)
-                                .font(.system(size: 12))
-                                .tint(ZLTheme.primary)
+
                         }
                     }
 
@@ -550,6 +543,42 @@ struct ExportPackScreen: View {
         if includeLauncher       { rels.append("launcher_profiles.json") }
 
         let gameDir = VersionRepository.shared.mcRoot
+
+        // 把界面上填的元数据真正写进包里。
+        // 之前 name / version / author / desc / minMemory 这五个值**一个都没被用过** ——
+        // 输入框和滑块纯粹是摆设，用户填了半天什么也不会发生。
+        let packName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let packVersion = version.trimmingCharacters(in: .whitespacesAndNewlines)
+        let packAuthor = author.trimmingCharacters(in: .whitespacesAndNewlines)
+        let packDesc = desc.trimmingCharacters(in: .whitespacesAndNewlines)
+        let packMinMem = Int(minMemory)
+        let includedItems = rels
+        let infoText: String = {
+            var s = "整合包信息\n"
+            s += "==========\n"
+            s += "名称：\(packName.isEmpty ? "未命名" : packName)\n"
+            s += "版本：\(packVersion.isEmpty ? "未填" : packVersion)\n"
+            s += "作者：\(packAuthor.isEmpty ? "未填" : packAuthor)\n"
+            s += "描述：\(packDesc.isEmpty ? "无" : packDesc)\n"
+            s += "建议最小内存：\(packMinMem) MB\n"
+            s += "包含内容：\(includedItems.joined(separator: "、"))\n"
+            s += "生成时间：\(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short))\n"
+            s += "\n说明：这是把上述文件夹原样打包成的普通 zip，\n"
+            s += "不是 CurseForge / Modrinth / MCBBS 的清单格式。\n"
+            s += "使用方式：把里面的文件夹解压到目标游戏的 .minecraft 目录下覆盖即可。\n"
+            return s
+        }()
+        let infoJSON: [String: Any] = [
+            "name": packName.isEmpty ? "未命名" : packName,
+            "version": packVersion,
+            "author": packAuthor,
+            "description": packDesc,
+            "minMemoryMB": packMinMem,
+            "included": includedItems,
+            "generatedAt": ISO8601DateFormatter().string(from: Date()),
+            "format": "plain-zip",
+        ]
+
         DispatchQueue.global(qos: .userInitiated).async {
             let fm = FileManager.default
             let stamp = Int(Date().timeIntervalSince1970)
@@ -565,6 +594,14 @@ struct ExportPackScreen: View {
                 let dst = stage.appendingPathComponent(rel)
                 try? fm.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
                 if (try? fm.copyItem(at: src, to: dst)) != nil { packed += 1 }
+            }
+
+            // 信息文件也算进包里（内容非空就直接写，不影响 packed 计数）
+            try? infoText.write(to: stage.appendingPathComponent("整合包说明.txt"),
+                                atomically: true, encoding: .utf8)
+            if let d = try? JSONSerialization.data(withJSONObject: infoJSON,
+                                                   options: [.prettyPrinted, .sortedKeys]) {
+                try? d.write(to: stage.appendingPathComponent("pack-info.json"))
             }
 
             guard packed > 0 else {
