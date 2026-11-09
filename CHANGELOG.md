@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **新增「重复声明」静态检查**（`_check-duplicates.js`）：顶层类型重名会报 `Invalid redeclaration`，而前四层检查都发现不了。判据按花括号深度**只查顶层**——`CodingKeys`、`GuideManager.Kind` / `ZLSettingRow.Kind` 这类嵌套同名不会误报（当前 348 个顶层类型全部唯一）。
+
+> 编译前置静态检查现在有五层：**括号配对** → **框架导入** → **标识符拼写** → **参数标签** → **重复声明**。
+
 - **新增「参数标签」静态检查**（`_check-call-labels.js`）：调工程内类型的方法时，实参标签必须与声明一致。这是我自己犯过两次的错（`requiredJavaVersion(for:)` 标签不存在、`String.Replace` 传三参），而括号检查和导入检查都抓不到。当前 88 个方法声明 / 78 个调用点全部对得上。
 
 > 编译前置静态检查现在有四层：**括号配对**（swift-lint）→ **框架导入**（_check-imports）→ **标识符拼写**（_check-interpolation）→ **参数标签**（_check-call-labels）。挡不住的只剩类型系统与泛型约束。
