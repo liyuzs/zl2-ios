@@ -1834,12 +1834,47 @@ struct ControlAppearanceEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             preview
+            // 诚实说明：下面这些设置里，有一部分核心根本不读。
+            //
+            // 核心（Pojav v8 布局格式）只会从布局 JSON 里取
+            // bgColor / cornerRadius / opacity / strokeColor / strokeWidth 这五个外观字段，
+            // 以及 position / size / keycodes / visibility 这些结构字段。
+            // 而核心源码里**完全没有** textSize / joystickColor / joystickSize / pressedBgColor
+            // 这些名字（全核心零命中）：
+            //   · 文字大小由核心的 adjustsFontSizeToFitWidth 自动缩放决定，不可配
+            //   · 摇杆颜色/大小用的是核心自己的固定样式
+            //   · "按下态"外观整个概念核心都没有
+            // 也就是说这些滑杆在本 App 的预览里生效，但**进游戏不会生效**。
+            // 与其让人调半天以为没弄对，不如一句话说清。
+            unsatisfiedNote
             opacityBlock
             colorBlock
             borderBlock
             cornerBlock
             optionBlock
         }
+    }
+
+    private var unsatisfiedNote: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 5) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 11))
+                Text("这些设置里有一部分进游戏后不生效")
+                    .font(.system(size: 11, weight: .medium))
+            }
+            .foregroundStyle(ZLTheme.warning)
+            Text("核心只认 背景色 / 圆角 / 不透明度 / 边框色 / 边框宽度。"
+                 + "**文字大小**（核心按控件大小自动缩放）、**摇杆颜色与大小**、"
+                 + "以及**所有「按下态」外观**，游戏运行时都不读 —— 它们只影响这里的预览。")
+                .font(.system(size: 10))
+                .foregroundStyle(ZLTheme.textSecond)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(ZLTheme.primarySoft)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     // MARK: 预览
@@ -1895,6 +1930,14 @@ struct ControlAppearanceEditor: View {
             header("不透明度")
             opacityLine("正常态", value: $appearance.normalOpacity)
             opacityLine("按下态", value: $appearance.pressedOpacity)
+            // 必须说清楚：核心（Pojav v8 布局格式）没有"按下态外观"这个概念。
+            // 编辑器里调这个值、下面的「预览按下态」也能看到变化，
+            // 但导出后游戏里**不会生效** —— 预览是编辑器自己的模拟，不是核心行为。
+            // 与其让用户调了半天以为是自己没弄对，不如在这里说明。
+            Text("「按下态」只影响编辑器内的预览。游戏运行时核心不读这个值，实际不会变化。")
+                .font(.system(size: 10))
+                .foregroundStyle(ZLTheme.warning)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
