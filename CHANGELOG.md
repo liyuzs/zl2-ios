@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **9 处写持久化文件没用原子写**：`versions/<id>/<id>.json`、`launcher_profiles.json`、`controlmap/<布局>.json`、下载的 jar 等，写到一半被杀（iOS 后台回收 / 强杀 / 崩溃）会留下**截断文件**且不能自愈。已全部加 `options: .atomic`。
+- **布局覆盖会静默丢失用户的手工调整**：`CoreLayoutExport.export` 只做原子写，`.atomic` 保证不写半个文件但**不保证旧内容不丢**。已改为「内容真的不同才备份」到 `controlmap/.backup/<同名>`。
+- 新增 `_check-atomic-writes.js` 守住这条（临时/暂存目录除外）。
+
 - **「清空回收站」没有二次确认**：`Button("清空回收站", role: .destructive) { emptyTrash() }` 在溢出菜单里，点一下就把回收站**永久**清空。回收站的意义就是「删错了能捞回来」，一步误触把这层保险毁掉且不可恢复。已改为 `confirmationDialog` 二次确认（其余 4 处删除本来就有确认）。新增 `_check-destructive-confirm.js`：`role: .destructive` 的按钮不得直接调用执行 `removeItem` 的函数。
 
 - **新增「重复声明」静态检查**（`_check-duplicates.js`）：顶层类型重名会报 `Invalid redeclaration`，而前四层检查都发现不了。判据按花括号深度**只查顶层**——`CodingKeys`、`GuideManager.Kind` / `ZLSettingRow.Kind` 这类嵌套同名不会误报（当前 348 个顶层类型全部唯一）。
