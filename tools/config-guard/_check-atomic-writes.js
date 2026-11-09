@@ -21,7 +21,10 @@ const { SRC } = require('./_paths');
 // 只放"临时/暂存路径"的线索词。**不要把测试用的探针名字放进来** ——
 // 早期这里曾有 'probe'：某次注入测试为了避开误报加进去的，结果让这条检查
 // 对任何名字含 probe 的真实代码视而不见（第104轮靠"注入后回读确认"才发现）。
-const TEMP_HINTS = ['stage', 'tmp', 'temp', 'trash', 'temporaryDirectory'];
+// 只放**路径特征词**，不要放短的通用词 ——
+// 用子串匹配时，'temp' 会命中 template / attempt / contemplate，'stage' 会命中 staging。
+// 第105轮受控实验证实：变量名叫 templateURL 或 attemptURL 时，非原子写会被放过。
+const TEMP_HINTS = ['temporaryDirectory', 'NSTemporaryDirectory', '/tmp/', '.tmp', 'trash', 'cachesDirectory'];
 
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.swift'));
 const problems = [];

@@ -601,7 +601,8 @@ struct ExportPackScreen: View {
                                 atomically: true, encoding: .utf8)
             if let d = try? JSONSerialization.data(withJSONObject: infoJSON,
                                                    options: [.prettyPrinted, .sortedKeys]) {
-                try? d.write(to: stage.appendingPathComponent("pack-info.json"))
+                // 和上面那份说明文件保持一致；虽然 stage 在临时目录里，但被打进 zip 前不该有半截文件
+                try? d.write(to: stage.appendingPathComponent("pack-info.json"), options: .atomic)
             }
 
             guard packed > 0 else {
