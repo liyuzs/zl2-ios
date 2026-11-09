@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **三份安装文档给出三套互相不提的路线**：README 推荐「NB 全能助手（中文，推荐）」，而那两份分别给 TrollStore / SideStore / Sideloadly 三条，**完全不提 NB 全能助手**。已把 README 统一成三条路线表并指向 `安装教程-超详细`；新增 `_check-install-docs.js`（三份都必须提 JIT 与 StikDebug；只在一份出现的"孤例工具"会被报出来）。
+- 顺带核实（待查清单另两项，均正确）：游戏内菜单确实是 `HStack` 左右双栏；`writePerfOptionsIfNeeded` 有 `fileExists` 守卫，**只在 options.txt 不存在时写**，不会覆盖用户改过的设置。两个 StikDebug 地址（官网 / GitHub）都返回 200，均有效。
+
 - **README 的性能声明有一处错**：「内存按物理内存 1/3 自适应」——实际是**默认 25%**（`PLPreferences.m:64` 的 `* 0.25`）、**手动上限 50%**（`CoreBridge` 的 `ramMB / 2`），三个数字互不相同。已改正；「关粒子阴影」也改成「粒子最少」（`particles:2` 是 minimal 不是 off）。
 - 新增 `_check-readme-claims.js`：把 README 里能机器验证的声明（内存比例 / 视距 / 粒子 / GC 参数 / 支持版本区间）写成断言，改代码没改文档或反之都会红。
 - 同批核对了三条**准确**的声明：7 套主题（`ZLColorTheme` 正好 7 个 case）、局域网发现（确实是 BSD socket + `IP_ADD_MEMBERSHIP` 加入 `224.0.2.60:4445`）、G1GC + `MaxGCPauseMillis=20`。
