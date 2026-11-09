@@ -37,6 +37,7 @@ $checks = @(
     @('_check-pending-action.js',   'js',  '快捷指令待处理动作（写入/消费/时效）'),
     @('_check-fixed-widths.js',     'js',  '固定宽度 ≥280 必然溢出手机竖屏'),
     @('_check-trademark-strings.js','js',  '界面自称 ZL2（违反 GPLv3 第7条）'),
+    @('_check-license-page.js',     'js',  '许可页 ↔ 实际打包内容'),
     @('_check-readme-claims.js',    'js',  'README 声明 ↔ 代码实现'),
     @('_check-settings-audit.js',   'js',  '设置项审计文档 ↔ 代码集合'),
     @('_check-setting-defaults.js','js',  '设置项默认值只在一处声明'),

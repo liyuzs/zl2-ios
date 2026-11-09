@@ -41,6 +41,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-fixed-widths.js` | 布局溢出：`.frame(width: N)` 里 N ≥ 280 必然超出手机竖屏（最窄 320pt − 两侧 18pt） |
 | `_check-dark-mode.js` | 深色模式链路：`ZLPalette.color` 必须会按 darkMode 把 `…Light` 换成 `…Dark`；RootView 必须把系统 colorScheme 同步给 ThemeManager；色板 Light/Dark 两组键必须成对 |
 | `_check-trademark-strings.js` | 命名合规：界面字符串不得把 App 自称 `ZL2` / `ZalithLauncher`（README 声明的 GPLv3 第 7 条）；上游署名、格式名、Bonjour 服务名等例外逐条登记理由 |
+| `_check-license-page.js` | 许可页 ↔ 实际打包内容：`Frameworks/`、`libs/*.jar`、`jre/` 里每个第三方都要在「关于与开源许可」页有署名；页面里列了但仓库没文件的也要报（第103轮：漏了 AltKit / FreeType / shaderc / Gson / jsr305 与 Java 21/25，还错列了不存在的 MobileGlues） |
 | `_check-readme-claims.js` | README 里能机器验证的声明（内存比例 / 视距 / GC 参数 / 支持版本区间）必须与代码实现一致 |
 | `_check-settings-audit.js` | 设置项审计文档 ↔ 代码集合：`docs/设置项审计.md` 总览表三个数字与 `设置项接线进度.md` 的「现在 N 项」，必须等于 `ZLSettings` 115 项对撞 `ZLUnsupportedSettings` 的结果 |
 | `_check-setting-defaults.js` | 设置项默认值只有一处来源：全仓不许出现 `defaultWhenUnset`；`boolValue/intValue/stringValue(_ key:)` 必须委托给 `store.xxx(`（由 ZLSettings 的 `defaultValue` 兜底） |
