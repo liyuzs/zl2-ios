@@ -56,13 +56,19 @@
 
 **需要**：iPhone（iOS 16+）、一台电脑（只用一次）、一个免费 Apple ID
 
-1. **下载 IPA** —— 到 [Actions](https://github.com/liyuzs/zl2-ios/actions) 下载最新的 `ZL2.ipa`
-2. **电脑签名** —— NB 全能助手（中文，推荐）或 iLoader
-3. **手机信任** —— 设置 → 通用 → VPN与设备管理 → 信任证书
-4. **开 JIT** —— 装 StikDebug，选中本应用 → 启用 JIT
-5. **玩**
+先下载 IPA：[Actions](https://github.com/liyuzs/zl2-ios/actions) → 最新的 `ZL2.ipa`。
 
-> 免费签名 7 天过期。装 SideStore 后自动续签，不用手动管。
+三条安装路线，按省事程度排（**完整截图步骤见 [安装教程-超详细](docs/安装教程-超详细.md)**）：
+
+| 路线 | 适合 | 代价 |
+|---|---|---|
+| **TrollStore** | iOS 14 – 17.0 | 装一次永久可用，JIT 自动开（最省事） |
+| **SideStore** | iOS 16+ | 第一次要电脑配合，之后手机上就能续签 |
+| **Sideloadly** | 都行 | 最简单，但每 7 天要连电脑重签 |
+
+**装完必做**：用 [StikDebug](https://stikdebug.xyz/) 给本应用启用 JIT，否则帧率个位数。
+
+> 免费签名 7 天过期（TrollStore 除外）。装 SideStore 后可以自动续签，不用手动管。
 
 ---
 
