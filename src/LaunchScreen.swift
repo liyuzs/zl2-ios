@@ -20,6 +20,8 @@ struct LaunchScreen: View {
     @State private var lastError: String?
     @State private var packingLog = false
     @State private var packErrorText: String?
+    /// 启动前预检结果（点「尝试启动」之前就能看到哪条必崩条件不满足）
+    @State private var preflight: [ZLDiagItem] = []
     @State private var coreLinked = false
     @State private var runtimeReady = false
     @State private var versionReady = false
@@ -36,10 +38,14 @@ struct LaunchScreen: View {
             header
             Divider().overlay(ZLTheme.stroke)
             content
+            if !preflight.isEmpty { preflightView }
             footer
         }
         .background(ZLTheme.background)
-        .onAppear(perform: runCheck)
+        .onAppear {
+            runCheck()
+            runPreflight()
+        }
         .alert("打包失败", isPresented: Binding(
             get: { packErrorText != nil },
             set: { if !$0 { packErrorText = nil } }
@@ -205,6 +211,65 @@ struct LaunchScreen: View {
             }
         }
         .padding(ZLTheme.screenPadding)
+    }
+
+    // MARK: 启动前预检
+
+    /// 把七项必崩条件列出来。只提示不阻止 —— 条件检查宁可宽松，
+    /// 一旦把能跑的组合误判成「不能启动」，用户就永远试不了了。
+    private var preflightView: some View {
+        let s = ZLPreflight.summary(preflight)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: s.level.symbol)
+                    .font(.system(size: 12))
+                    .foregroundStyle(s.level == .fail ? ZLTheme.danger
+                                     : (s.level == .warn ? ZLTheme.warning : ZLTheme.success))
+                Text("启动前预检：" + s.text)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(ZLTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+            }
+            ForEach(preflight) { item in
+                if item.level != .ok {
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: item.level.symbol)
+                            .font(.system(size: 10))
+                            .foregroundStyle(item.level == .fail ? ZLTheme.danger : ZLTheme.warning)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(item.title + "：" + item.value)
+                                .font(.system(size: 11))
+                                .foregroundStyle(ZLTheme.textPrimary)
+                            if let a = item.advice {
+                                Text(a)
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(ZLTheme.textSecond)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        Spacer()
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(ZLTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, ZLTheme.screenPadding)
+        .padding(.bottom, 6)
+    }
+
+    /// 跑预检：版本元数据能读到就带上，读不到只查文件层面
+    private func runPreflight() {
+        let vid = versionID.isEmpty ? versionName : versionID
+        let metaPath = VersionRepository.shared.mcRoot
+            .appendingPathComponent("versions/\(vid)/\(vid).json").path
+        var meta: [String: Any]?
+        if let data = FileManager.default.contents(atPath: metaPath) {
+            meta = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        }
+        preflight = ZLPreflight.run(versionID: vid, meta: meta)
     }
 
     // MARK: 打包日志
