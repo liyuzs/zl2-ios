@@ -109,21 +109,21 @@ actor VersionInstaller {
         // libraries.rules / downloads.sha1），Amethyst 靠这些字段拼 JVM 和游戏参数。
         // 自己重组会丢字段，导致启动必失败。
         let jsonPath = versionDir.appendingPathComponent("\(versionID).json")
-        do {
-            let raw = try await downloadData(entry.url)
-            // 校验是合法 JSON 再落盘
-            if let o = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
-               o["id"] as? String != nil, o["mainClass"] as? String != nil {
-                try raw.write(to: jsonPath)
-            } else {
-                throw InstallError.badMetadata
-            }
-        } catch {
-            // 兜底：用重组版（字段不全，但至少能起来排查）
-            let jsonData = try JSONSerialization.data(withJSONObject: versionJSONObject(entry: entry, detail: detail),
-                                                      options: [.prettyPrinted])
-            try jsonData.write(to: jsonPath)
+        // 所以**失败时绝不退回「自己重组一份」**。
+        // 原来 catch 里就是这么干的（和上面这句警告自相矛盾）：重组的 JSON 缺
+        // arguments / minecraftArguments / assets / javaVersion / libraries.rules，
+        // Java 侧拼不出启动命令。后果是最糟的一种 —— 装的时候不报错，
+        // 用户以为好了，点启动才失败，而且残缺 JSON 已落盘，只能重装。
+        // downloadData 内部已重试 3 次，走到这里就是真拿不到，那就明确失败。
+        let raw = try await downloadData(entry.url)
+        guard let obj = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
+              obj["id"] as? String != nil,
+              obj["mainClass"] as? String != nil else {
+            throw InstallError.failed(
+                "版本元数据不完整（缺少 id 或 mainClass）。可能是下载源返回了错误的文件，" +
+                "请换个下载源或稍后重试。为避免装出一个启动不了的版本，本次安装已中止。")
         }
+        try raw.write(to: jsonPath)
 
         // 2) client.jar
         guard let clientURL = detail.downloads?.client?.url else {
@@ -318,25 +318,6 @@ actor VersionInstaller {
         throw InstallError.failed(lastError?.localizedDescription ?? "下载失败：\(url.lastPathComponent)")
     }
 
-    // MARK: 构造 Amethyst 可读的版本 JSON
-    private func versionJSONObject(entry: ManifestVersionEntry, detail: VersionDetail) -> [String: Any] {
-        var obj: [String: Any] = [
-            "id": entry.id,
-            "type": entry.isRelease ? "release" : (entry.isSnapshot ? "snapshot" : "old_beta"),
-        ]
-        if let d = detail.downloads?.client?.url { obj["clientUrl"] = d.absoluteString }
-        // 尽量保留原始 JSON 里的关键字段
-        obj["mainClass"] = detail.mainClass
-        obj["assetIndex"] = detail.assetIndex.map { ["id": $0.id, "url": $0.url?.absoluteString ?? ""] }
-        obj["libraries"] = detail.libraries?.map { lib -> [String: Any] in
-            var o: [String: Any] = ["name": lib.name]
-            if let a = lib.downloads?.artifact {
-                o["downloads"] = ["artifact": ["path": a.path ?? "", "url": a.url.absoluteString]]
-            }
-            return o
-        }
-        return obj
-    }
 }
 
 // MARK: - 下载完整性校验
