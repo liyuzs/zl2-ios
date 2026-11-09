@@ -60,6 +60,10 @@
 
 ### 已知问题
 
+- **缺 Java 侧启动器 jar（最严重）**：`core/JavaLauncher.m` 拉起 JVM 时要用 `<bundle>/libs/patchjna_agent.jar`（`-javaagent`）、`<bundle>/libs/*.jar`（`-cp`，主类 `net.kdt.pojavlaunch.PojavLauncher`）、`<bundle>/libs_caciocavallo17/*.jar`（`-Xbootclasspath/a`），而**仓库里一个 jar 都没有，也没有 Java 构建步骤**，已发布的 build-235 IPA 解包后同样没有 `libs/`。JVM 连启动都完不成。详见 [缺失组件-Java启动器jar](docs/缺失组件-Java启动器jar.md)，`_check-runtime-assets.js` 会自动检出。
+- **版本隔离实际无效**：核心在元数据启动分支里自己算游戏目录、忽略 `GAME_DIR`，所以隔离改不到真实目录；而 UI 又会显示模组在 `versions/<id>/mods`，实际游戏读的是 `<mcRoot>/mods`。已置灰并写明原因、默认关闭。
+- **核心算的游戏目录曾比实际少一层 `.minecraft`**：核心用 `general.game_directory`（默认 `default`）+ profile 的 `gameDir`（默认 `.`）拼出 `instances/default`，而我们装在 `instances/<实例名>/.minecraft`。已通过写 `general.game_directory = "<实例名>/.minecraft"` 对齐。
+
 - **尚未在任何 iPhone 上跑通过** —— 能编译、结构完整，但游戏能否真正启动未知
 - Forge / NeoForge 装不了（iOS 禁止 fork 子进程）
 - Terracotta 远程联机需要 Network Extension 权限（付费开发者账号）
