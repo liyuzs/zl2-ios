@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **12 个设置项「界面上能调、调了没用」**：排除定义文件与设置页后统计，这 12 项在代码里零引用，却既没置灰也没说明 —— `vulkanDriver` / `graphicsApi` / `sfpewPluginLayer` / `sfpewRelaxedContext` / `zinkPreferSystemDriver` / `vsyncInZink` / `dumpShaders` / `nativeLibPlugins` / `gameFullScreen`（→ 安卓专属置灰）、`sustainedPerformance` / `skipGameIntegrityCheck` / `logBufferFlushInterval`（→ 待接线置灰）。分类变为：**可用 42 / 安卓专属 66 / 待接线 7**。
+- 新增 `_gen-settings-audit.js`：从代码重新生成 `docs/设置项审计.md`（第79轮起该文档由代码生成，但生成逻辑写在一次性命令里，改分类时没法复用）。
+
 - **「显示 FPS」设置页显示「开」，游戏里却不显示**：`ZLSettings` 声明 `showFPS` 默认 `true`，而 `GameOverlay.boolValue` 自带一套默认值并多了一道「`UserDefaults` 里没写过就当 false」的门 —— 两处默认值打架，用户看到开关是开的、画面里没有 FPS。已删掉自带默认值，统一由 `ZLSettingsStore` 按 `def.defaultValue` 兜底。新增 `_check-setting-defaults.js` 锁住（不许出现 `defaultWhenUnset`；`boolValue/intValue/stringValue(_ key:)` 必须委托给 `store.xxx(`）。
 
 - **根视图写死 `.preferredColorScheme(.light)`，把深色模式钉死了**：第84轮修了色板与系统同步，但这一行让 `RootView` 读到的 `colorScheme` 永远是 `.light`，同步逻辑永远得到 false —— 深色模式依然打不开。内层还有一句按 `darkMode` 反推配色的，与系统值互相拉扯，一并去掉。
