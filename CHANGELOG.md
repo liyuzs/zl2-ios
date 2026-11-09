@@ -22,6 +22,9 @@
 
 ### 修复
 
+- **保存过自定义控制布局后，进游戏必崩（最严重的一个）**：导出器把 `version` 写成 `1`，而核心按这个字段决定是否跑旧格式迁移 —— `version 1` 会依次执行 `convertV1Layout → V2 → V5 → V7 → V8`。迁移代码里有 `[keycodes addObject:btnDict[@"keycode"]]`，而我们写的是 `keycodes`（复数）、没有 `keycode`（单数），`nil` 塞进 `NSMutableArray` 会抛 `NSInvalidArgumentException`，这条路径没有 `@try` 包着 —— 直接闪退。顺带还会把所有控件尺寸减半、样式全部覆盖。改成 `version: 8`（核心自己生成的默认布局用的就是这个）。
+- **摇杆放错了列表**：核心把控件分成三个互不相通的列表（`mControlDataList` / `mJoystickDataList` / `mDrawerDataList`），摇杆原来被塞进按钮列表，而 `mJoystickDataList` 从未写出去 —— 摇杆会以普通按钮的身份被创建，没有方向摇杆行为，进游戏等于走不了路。
+- **两处写不进去的偏好**：`controll.hardware_hide` 拼写笔误（同文件其它三处都是 `control.`），导致接鼠标后控制层不恢复显示；`internal.internal_launch_on_boot` 在默认字典里从未定义，而 `PLPreferences.setObject` 只写「已存在的键」，未定义就静默失败。
 - **内存分配滑块完全无效**：写的是 `general.allocated_memory`，核心读的是 `java.allocated_memory`；而且核心在 `java.auto_ram` 为真时根本不看这个值（没有内存 entitlement 的设备上它默认就是真）。两层叠在一起，用户拖了滑块等于没拖。现在同时写对键名并关掉 auto，还把值压到物理内存一半以内。
 - **控制布局导出了却没人加载**：JSON 正确写进了 `controlmap/`，但没告诉核心去加载它。核心读布局名走 `PLProfiles` 的两处（`launcher_profiles.json` 或 `control.default_ctrl`），原代码只写了 `UserDefaults` —— 核心一直在加载默认布局。
 - **渲染器选了不生效**：`JavaLauncher` 进启动流程后会重新读一次 renderer 并覆盖环境变量，兜底是 `video.renderer`（默认 auto）。上一轮的净化避免了崩溃，但用户的选择被丢掉。现在同步写 `video.renderer`。
@@ -47,6 +50,8 @@
 - **设置项标注**：115 项中 75 项明确标注「不支持 / 未接入」，置灰并说明原因
 - **下拉刷新**：模组管理、资源管理页支持下拉重扫目录
 - **死代码清理**：删除 204 行无用代码
+- **跨边界契约测试**：新增 `_test-layout-contract.js`，从核心源码读出布局格式要求、从导出器源码读出实际行为，两边对撞
+- **偏好键存在性审计**：新增 `_audit-prefkeys.js`，检查所有 `setPref*` 的键是否在默认字典里定义过（未定义会静默失败）
 - **三套存储对撞审计**：新增 `_audit-stores.js`，把「Swift 写 UserDefaults 但核心在别处读」的键全找出来。这次靠它翻出上面三个假功能
 - **渲染器可见性**：环境诊断多一项「当前渲染器」，显示净化后真正生效的后端；存的值和实际不一致时标黄并写出原值
 - **版本号单一来源**：`Info.plist` 不再重复写死版本，改为引用 `$(MARKETING_VERSION)`；`LicenseScreen` 也不再自己写一份兜底值，统一走 `ZLUpdateChecker`
