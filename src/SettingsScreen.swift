@@ -331,11 +331,17 @@ struct SettingsScreen: View {
 
     /// 给用户看的隔离状态说明：让他知道模组/存档现在落在哪个目录
     private var isolationStatusText: String {
-        if VersionRepository.shared.isolationEnabled {
-            return "每个版本独立目录：versions/<版本>/ 下的 mods · saves · config"
-        } else {
-            return "所有版本共用：.minecraft/ 下的 mods · saves · config"
-        }
+        // 这里**不能**再按 isolationEnabled 显示「每个版本独立目录」。
+        //
+        // 版本隔离在 iOS 上目前是无效的：核心启动时会自己算游戏目录
+        // （JavaLauncher.m:179-182），完全忽略我们 setenv 的 GAME_DIR，
+        // 详见 ZLUnsupportedSettings 里 versionIsolation 那条的说明。
+        //
+        // 之前这段是 if isolationEnabled 分支 —— 只要配置里残留一个 true，
+        // 它就会告诉用户「模组在 versions/<版本>/ 下」，
+        // 而游戏实际读的是 .minecraft/mods。用户把模组放到界面说的位置，
+        // 游戏里看不见，还查不出原因。宁可直接说实话。
+        "所有版本共用：.minecraft/ 下的 mods · saves · config（按版本隔离在当前版本不可用）"
     }
 
     @ViewBuilder
