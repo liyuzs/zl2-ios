@@ -104,7 +104,7 @@ struct HomeScreen: View {
             HStack {
                 Spacer()
                 panel
-                    .frame(width: 340)
+                    .frame(maxWidth: 340)
                     .popIn(delay: 0.05)
                     .padding(.trailing, ZLTheme.screenPadding)
                     .padding(.top, 66)

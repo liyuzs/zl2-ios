@@ -187,7 +187,7 @@ struct ControlManageScreen: View {
             }
             Spacer()
         }
-        .frame(width: 300)
+        .frame(maxWidth: 300)
     }
 
     private func infoRow(_ title: String, _ value: String) -> some View {

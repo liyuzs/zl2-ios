@@ -624,7 +624,7 @@ struct MultiplayerRoomScreen: View {
                             .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
                     }
                 }
-                .frame(width: 260)
+                .frame(maxWidth: 260)
             }
             .padding(ZLTheme.screenPadding)
             Spacer()

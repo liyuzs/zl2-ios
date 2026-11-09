@@ -25,7 +25,7 @@ struct GameDirsScreen: View {
             ZLTopBar(title: "游戏目录", onBack: onBack, onHome: onHome)
             HStack(alignment: .top, spacing: ZLTheme.cardGap) {
                 currentPanel
-                    .frame(width: 258)
+                    .frame(maxWidth: 258)
                 listPanel
                     .frame(maxWidth: .infinity)
                     .padding(.trailing, ZLTheme.screenPadding)

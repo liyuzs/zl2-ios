@@ -532,7 +532,7 @@ struct MultiplayerScreen: View {
                     lanCard
                     Spacer()
                 }
-                .frame(width: 300)
+                .frame(maxWidth: 300)
             }
             .padding(.horizontal, ZLTheme.screenPadding)
             .padding(.bottom, ZLTheme.screenPadding)

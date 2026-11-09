@@ -138,6 +138,7 @@ git push   # 本地分支 master → 线上 main
 1. **真机零验证** —— 所有功能只在编译与静态检查层面通过，没在 iPhone 上跑过
 2. **能不能启动未知** —— 启动链路已补齐 19 项致命缺陷，但 `UnsatisfiedLinkError` / 版本 JSON 处理 / 渲染管线只有真机日志能回答
 3. **UI 还原度** —— 对照录屏补过 20 处差异，26 个页面做了合并简化
+4. **部分三列布局在手机竖屏上偏挤** —— 如「下载-模组/资源」页（左栏 92pt + 筛选栏 ≤210pt + 结果列表自适应）、「游戏目录」页（左栏 ≤258pt），在 375pt 宽的手机上结果区会偏窄。app 最初按 iPad 设计；**没有视觉反馈的情况下不做盲改**，已把必然溢出的固定宽度（≥280pt）全部改成 `maxWidth`。
 4. **`patchjna_agent.jar` 与 `libjnidispatch.dylib` 没放** —— 它们只服务 Forge/NeoForge，而 iOS 不支持 Forge（详见 `docs/缺失组件-Java启动器jar.md`）
 5. **`TerracottaScreen.swift` 是不可达的重复页面** —— 路由没人导航过去，自身已声明为界面演示
 

@@ -228,7 +228,12 @@ struct AssetsScreen: View {
                 resultList
                     .frame(maxWidth: .infinity)
                 filterPanel
-                    .frame(width: 210)
+                    // 原来是写死的 210。加上左侧 92pt 的 kindRail，
+                    // 在手机竖屏上结果列表会被挤到只剩几十点宽。
+                    // 改成 maxWidth：iPad 上仍是 210，手机上按比例收缩。
+                    // （真要在手机上舒服用，这页应该改成两列或把筛选收进 sheet，
+                    //   但没有视觉反馈的情况下不做盲改，已在 STATUS 里记为已知问题。）
+                    .frame(maxWidth: 210)
                     .padding(.trailing, ZLTheme.screenPadding)
             }
             .padding(.bottom, ZLTheme.screenPadding)
