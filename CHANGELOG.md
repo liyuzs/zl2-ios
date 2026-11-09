@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **损坏数据的备份现在能带出来了**：`ZLRecovery` 备份存进 plist 后用户根本看不到（等于没发生）。现在「打包日志分享」会自动把每份备份写成 `损坏数据备份/<键名>.raw` 一起打包，并附说明；朋友点一次按钮就能把损坏数据发给开发者。诊断项文案同步改成「打包日志时会一并带出」，朋友清单也补了这段说明（绿色=无异常备份，橙色=有数据读不出来但原始内容还在）。
+
 - **解码失败会静默丢数据**：账号、服务器列表、控制布局外观、布局清单 4 处都是 `try? 解码` 失败即当作"没有数据"，用户随后一次保存就会覆盖掉那份解不开的数据——账号"突然全没了"、服务器列表变空、自己调的布局回到默认，且没有提示。新增 `src/ZLRecovery.swift`：失败先备份原始字节（`zl.recover.` 前缀），诊断页新增「数据备份」一项让它可见。新增 `_check-decode-recovery.js` 锁住这条规则。
 
 - **远端文件名直接拼路径（目录穿越）**：`ModrinthAPI`（`file.filename`）、`MojangAPI`（`relativePath`）、`VersionInstaller` / `LoaderInstaller`（`artifact.path`、`versionID`）、`FileManagerScreen`（用户手输的新建/重命名）共 7 处把外部字符串直接 `appendingPathComponent`，含 `../` 时会写到目标目录之外。新增 `src/ZLPathSafety.swift`（`safeComponent` / `safeRelativePath` / `validateNewName`）统一处置：网络数据净化、不合法跳过或抛错；用户输入**报错而不静默改名**。新增 `_check-path-safety.js` 锁住这条规则。
