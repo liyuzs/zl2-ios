@@ -1,124 +1,126 @@
-# 缺失组件：Java 侧启动器 jar
+# Java 侧启动器 jar：从缺失到补上
 
-> **状态：已确认为「启动游戏必然失败」的根本原因。**
-> 发现于 2026-11-08 第 29 轮，用 `_check-runtime-assets.js` 自动检出。
-
----
-
-## 一句话
-
-`core/JavaLauncher.m` 在拉起 JVM 时会往 classpath 和 `-javaagent` 里塞三个 jar，
-而**这个仓库里一个 `.jar` 文件都没有**，也没有任何 Java 构建步骤。
-
-结果：点「启动游戏」必然失败。不是「可能失败」，是必然。
+> **状态：已补上（2026-11-08 第 31 轮）。** 之前这是「启动游戏必然失败」的根因。
+> 现在 13 个 jar 已进仓库，`_check-runtime-assets.js` 跑出「✓ 全部就位」。
 
 ---
 
-## 证据
+## 一、为什么需要这些 jar
 
-### 核心需要什么
-
-`core/JavaLauncher.m`：
+`core/JavaLauncher.m` 拉起 JVM 时要用三条路径：
 
 ```objc
-// 第 263-264 行：无条件添加 -javaagent
 NSString *librariesPath = [NSString stringWithFormat:@"%@/libs", NSBundle.mainBundle.bundlePath];
-margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@/patchjna_agent.jar=", librariesPath].UTF8String;
 
-// 第 266 行：（开了 Cosmetica 时）
-margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@/arc_dns_injector.jar=...", librariesPath].UTF8String;
+// ① javaagent（现在是存在性判断，见第四节）
+margv[..] = "-javaagent:<libs>/patchjna_agent.jar=";
 
-// 第 358-367 行：Caciocavallo 的 bootclasspath
-NSString *cacio_libs_path = [NSString stringWithFormat:@"%@/libs_caciocavallo%s", NSBundle.mainBundle.bundlePath, ...];
+// ② classpath 与主类
+margv[..] = "-cp";  margv[..] = "<libs>/*";
+margv[..] = "net.kdt.pojavlaunch.PojavLauncher";
+
+// ③ Caciocavallo 的 bootclasspath（AWT 工具包）
+NSString *cacio = "<bundle>/libs_caciocavallo17";
 // 目录下所有 .jar 拼进 -Xbootclasspath/a:
-
-// 第 386-392 行：classpath 与主类
-NSString *classpath = [NSString stringWithFormat:@"%@/*", librariesPath];
-margv[++margc] = "-cp";
-margv[++margc] = classpath.UTF8String;
-margv[++margc] = "net.kdt.pojavlaunch.PojavLauncher";
 ```
 
-也就是说需要：
-
-| 路径 | 作用 | 缺了会怎样 |
-|---|---|---|
-| `<bundle>/libs/patchjna_agent.jar` | `-javaagent` | **JVM 直接启动失败**：`Error opening zip file or JAR manifest missing` |
-| `<bundle>/libs/*.jar`（含 `PojavLauncher.jar`） | `-cp` + 主类 `net.kdt.pojavlaunch.PojavLauncher` | `ClassNotFoundException` —— 真正的 Minecraft 参数拼装全在这个 Java 程序里 |
-| `<bundle>/libs_caciocavallo17/*.jar` | `-Xbootclasspath/a` | `-Dawt.toolkit=...CTCToolkit` 找不到类，AWT 起不来 |
-
-### 仓库现状
-
-```
-全仓库 .jar 文件数：0
-core/libs/              不存在
-core/libs_caciocavallo17/ 不存在
-core/CMakeLists.txt     没有任何 jar / java / gradle 构建步骤
-```
-
-### 已发布的 IPA 也缺
-
-`ZL2.ipa`（build-235）解包后 980 个条目，`Payload/ZL2.app/` 下只有
-`Frameworks/`、`java_runtimes/`、几个 js 和主程序，**没有 `libs/` 目录**。
+**真正的 Minecraft 参数拼装（读版本 JSON、拼 classpath、解 natives、处理 Forge 安装器）
+全在那个 Java 程序里**，Swift / ObjC 替代不了。
 
 ---
 
-## 为什么之前的检查没发现
+## 二、jar 是从哪来的
 
-之前几轮查的是「Swift 与核心之间的约定」（键名、布局格式、偏好键），
-没有查「核心与它自己的资源文件之间」的约定。
+上游 `PojavLauncherTeam/PojavLauncher_iOS` 的 Release **v2.2**
+（`net.kdt.pojavlauncher-2.2-ios.ipa`，103 MB，GPL-3.0）。
 
-新写的 `_check-runtime-assets.js` 补上了这一块：它把核心源码里所有
-`<bundle>/xxx` 形式的路径抽出来，逐个对撞仓库里的实际文件。
+解包后 `Payload/PojavLauncher.app/` 下正好有需要的三个目录。
 
----
+### 兼容性核对（放进来之前做的）
 
-## 怎么补
+不只是看名字像，而是核对了包名与核心导出的 JNI 符号：
 
-三个 jar 都来自上游 PojavLauncher 的 Java 工程（GPL-3.0），不是能"写几行 Swift 补上"的东西：
-
-1. **`PojavLauncher.jar`** —— 上游 `PojavLauncher/JavaApp/` 用 Gradle 构建。
-   它负责：读版本 JSON、拼 classpath、解 natives、启动游戏主类。
-   几千行 Java，包含 `Tools`、`LauncherProfiles`、`MCLauncher`、`PojavClassLoader` 等。
-2. **`patchjna_agent.jar`** —— 一个小 javaagent，用于 patch JNA。
-3. **`libs_caciocavallo17/*.jar`** —— Caciocavallo 的 iOS/移动端实现，用于在没有 X11 的环境里跑 AWT。
-
-### 可行的获取途径（按优先级）
-
-| 途径 | 说明 |
+| jar 里的类 | 核心（ObjC）导出的符号 |
 |---|---|
-| **A. 从上游 IPA 提取** | `PojavLauncherTeam/PojavLauncher_iOS` 的 Release 里有 IPA（v2.2，103 MB）。解包取 `Payload/*.app/libs/` 与 `libs_caciocavallo17/`。风险：版本与我们的核心不是同一代，需要试。 |
-| **B. 自己构建** | 需要 Gradle + JDK，把上游 JavaApp 编译成 jar。工作量大但版本可控。 |
-| **C. 从 .deb 提取** | 同 A，上游还发布了 rootless.deb（70 MB），结构类似。 |
+| `net/kdt/pojavlaunch/value/MinecraftAccount` | `Java_net_kdt_pojavlaunch_value_MinecraftAccount_getAccessTokenFromKeychain` |
+| `net/kdt/pojavlaunch/uikit/UIKit` | `Java_net_kdt_pojavlaunch_uikit_UIKit_showError` |
 
-拿到后放进仓库（建议 `core/resources/libs/` 与 `core/resources/libs_caciocavallo17/`），
-并在 CI 的 `Bundle runtime & frameworks` 步骤里加两行 `cp -R`。
+主类 `net/kdt/pojavlaunch/PojavLauncher.class` 也确认在 `libs/launcher.jar` 里
+（该 jar 共 71 个条目）。
 
----
-
-## 验收标准
-
-补上之后，`_check-runtime-assets.js` 应该从
-
-```
-✗ 1 项缺失：Java 启动器 jar
-```
-
-变成
-
-```
-✓ 全部就位
-```
-
-同时 IPA 解包后应能看到 `Payload/ZL2.app/libs/` 与 `Payload/ZL2.app/libs_caciocavallo17/`。
+每个 jar 都用 `ZipFile` 逐个打开验证过条目数正常、没有损坏。
 
 ---
 
-## 给测试的人的提示
+## 三、放进仓库的内容（13 个 jar，5.2 MB）
 
-在这个问题修好之前，**「启动游戏」这一步一定失败**，而且失败得很快
-（JVM 连启动都没完成，不会出现 Minecraft 窗口）。
+| 目录 | 内容 | 用途 |
+|---|---|---|
+| `core/resources/libs/` | `launcher.jar`(62KB)、`gson-2.10.1.jar`(277KB)、`jsr305.jar`(32KB)、`lwjgl3-minecraft.jar`(1995KB)、`lwjgl-vulkan.jar`(2589KB)、`lwjgl-vma.jar`(68KB)、`lwjgl-shaderc.jar`(29KB)、`arc_dns_injector.jar`(13KB) | classpath + javaagent |
+| `core/resources/libs_caciocavallo/` | `cacio-androidnw-1.10`、`cacio-shared-1.10`、`ResConfHack` | Java 8 用的 AWT |
+| `core/resources/libs_caciocavallo17/` | `cacio-shared-1.18`、`cacio-tta-1.18` | Java 17+ 用的 AWT（**主要靠这个**） |
 
-如果看到的是「启动失败」但日志里有一行 `Error opening zip file` 或
-`ClassNotFoundException: net.kdt.pojavlaunch.PojavLauncher`，
-那就是这个问题，不用怀疑是操作或设备的问题。
+CI 的 `Bundle runtime & frameworks` 步骤会把它们 `cp -R` 进 app bundle，
+并断言 `$APP/libs/launcher.jar` 真的存在，缺了直接 `exit 1`。
+
+---
+
+## 四、`patchjna_agent.jar` 仍然缺（已降级为可选）
+
+上游 v2.2 的包里**没有这个 jar**——它是后来才加入的。而核心原本是
+**无条件**加 `-javaagent:<libs>/patchjna_agent.jar`。
+
+给 JVM 传一个指向不存在文件的 `-javaagent`，JVM 会在初始化阶段直接
+
+```
+Error opening zip file or JAR manifest missing : <path>
+```
+
+然后退出——启动流程还没开始就结束了。
+
+已改成存在性判断：
+
+```objc
+NSString *patchJna = [librariesPath stringByAppendingPathComponent:@"patchjna_agent.jar"];
+if ([NSFileManager.defaultManager fileExistsAtPath:patchJna]) {
+    margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@=", patchJna].UTF8String;
+} else {
+    NSLog(@"[ZL2] libs/patchjna_agent.jar 不存在，跳过 -javaagent");
+}
+```
+
+缺它只影响 JNA 的部分行为，不影响 JVM 起来。
+`arc_dns_injector.jar` 同理（而且它本来就被 `general.cosmetica` 开关挡着）。
+
+---
+
+## 五、还没验证的风险
+
+**这是上游 2.2 的 jar 配我们这代核心，没有真机跑过。**
+
+如果真机日志里出现：
+
+| 现象 | 含义 | 对策 |
+|---|---|---|
+| `UnsatisfiedLinkError: ...` | Java 侧调了一个 ObjC 没实现的 native 方法 | 需要从 Amethyst 源码用 Gradle 构建同代 jar |
+| `NoSuchMethodError` / `NoClassDefFoundError` | jar 之间版本不配套 | 同上 |
+| `ClassNotFoundException: net.kdt.pojavlaunch.PojavLauncher` | jar 没打进 bundle | 检查 CI 的 cp 步骤与 `_check-runtime-assets.js` |
+
+也就是说：**这一轮把"必然失败"变成了"可能成功"**，能否真的启动起来要靠真机验证。
+
+---
+
+## 六、如果要从源码重建
+
+上游 Java 工程在 PojavLauncher 仓库里（`JavaApp/` 或 iOS 工程内的 Gradle 子项目）。
+需要 JDK + Gradle，产出 `launcher.jar` 等。工作量大但版本可控。
+
+---
+
+## 七、日常检查
+
+```bash
+node C:\Users\21793\.dsh\config-guard\_check-runtime-assets.js
+```
+
+期望输出结尾是 `✓ 全部就位（11 项）`。
