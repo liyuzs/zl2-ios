@@ -63,6 +63,11 @@
 
 ### 已知问题 / 新增
 
+- **编辑器吸附的两个设置项一直没有界面**：`editorSnapInAllLayers`（是否吸附到其它图层，默认关）与 `editorWidgetSnapMode`（全屏/小范围吸附）**行为代码早就在读**（`ControlEditor.applySnap`），却没有任何入口能改 —— 功能存在、永远停在默认值。已在顶栏「吸附」胶囊上挂菜单：全局开关 / 吸附范围 / 吸附模式（点按仍是会话内开关）。
+- **`ControlEditor.readSettingBool` 也自带默认值那道门**：与第86轮 `GameOverlay.boolValue` 同一毛病（`default` 参数 + `UserDefaults == nil` 兜底），已删掉，默认值只认 `ZLSettings.defaultValue`。
+- `_check-setting-defaults.js` 加固：纳入 `readSettingBool`，并要求这些 helper **体内不许出现 `UserDefaults`**（旧判据只要求"调用了 store"，在委托前加道门它看不出来）。
+- 顺带核对：115 个设置项 = 6 个 group、设置页 4 个分页；17 项无设置页行，其中 5 项在游戏内菜单里，其余为内部状态位或由交互直接设置（如 `menuBallPos`）。
+
 - **修正连续两轮的设置项统计错误**：`ZLUnsupportedSettings` 里有**四个**集合（`platformOnly` 57 / `notWired` 4 / `renderOnly` 14 / `launcherLook` 10），而第79、87轮的统计只解析了前两个，把已置灰的 24 项当成"可用"——"可用"数字因此虚高为 54、42，**真实一直是 30**。第87轮那次"归位 12 个假开关"实为把已在 `renderOnly` 里的键重复加进别的集合（还让说明文案走了错分支），**已全部撤销，重复归类归零**。
 - 生成器与检查器都改成读四个集合，文档总览扩成四类并补两节明细；检查器新增守卫：源文件里出现未被脚本覆盖的 `Set<String>` 声明就直接报错（注入验证会红）。
 
