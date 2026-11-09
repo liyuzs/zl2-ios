@@ -261,9 +261,29 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     }
 
     NSString *librariesPath = [NSString stringWithFormat:@"%@/libs", NSBundle.mainBundle.bundlePath];
-    margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@/patchjna_agent.jar=", librariesPath].UTF8String;
+
+    // ZL2-iOS: -javaagent 必须**确认文件存在**才加。
+    //
+    // 原来这里是无条件加的。而当前工程用的 libs/ 来自上游 PojavLauncher_iOS 2.2
+    // 的发布包 —— 那个版本里**没有 patchjna_agent.jar**（它是后来才加的）。
+    // 给 JVM 传一个指向不存在文件的 -javaagent，JVM 会在初始化阶段直接
+    //   Error opening zip file or JAR manifest missing : <path>
+    // 然后退出，整个启动流程还没开始就结束了。
+    //
+    // 所以改成存在性判断：有就加，没有就记一条日志继续走。
+    // 缺这个 agent 只影响 JNA 的部分行为，不影响 JVM 起来。
+    NSString *patchJna = [librariesPath stringByAppendingPathComponent:@"patchjna_agent.jar"];
+    if ([NSFileManager.defaultManager fileExistsAtPath:patchJna]) {
+        margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@=", patchJna].UTF8String;
+    } else {
+        NSLog(@"[ZL2] libs/patchjna_agent.jar 不存在，跳过 -javaagent（JNA 补丁不生效，但 JVM 仍可启动）");
+    }
+
     if(getPrefBool(@"general.cosmetica")) {
-        margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@/arc_dns_injector.jar=23.95.137.176", librariesPath].UTF8String;
+        NSString *dnsInjector = [librariesPath stringByAppendingPathComponent:@"arc_dns_injector.jar"];
+        if ([NSFileManager.defaultManager fileExistsAtPath:dnsInjector]) {
+            margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@=23.95.137.176", dnsInjector].UTF8String;
+        }
     }
 
     // Workaround random stack guard allocation crashes

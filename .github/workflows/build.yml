@@ -108,8 +108,34 @@ jobs:
           # 1) 渲染/认证 dylib 与 framework
           mkdir -p "$APP/Frameworks"
           cp -R core/resources/Frameworks/. "$APP/Frameworks/"
+          # 1.1) Java 侧启动器 jar
+          #
+          # 核心 JavaLauncher.m 会拼这三条路径：
+          #   -cp <bundle>/libs/*            主类 net.kdt.pojavlaunch.PojavLauncher
+          #   -javaagent <bundle>/libs/*.jar
+          #   -Xbootclasspath/a:<bundle>/libs_caciocavallo17/*.jar   （AWT 工具包）
+          # 少一个目录，JVM 起不来或类找不到，而且报错在 JVM stderr 里，很难反查。
+          # 这些 jar 来自上游 PojavLauncher_iOS 2.2 的发布包（GPL-3.0），
+          # 提取说明见 docs/缺失组件-Java启动器jar.md。
+          for d in libs libs_caciocavallo libs_caciocavallo17; do
+            if [ -d "core/resources/$d" ]; then
+              rm -rf "$APP/$d"
+              cp -R "core/resources/$d" "$APP/$d"
+              echo "copied $d: $(ls "$APP/$d" | wc -l) files"
+            else
+              echo "::error::缺少 core/resources/$d —— 启动游戏会失败"
+              exit 1
+            fi
+          done
+          # 校验主类所在的 jar 真的被打进去了
+          test -f "$APP/libs/launcher.jar" || { echo "::error::libs/launcher.jar 缺失"; exit 1; }
+
           # JIT 脚本：iOS 26 启动必需（Amethyst 会从 bundle 读）
           for f in core/resources/*.js; do
+            [ -f "$f" ] && cp "$f" "$APP/" && echo "copied $(basename "$f")"
+          done
+          # log4j 漏洞补丁配置（核心按 bundle 路径引用）
+          for f in core/resources/log4j-rce-patch-*.xml; do
             [ -f "$f" ] && cp "$f" "$APP/" && echo "copied $(basename "$f")"
           done
 
