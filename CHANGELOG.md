@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **新增 `_check-ci-contract.js`**：核对 `推送并取回IPA.ps1` 与 `.github/workflows/build.yml` 之间的隐含契约 —— ①脚本等待时间不得短于 CI 的 `timeout-minutes`（本轮从 30 提到 45，否则构建慢时脚本先判失败）②脚本必须认识 CI 上传的 artifact 名 `ZL2-build`（原来模糊匹配，可能抓错）③CI 必须真的产出 `.ipa` ④CI 有静态检查时脚本的失败提示要提到它。注入验证两条都过。
+- 两套执行器都绿：`_run-all.ps1` 与 `run-checks.js --with-tests` 各 51 项。
+
 - **50 项静态检查搬进 CI**：新增 `tools/config-guard/run-checks.js`（跨平台执行器，**清单直接读 `_run-all.ps1`**，避免两份漂移），CI 在**编译之前**跑一遍 —— 语法/契约错几秒现形，不必等 10 分钟构建。已按 CI 的方式在仓库副本里实测：50 项全绿。注意 `--with-tests` 才是 50 项，不带只跑 36 项 checks。
 
 - **用 Siri / 快捷指令启动游戏可能毫无反应**：`RootView` 靠 `asyncAfter(0.8)` 之后发一条通知把首页叫醒，而首页收到通知时第一句就是 `guard !selectedVersion.isEmpty` —— 0.8 秒只是猜"版本列表已读完"，版本多或磁盘慢时列表还没出来就直接 return，**通知是一次性的，启动意图就此消失**。已改成带 2 分钟时效的持久标志（`markAutoLaunchPending` / `hasPendingAutoLaunch` / `consumeAutoLaunchPending`），首页在**收到通知**与**读完版本列表之后**两处都尝试启动。`_check-pending-action.js` 相应加了四条判据（含"至少两处调用"）。
