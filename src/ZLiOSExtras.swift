@@ -142,6 +142,39 @@ enum ZLPendingAction {
         d.set(Date().timeIntervalSince1970, forKey: "zl.pendingRouteAt")
     }
 
+    /// 「想自动启动游戏」这个意图先记下来，等首页真的读到版本列表再消费。
+    ///
+    /// 原来的做法是：RootView 里 `DispatchQueue.main.asyncAfter(0.8)` 之后再发一条 Notification。
+    /// 而首页收到通知时第一句是 `guard !selectedVersion.isEmpty` —— 0.8 秒只是**猜**，
+    /// 版本多、磁盘慢的时候列表还没读出来，就直接 return，**通知是一次性的，这次启动意图就没了**。
+    /// 用户会说"用 Siri 启动游戏没反应"。
+    ///
+    /// 现在改成带时效的标志：首页每次读完版本列表都来问一句，能启就启。
+    static func markAutoLaunchPending() {
+        let d = UserDefaults.standard
+        d.set(true, forKey: "zl.pendingAutoLaunch")
+        d.set(Date().timeIntervalSince1970, forKey: "zl.pendingAutoLaunchAt")
+    }
+
+    /// 有没有待自动启动的意图（只读不消费，供"条件不满足先等等"时判断）
+    static func hasPendingAutoLaunch() -> Bool {
+        let d = UserDefaults.standard
+        guard d.bool(forKey: "zl.pendingAutoLaunch") else { return false }
+        let at = d.double(forKey: "zl.pendingAutoLaunchAt")
+        return Date().timeIntervalSince1970 - at < 120
+    }
+
+    /// 取走「想自动启动」的意图（取到就清掉；超过 2 分钟作废）
+    static func consumeAutoLaunchPending() -> Bool {
+        let d = UserDefaults.standard
+        guard d.bool(forKey: "zl.pendingAutoLaunch") else { return false }
+        let at = d.double(forKey: "zl.pendingAutoLaunchAt")
+        d.set(false, forKey: "zl.pendingAutoLaunch")
+        d.removeObject(forKey: "zl.pendingAutoLaunchAt")
+        guard Date().timeIntervalSince1970 - at < 120 else { return false }
+        return true
+    }
+
     /// 检查有没有要跳转的页面。
     ///
     /// **和启动标志一样要过期**：原来没有时效，于是"App 在运行中收到快捷指令 → 没被消费 →

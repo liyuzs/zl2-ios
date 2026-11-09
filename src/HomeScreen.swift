@@ -137,13 +137,13 @@ struct HomeScreen: View {
         }
         // Siri / 快捷指令要求自动启动
         .onReceive(NotificationCenter.default.publisher(for: .zlAutoLaunch)) { _ in
-            guard !selectedVersion.isEmpty, !selectedVersion.hasPrefix("还没有") else { return }
-            ZLHaptic.success()
-            launching = true
+            attemptAutoLaunch()
         }
         .onAppear {
             // 每次都从磁盘读一遍已安装版本（切过目录也能跟上）
             refreshInstalledVersion()
+            // 读完再问一次"有没有待自动启动的意图" —— 通知可能来得太早（版本还没读完）
+            attemptAutoLaunch()
             // 深夜第一次进来自动打个招呼（小彩蛋）
             if !didGreet {
                 didGreet = true
@@ -405,6 +405,17 @@ struct HomeScreen: View {
     /// 是否真的装了版本（首页显示名不是占位文案）
     private var hasInstalledVersion: Bool {
         !selectedVersion.isEmpty && !selectedVersion.hasPrefix("还没有")
+    }
+
+    /// 尝试响应「Siri / 快捷指令要求启动游戏」。
+    /// **只有在版本列表真的读出来之后才能启动**，所以这个函数会被调用两次：
+    /// 收到通知时一次、读完版本列表后一次。意图本身带 2 分钟时效，过期就丢掉。
+    private func attemptAutoLaunch() {
+        guard ZLPendingAction.hasPendingAutoLaunch() else { return }
+        guard !selectedVersion.isEmpty, !selectedVersion.hasPrefix("还没有") else { return }
+        guard ZLPendingAction.consumeAutoLaunchPending() else { return }
+        ZLHaptic.success()
+        launching = true
     }
 
     private func refreshInstalledVersion() {

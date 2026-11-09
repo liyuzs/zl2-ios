@@ -127,7 +127,9 @@ struct RootView: View {
             }
         }
         if ZLPendingAction.consumeLaunchFlag() {
-            // 稍等一下让首页把版本读出来，再自动开始
+            // 先记成"待自动启动"，再发一条通知把首页叫醒。
+            // 不再靠 0.8 秒的猜测 —— 首页读完版本列表后会自己来问（见 HomeScreen.attemptAutoLaunch）。
+            ZLPendingAction.markAutoLaunchPending()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                 NotificationCenter.default.post(name: .zlAutoLaunch, object: nil)
             }
