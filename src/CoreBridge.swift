@@ -41,6 +41,18 @@ enum CoreBridge {
         bootstrapped = false
     }
 
+    /// 设置一个环境变量，同时设上 POJAV_ 前缀的别名。
+    ///
+    /// 为什么：Java 侧（libs/launcher.jar 的 Tools.class）常量池里同时出现
+    /// `GAME_DIR` 和 `POJAV_GAME_DIR`、`AME_HOME` 和 `POJAV_HOME` —— 说明它在
+    /// 做"优先读前者、没有就退回后者"这一类回退。我们原来只设了不带前缀的那份，
+    /// 一旦某条代码路径走的是 POJAV_ 分支就会拿到 null。
+    ///
+    /// 两个都设是零成本的：Java 只会读其中一个，多设的那个不被使用也无害。
+    private static func setGameEnv(_ name: String, _ pojavName: String, _ value: String) {
+        setenv(name, value, 1)
+        setenv(pojavName, value, 1)
+    }
     /// 初始化 Amethyst 运行环境（照搬 main.m 的逻辑）
     static func bootstrap() throws {
         guard isCoreLinked else { throw CoreLaunchError.coreNotLinked }
@@ -63,7 +75,7 @@ enum CoreBridge {
         // 日志重定向（真机调试必需：Amethyst 的 printf/NSLog 输出落到文件）
         setupLogging(home: home)
         // AME_HOME 是 Amethyst 全局数据根
-        setenv("AME_HOME", home, 1)
+        setGameEnv("AME_HOME", "POJAV_HOME", home)
         // GAME_DIR 必须指向实例的 .minecraft 目录：
         // 核心约定 <GAME_DIR>/versions/<id>/<id>.json，
         // VersionInstaller / LaunchScreen / VersionRepository 都用
@@ -71,7 +83,7 @@ enum CoreBridge {
         // 当前实例名由 VersionRepository 持有（游戏目录页可切换）。
         let gameDir = VersionRepository.shared.mcRoot.path
         try? fm.createDirectory(atPath: gameDir, withIntermediateDirectories: true)
-        setenv("GAME_DIR", gameDir, 1)
+        setGameEnv("GAME_DIR", "POJAV_GAME_DIR", gameDir)
 
         // 先把偏好加载出来，再做任何读写偏好的事。
         //
@@ -244,7 +256,7 @@ enum CoreBridge {
         // 现在统一用 mcRoot，与 applyUserSettings 里设置的 general.game_directory 对齐。
         _ = VersionRepository.shared.prepareIsolatedDir(for: versionID)
         let effectiveGameDir = VersionRepository.shared.mcRoot.path
-        setenv("GAME_DIR", effectiveGameDir, 1)
+        setGameEnv("GAME_DIR", "POJAV_GAME_DIR", effectiveGameDir)
         NSLog("[ZL2] GAME_DIR = %@ (隔离=%@)", effectiveGameDir,
               VersionRepository.shared.isolationEnabled ? "开" : "关")
 
@@ -309,7 +321,7 @@ enum CoreBridge {
         // 免得把测试产生的存档混进主目录
         let pseudoID = URL(fileURLWithPath: jarPath).deletingPathExtension().lastPathComponent
         let isolatedDir = VersionRepository.shared.prepareIsolatedDir(for: pseudoID)
-        setenv("GAME_DIR", isolatedDir.path, 1)
+        setGameEnv("GAME_DIR", "POJAV_GAME_DIR", isolatedDir.path)
         if ProcessInfo.processInfo.environment["AME_HOME"] != nil {
             writePerfOptionsIfNeeded(gameDir: isolatedDir.path)
         }
