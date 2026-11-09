@@ -162,10 +162,20 @@ void registerOpenHandler(JNIEnv *env) {
     } else {
         cls = (*env)->FindClass(env, "java/lang/UNIXProcess");
     }
-    JNINativeMethod forkAndExecMethod[] = {
-        {"forkAndExec", "(I[B[B[BI[BI[B[IZ)I", (void *)&hooked_ProcessImpl_forkAndExec}
-    };
-    (*env)->RegisterNatives(env, cls, forkAndExecMethod, 1);
+    // 同样判空：FindClass 失败时 cls 是 NULL，RegisterNatives 会 abort。
+    // （正常情况下 Java 8 有 UNIXProcess、Java 17+ 有 ProcessImpl，走不到这里，
+    //   但多一个判断比多一次崩溃好。）
+    if ((*env)->ExceptionOccurred(env)) {
+        (*env)->ExceptionClear(env);
+    }
+    if (cls != NULL) {
+        JNINativeMethod forkAndExecMethod[] = {
+            {"forkAndExec", "(I[B[B[BI[BI[B[IZ)I", (void *)&hooked_ProcessImpl_forkAndExec}
+        };
+        (*env)->RegisterNatives(env, cls, forkAndExecMethod, 1);
+    } else {
+        NSLog(@"[ZL2] 找不到 UNIXProcess/ProcessImpl，跳过 forkAndExec 钩子");
+    }
 
     // (Java 17 only) Hook isAlive0
     cls = (*env)->FindClass(env, "java/lang/ProcessHandleImpl");
@@ -187,11 +197,34 @@ void registerOpenHandler(JNIEnv *env) {
         (*env)->ExceptionClear(env);
         cls = (*env)->FindClass(env, "com/github/caciocavallosilano/cacio/ctc/CTCClipboard");
     }
-    JNINativeMethod clipboardMethods[] = {
-        {"nQuerySystemClipboard", "()V", (void *)&CTCClipboard_nQuerySystemClipboard},
-        {"nPutClipboardData", "(Ljava/lang/String;Ljava/lang/String;)V", (void *)&CTCClipboard_nPutClipboardData}
-    };
-    (*env)->RegisterNatives(env, cls, clipboardMethods, 2);
+    // ZL2-iOS: 这里必须判空，否则**每次 JVM 启动都会崩**。
+    //
+    // 两个包名的 CTCClipboard 都不一定存在：
+    //   · 我们放进 libs_caciocavallo17 的 cacio jar 里就没有这个类
+    //     （已逐个核对：cacio-tta-1.18 只有 23 个类、cacio-shared-1.18 只有 60 个，都没 CTCClipboard）
+    //   · 上游 Amethyst 用的是自己打的 cacio，里面才有
+    //
+    // 而 registerOpenHandler() 是在 JNI_OnLoad 里被调的 —— 也就是说
+    // 每次 JVM 起来、进游戏之前就会执行到这段：
+    //   ① 第一次 FindClass 失败，留下待处理的 ClassNotFoundException
+    //   ② ExceptionClear 后第二次 FindClass 又失败，**这次异常没清**
+    //   ③ 拿着 NULL 的 jclass 去 RegisterNatives
+    // 带 pending exception + NULL jclass 调 JNI，HotSpot 会直接 abort。
+    //
+    // 修法：cls 为空就清掉异常、跳过注册。代价是游戏内的剪贴板读写失效，
+    // 但总比启动即崩好。要恢复功能需要换成带 CTCClipboard 的 cacio 构建。
+    if ((*env)->ExceptionOccurred(env)) {
+        (*env)->ExceptionClear(env);
+    }
+    if (cls == NULL) {
+        NSLog(@"[ZL2] cacio 没有 CTCClipboard 类，跳过剪贴板 JNI 注册（游戏内复制粘贴不可用）");
+    } else {
+        JNINativeMethod clipboardMethods[] = {
+            {"nQuerySystemClipboard", "()V", (void *)&CTCClipboard_nQuerySystemClipboard},
+            {"nPutClipboardData", "(Ljava/lang/String;Ljava/lang/String;)V", (void *)&CTCClipboard_nPutClipboardData}
+        };
+        (*env)->RegisterNatives(env, cls, clipboardMethods, 2);
+    }
 
     // Register CTCDesktopPeer natives
     cls = (*env)->FindClass(env, "net/java/openjdk/cacio/ctc/CTCDesktopPeer");
