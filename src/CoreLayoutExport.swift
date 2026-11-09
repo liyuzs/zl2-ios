@@ -444,7 +444,11 @@ enum CoreLayoutExporter {
         for ev in events {
             switch ev.type {
             case .key:
-                if let code = GLFWKeyNames.code(for: ev.value), code > 0 {
+                // 不能用 `code > 0` 过滤 —— 核心的特殊按钮（SPECIALBTN_MENU 等）
+                // 全是负数（-1..-9，见 core/utils.h:42-50）。用 > 0 会把它们全丢掉，
+                // 表现是「菜单键/键盘键/虚拟鼠标键配置好了但按下去没反应」。
+                // 0 是 NONE（无按键），跳过即可；伪键码是 -1000 及以下，不会从这里来。
+                if let code = GLFWKeyNames.code(for: ev.value), code != 0 {
                     codes.append(code)
                 }
             case .switchLayer, .showLayer, .hideLayer:

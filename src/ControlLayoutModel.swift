@@ -969,7 +969,11 @@ struct ZLControlLayout: Codable, Equatable, Identifiable, Sendable {
             ("Tab", "GLFW_KEY_TAB", 3000, 300),
             ("Ctrl", "GLFW_KEY_LEFT_CONTROL", 3800, 300),
             ("Alt", "GLFW_KEY_LEFT_ALT", 4600, 300),
-            ("输入法", "GLFW_KEY_UNKNOWN", 5400, 300)
+            // 原来是 GLFW_KEY_UNKNOWN —— 它等于「无按键」（键码 0），
+            // 导出时会被跳过，按钮按下去什么都不会发生。
+            // 换成核心的虚拟键盘键（SPECIALBTN_KEYBOARD，键码 -1），
+            // 按它才会弹出输入法，和核心自己生成的默认布局一致。
+            ("输入法", "SPECIALBTN_KEYBOARD", 5400, 300)
         ]
         let wasd: [(String, String, Int, Int)] = [
             ("W", "GLFW_KEY_W", 1600, 6500),

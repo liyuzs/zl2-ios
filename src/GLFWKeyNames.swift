@@ -88,17 +88,32 @@ enum GLFWKeyNames {
             m["F\(i)"] = 289 + i
         }
 
-        // 小键盘 0-9
+        // 方向键的别名。核心的键名表里用的是 DPAD_UP/DOWN/LEFT/RIGHT
+        // （见 CustomControlsUtils.m:524，以及 core/glfw_keycodes.h:145-148，
+        // 数值与 UP/LEFT/DOWN/RIGHT 完全相同）。
+        // 只写 UP/LEFT/... 的话，布局里写 DPAD_UP 的按钮会静默失效。
+        m["DPAD_RIGHT"] = 262
+        m["DPAD_LEFT"] = 263
+        m["DPAD_DOWN"] = 264
+        m["DPAD_UP"] = 265
+
+        // 小键盘。
+        //
+        // 注意名字：核心用的是 NUMPAD_*（core/glfw_keycodes.h:183-199、
+        // CustomControlsUtils.m:576-587），不是 GLFW 文档里的 KP_*。
+        // 两套都写，兼容不同来源的布局文件。
         for i in 0...9 {
+            m["NUMPAD_\(i)"] = 320 + i
             m["KP_\(i)"] = 320 + i
         }
-        m["KP_DECIMAL"] = 330
-        m["KP_DIVIDE"] = 331
-        m["KP_MULTIPLY"] = 332
-        m["KP_SUBTRACT"] = 333
-        m["KP_ADD"] = 334
-        m["KP_ENTER"] = 335
-        m["KP_EQUAL"] = 336
+        let numpad: [String: Int] = [
+            "DECIMAL": 330, "DIVIDE": 331, "MULTIPLY": 332,
+            "SUBTRACT": 333, "ADD": 334, "ENTER": 335, "EQUAL": 336,
+        ]
+        for (suffix, code) in numpad {
+            m["NUMPAD_\(suffix)"] = code
+            m["KP_\(suffix)"] = code
+        }
 
         // 修饰键
         m["LEFT_SHIFT"] = 340
@@ -110,6 +125,32 @@ enum GLFWKeyNames {
         m["RIGHT_ALT"] = 346
         m["RIGHT_SUPER"] = 347
         m["MENU"] = 348
+
+        // MARK: 核心特有的特殊按钮（负数键码）
+        //
+        // 这些不是 GLFW 的键，是核心自己定义的虚拟按钮，
+        // 定义在 core/utils.h:42-50，处理在 SurfaceViewController.m:879 起的 switch 里。
+        // 数值全是负数，所以查表时**不能**用 `code > 0` 过滤（会把这些全丢掉）。
+        //
+        // 注意与图层伪键码的区间不冲突：伪键码是 -1000 及以下
+        // （见 LayerPseudoKey.swift），这些是 -1..-9。
+        m["SPECIALBTN_KEYBOARD"] = -1
+        m["SPECIALBTN_TOGGLECTRL"] = -2
+        m["SPECIALBTN_MOUSEPRI"] = -3
+        m["SPECIALBTN_MOUSESEC"] = -4
+        m["SPECIALBTN_VIRTUALMOUSE"] = -5
+        m["SPECIALBTN_MOUSEMID"] = -6
+        m["SPECIALBTN_SCROLLUP"] = -7
+        m["SPECIALBTN_SCROLLDOWN"] = -8
+        m["SPECIALBTN_MENU"] = -9
+
+        // 0 = 无按键。核心表里叫 NONE（CustomControlsUtils.m:514），
+        // ZL2 的布局里常见 GLFW_KEY_UNKNOWN，两个都认。
+        m["NONE"] = 0
+        m["UNKNOWN"] = 0
+
+        // 短名别名（ZL2 某些布局里省掉了 SPECIALBTN_ 前缀）
+        m["MENU_BUTTON"] = -9
 
         return m
     }()
