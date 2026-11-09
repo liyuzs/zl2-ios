@@ -456,32 +456,61 @@ struct VersionContentScreen: View {
     }
 
     // MARK: 服务器列表
+    //
+    // 这里原来是一段**写死的假数据**：Hypixel / 2b2t / 本地局域网，地址还是现编的
+    // （play.hypixel.net / 192.168.x.x:25565），行末画了 chevron 暗示能点、其实没有 Button。
+    // 而「添加服务器」按钮弹出的话更误导：说"在「多人游戏」页管理"，
+    // 可那一页是联机页，根本没有服务器管理。
+    //
+    // 真正的实现（ServerListScreen，带 Server List Ping 真实探测）一直存在，
+    // 只是没有任何入口能进去。现在改成读真实数据 + 点进去就是那个页面。
     private var serverList: some View {
-        VStack(spacing: 10) {
-            ForEach(["Hypixel", "2b2t", "本地局域网"], id: \.self) { name in
-                HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(ZLTheme.primarySoft)
-                        .frame(width: 42, height: 42)
-                        .overlay(Image(systemName: "server.rack")
-                            .foregroundStyle(ZLTheme.primary))
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(name).font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(ZLTheme.textPrimary)
-                        Text(name == "本地局域网" ? "192.168.x.x:25565" : "play.\(name.lowercased()).net")
-                            .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+        let servers = ServerStore.shared.load()
+        return VStack(spacing: 10) {
+            if servers.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "server.rack")
+                        .font(.system(size: 22))
+                        .foregroundStyle(ZLTheme.textSecond.opacity(0.5))
+                    Text("还没有添加服务器")
+                        .font(.system(size: 13))
+                        .foregroundStyle(ZLTheme.textSecond)
+                    Text("加一个之后，这里会显示在线人数和延迟")
+                        .font(.system(size: 11))
+                        .foregroundStyle(ZLTheme.textSecond.opacity(0.8))
                 }
-                .padding(14)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
                 .background(ZLTheme.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            } else {
+                ForEach(servers.prefix(3)) { s in
+                    Button { onOpen(.serverList) } label: {
+                        HStack(spacing: 12) {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(ZLTheme.primarySoft)
+                                .frame(width: 42, height: 42)
+                                .overlay(Image(systemName: "server.rack")
+                                    .foregroundStyle(ZLTheme.primary))
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(s.name).font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(ZLTheme.textPrimary)
+                                Text(s.originIp)
+                                    .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+                        }
+                        .padding(14)
+                        .background(ZLTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            ZLGoldButton(title: "添加服务器", icon: "plus") {
-                alertText = "服务器列表在「多人游戏」页管理，\n在那里可以添加、编辑、测试连通性。"
-                showAlert = true
+            ZLGoldButton(title: "管理服务器", icon: "server.rack") {
+                onOpen(.serverList)
             }
         }
     }
