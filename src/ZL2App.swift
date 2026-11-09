@@ -436,7 +436,6 @@ struct MultiplayerScreen: View {
     var onBack: () -> Void = {}
     var onHome: () -> Void = {}
     @State private var tab = 0
-    @State private var enabled = true
     @StateObject private var lan = LanDiscovery()
     @State private var lanTab = false
 
@@ -503,36 +502,33 @@ struct MultiplayerScreen: View {
 
                 // 右：开关与入口
                 VStack(spacing: ZLTheme.cardGap) {
+                    // 这一组原来是三个**假交互**，都去掉了：
+                    //   · 「启用多人联机」是个 Toggle，绑的却是本地 @State enabled ——
+                    //     没持久化、没被任何代码读取，拨来拨去什么都不发生
+                    //   · 「分享联机核心日志」一个 ZLCard 里放了分享图标，但根本没有 Button
+                    //   · 「关于 EasyTier」带 chevron 暗示能点进去，同样没有 Button、也没有目标页
+                    // 远程联机要 EasyTier 内核，iOS 版还没接入。与其放三个看起来能用的控件，
+                    // 不如直接说清楚现状。
                     ZLCard {
-                        HStack {
-                            Text("启用多人联机")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(ZLTheme.textPrimary)
-                            Spacer()
-                            Toggle("", isOn: $enabled)
-                                .labelsHidden()
-                                .tint(ZLTheme.primary)
-                        }
-                    }
-                    ZLCard {
-                        HStack {
-                            Text("分享联机核心日志")
-                                .font(.system(size: 15))
-                                .foregroundStyle(ZLTheme.textPrimary)
-                            Spacer()
-                            Image(systemName: "square.and.arrow.up")
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text("远程联机（EasyTier）")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundStyle(ZLTheme.textPrimary)
+                                Spacer()
+                                Text("尚未接入")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(ZLTheme.textSecond)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(ZLTheme.surfaceAlt)
+                                    .clipShape(Capsule())
+                            }
+                            Text("远程联机需要 EasyTier P2P 内核，当前版本没有接入。" +
+                                 "下面的「局域网游戏」是能用的，同一 WiFi 下可以直接发现。")
+                                .font(.system(size: 11))
                                 .foregroundStyle(ZLTheme.textSecond)
-                        }
-                    }
-                    ZLCard {
-                        HStack {
-                            Text("关于 EasyTier")
-                                .font(.system(size: 15))
-                                .foregroundStyle(ZLTheme.textPrimary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12))
-                                .foregroundStyle(ZLTheme.textSecond)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     lanCard
