@@ -53,6 +53,35 @@ if (wf.includes('run-checks.js') && !sh.includes('Static checks')) {
   problems.push('CI 已经有静态检查步骤，但脚本的失败提示没提它 —— 排障时会指错方向');
 }
 
+// ---- 5. CI 打包步骤引用的资源必须真实存在 ----
+// 第99轮加：CI 里写 `cp -R core/resources/$d "$APP/$d"`，目录改了名不会报错 ——
+// 只会让打出来的 IPA 缺 jar，然后启动时 UnsatisfiedLinkError。
+for (const d of ['Frameworks', 'libs', 'libs_caciocavallo', 'libs_caciocavallo17']) {
+  const full = path.join(REPO, 'core', 'resources', d);
+  if (!fs.existsSync(full)) problems.push(`CI 会打包 core/resources/${d}，但磁盘上没有这个目录`);
+}
+const jreDir = path.join(REPO, 'jre');
+if (fs.existsSync(jreDir)) {
+  const tars = fs.readdirSync(jreDir).filter(f => /^jre\d+-ios-aarch64\.tar\.xz$/.test(f));
+  if (tars.length === 0) problems.push('jre/ 里没有任何 jre<N>-ios-aarch64.tar.xz —— CI 会退回下载（更慢且可能失败）');
+}
+
+// ---- 6. 配置里提到的 .sh 脚本必须存在 ----
+// 第99轮加：project.yml 注释写着"版本号由 CI 用 zl2-version.sh 注入"，
+// 而那个脚本根本不存在（CI 是用内联 sed 做的）—— 这类"注释引用"也会误导接手的人。
+const py = path.join(REPO, 'project.yml');
+if (fs.existsSync(py)) {
+  const yml = fs.readFileSync(py, 'utf8');
+  for (const m of yml.matchAll(/([A-Za-z0-9_.-]+\.sh)\b/g)) {
+    const name = m[1];
+    const found = [
+      path.join(REPO, name),
+      path.join(REPO, 'scripts', name),
+      path.join(REPO, 'tools', name),
+    ].some(x => fs.existsSync(x));
+    if (!found) problems.push(`project.yml 提到 ${name}，但仓库里找不到这个脚本`);
+  }
+}
 console.log(`CI timeout=${wfTimeout || '?'} 分钟 · artifact=${artName || '?'} · 脚本等待=${shTimeout || '?'} 分钟`);
 console.log('');
 

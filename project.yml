@@ -34,7 +34,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.liyuzs.craftlauncher
         PRODUCT_NAME: ZL2
-        # 版本号由 CI 用 zl2-version.sh 注入；本地构建退回这里的默认值
+        # 版本号由 CI 在「Inject version」那一步用内联 sed 改写本文件（没有单独脚本）；本地构建退回这里的默认值
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: NO
