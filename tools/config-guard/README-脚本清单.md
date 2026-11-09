@@ -31,6 +31,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-interpolation.js` | 字符串插值里拼错的变量名（编译错误，括号检查查不出） |
 | `_check-imports.js` | 用了某框架符号却没 import 对应框架（UIKit / CryptoKit / Compression / PhotosUI / AVFoundation） |
 | `_check-call-labels.js` | 调工程内类型的方法时参数标签与声明对不上（如 `requiredJavaVersion(for:)` vs `(_:)`）—— 没有编译器时的编译前置检查 |
+| `_check-error-hints.js` | 面向用户的失败提示必须带「怎么办」：`ZLPreflight` / `ZLDiagnostics` 里每条 `level: .fail` / `.warn` 的 `ZLDiagItem` 都要有非空 `advice:`（界面会把它显示在红字下方） |
 | `_check-duplicates.js` | 顶层类型重复声明（Invalid redeclaration）。按花括号深度只查顶层，嵌套的 `CodingKeys` / `Kind` 不误报 |
 | `_audit-ui-affordance.js` | 假交互：绑了控件却没人读的 `@State`、常量+空 set 的 Binding |
 | `_check-orphan-views.js` | 写了没挂载：`struct X: View` 在整个 src 里只出现 1 次（从没被实例化） |
