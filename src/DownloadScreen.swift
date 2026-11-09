@@ -222,8 +222,10 @@ struct DownloadScreen: View {
                             Text(installMsg).font(.system(size: 12))
                                 .foregroundStyle(ZLTheme.textSecond)
                             Spacer()
-                            Text("\(Int(installFrac * 100))%")
-                                .font(.system(size: 12, weight: .semibold))
+                            // 用 ZLPercentText：等宽数字 + 数字滚动过渡。
+                            // 原来这里是自己拼 "\(Int(x*100))%" —— 百分比每跳一次，
+                            // 宽度会跟着变（"9%" 和 "10%"），整行会轻微抖动。
+                            ZLPercentText(value: installFrac, size: 12)
                                 .foregroundStyle(ZLTheme.primaryDeep)
                         }
                         ProgressView(value: installFrac)

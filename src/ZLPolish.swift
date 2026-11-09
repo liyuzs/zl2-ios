@@ -237,25 +237,6 @@ extension View {
     }
 }
 
-// MARK: - 轻提示（Toast）
-
-/// 全局轻提示，各页面用 .zlToast(...) 挂载
-struct ZLToastView: View {
-    var text: String
-    var body: some View {
-        Text(text)
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(
-                Capsule().fill(Color.black.opacity(0.82))
-                    .shadow(color: .black.opacity(0.2), radius: 10, y: 4)
-            )
-            .transition(.move(edge: .bottom).combined(with: .opacity))
-    }
-}
-
 // MARK: - 长按快捷菜单（版本卡片等）
 
 /// 用 .contextMenu 实现的原生长按菜单，比自绘更符合 iOS 习惯。
@@ -529,23 +510,6 @@ extension View {
         modifier(ZLPopIn(delay: delay))
     }
 }
-
-// MARK: - Q弹数字（进度百分比滚动）
-
-struct ZLQNumber: View {
-    var value: Double            // 0...1
-    var size: CGFloat = 13
-
-    var body: some View {
-        Text(String(format: "%.0f%%", max(0, min(1, value)) * 100))
-            .font(.system(size: size, weight: .semibold, design: .rounded))
-            .monospacedDigit()
-            .foregroundStyle(ZLTheme.textPrimary)
-            .contentTransition(.numericText())
-            .animation(ZLSpring.smooth, value: value)
-    }
-}
-
 // MARK: - Q弹卡片（按下会缩一下）
 
 struct ZLQCard<Content: View>: View {

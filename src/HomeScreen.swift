@@ -28,6 +28,17 @@ struct HomeScreen: View {
     @State private var didGreet = false
     // 彩蛋 2
     @State private var avatarSpinning = false
+    /// 彩蛋特效：点空白处冒小星星。
+    /// `ZLStarBurst` 在 ZLPolish.swift 里早就写好了（注释还写着"点哪里冒哪里"），
+    /// 但从没被任何界面引用过 —— 写了没挂载，等于没有。
+    @State private var starBursts: [StarSeed] = []
+    /// 彩蛋特效：点头像冒爱心（`ZLHeartPop` 同样是写好了没接）
+    @State private var heartOn = false
+
+    private struct StarSeed: Identifiable {
+        let id = UUID()
+        let center: CGPoint
+    }
     @State private var iconBouncing = false
     @State private var versionTaps = 0
     @State private var blankTaps = 0
@@ -46,7 +57,19 @@ struct HomeScreen: View {
             ZLBackdrop()
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
-                .onTapGesture { blankTap() }
+                // 用 SpatialTapGesture 才能拿到点击坐标（普通 onTapGesture 拿不到），
+                // 拿到之后在那一处冒小星星。
+                .gesture(SpatialTapGesture().onEnded { v in
+                    starBursts.append(StarSeed(center: v.location))
+                    blankTap()
+                })
+
+            // 星星特效层：不拦点击
+            ForEach(starBursts) { seed in
+                ZLStarBurst(center: seed.center) {
+                    starBursts.removeAll { $0.id == seed.id }
+                }
+            }
 
             // 顶部：标题 + 右侧图标
             VStack(spacing: 0) {
@@ -193,6 +216,13 @@ struct HomeScreen: View {
         "彩蛋已解锁：祝你今天顺利"
     ]
 
+    /// 点头像冒一颗爱心，1.2 秒后收起
+    private func popHeart() {
+        ZLHaptic.light()
+        heartOn = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { heartOn = false }
+    }
+
     private func blankTap() {
         blankTaps += 1
         let i = blankTaps - 1
@@ -226,10 +256,15 @@ struct HomeScreen: View {
                 skinAvatar
                     .frame(width: 96, height: 96)
                     .spinWhen($avatarSpinning)
+                    .overlay {
+                        if heartOn { ZLHeartPop() }
+                    }
                     .onLongPressGesture(minimumDuration: 0.35) {
                         ZLHaptic.rigid()
                         avatarSpinning = true
                     }
+                    // 短按冒爱心；长按仍然是转圈（两个手势共存，长按优先）
+                    .onTapGesture { popHeart() }
                 Text(accountName.isEmpty ? "未登录" : accountName)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(ZLTheme.textPrimary)

@@ -10,17 +10,6 @@ import Combine
 // 模组 / 存档 / 资源包三个管理页共用，避免三处样式漂移
 
 /// 空状态波浪线（真机：两端波浪 + 中间直线）
-struct ZLWaveLine: View {
-    var width: CGFloat = 132
-
-    var body: some View {
-        ZLWaveShape()
-            .stroke(ZLTheme.primary.opacity(0.5),
-                    style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
-            .frame(width: width, height: 14)
-    }
-}
-
 private struct ZLWaveShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
