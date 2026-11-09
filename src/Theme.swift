@@ -141,8 +141,8 @@ struct ZLTopBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            if showBack { topIcon("chevron.left") { onBack?() } }
-            topIcon("house.fill") { onHome?() }
+            if showBack { topIcon("chevron.left", label: "返回") { onBack?() } }
+            topIcon("house.fill", label: "首页") { onHome?() }
 
             Text(title)
                 .font(.system(size: 17, weight: .medium))
@@ -153,13 +153,13 @@ struct ZLTopBar: View {
 
             // 没传回调就不画图标（原来画了但点了没反应，还会高亮误导）
             if let a = onMultiplayer {
-                topIcon("person.2.fill", highlighted: active == .multiplayer, action: a)
+                topIcon("person.2.fill", label: "多人联机", highlighted: active == .multiplayer, action: a)
             }
             if let a = onDownload {
-                topIcon("arrow.down.to.line", highlighted: active == .download, action: a)
+                topIcon("arrow.down.to.line", label: "下载", highlighted: active == .download, action: a)
             }
             if let a = onSettings {
-                topIcon("gearshape.fill", highlighted: active == .settings, action: a)
+                topIcon("gearshape.fill", label: "设置", highlighted: active == .settings, action: a)
             }
         }
         .padding(.horizontal, ZLTheme.screenPadding)
@@ -183,7 +183,8 @@ struct ZLTopBar: View {
         }
     }
 
-    private func topIcon(_ name: String, highlighted: Bool = false, action: @escaping () -> Void) -> some View {
+    /// `label` 给 VoiceOver 用 —— 顶栏全是纯图标，没有它读屏只能读"按钮"。
+    private func topIcon(_ name: String, label: String, highlighted: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: name)
                 .font(.system(size: 16, weight: .medium))
@@ -193,6 +194,7 @@ struct ZLTopBar: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }
 

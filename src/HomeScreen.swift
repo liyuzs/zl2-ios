@@ -89,10 +89,10 @@ struct HomeScreen: View {
 
                     HStack(spacing: 8) {
                         ZLTaskRailButton { showTaskMenu = true }
-                        topButton("folder", action: onFileManager)
-                        topButton("person.2", action: onMultiplayer)
-                        topButton("arrow.down.to.line", action: onDownload)
-                        topButton("gearshape", action: onSettings)
+                        topButton("folder", label: "文件管理", action: onFileManager)
+                        topButton("person.2", label: "多人联机", action: onMultiplayer)
+                        topButton("arrow.down.to.line", label: "下载", action: onDownload)
+                        topButton("gearshape", label: "设置", action: onSettings)
                     }
                     .padding(.trailing, ZLTheme.screenPadding)
                 }
@@ -234,7 +234,8 @@ struct HomeScreen: View {
         showEgg(Self.blankMessages[i], duration: 2.2)
     }
 
-    private func topButton(_ icon: String, action: @escaping () -> Void) -> some View {
+    /// `label` 给 VoiceOver 用 —— 这排全是纯图标，没有它读屏只会念"按钮"。
+    private func topButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button {
             ZLHaptic.light()
             action()
@@ -246,6 +247,7 @@ struct HomeScreen: View {
                 .background(Color.clear)
         }
         .buttonStyle(ZLQPressStyle(scale: 0.88))
+        .accessibilityLabel(label)
     }
 
     // MARK: 右侧面板（真机：一张大圆角白卡包住账户+版本+启动）
