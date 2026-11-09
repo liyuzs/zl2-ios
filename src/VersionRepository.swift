@@ -49,8 +49,8 @@ final class VersionRepository {
 
     /// 设置项「全局版本隔离」是否开启（默认 true，与 ZLSettings 一致）
     var isolationEnabled: Bool {
-        guard let def = ZLSettings.def("versionIsolation") else { return true }
-        if UserDefaults.standard.object(forKey: "versionIsolation") == nil { return true }
+        guard let def = ZLSettings.def("versionIsolation") else { return false }
+        if UserDefaults.standard.object(forKey: "versionIsolation") == nil { return false }
         return ZLSettingsStore.shared.bool(def)
     }
 

@@ -1304,13 +1304,20 @@ enum ZLUnsupportedSettings {
         "enableTerracotta",       // Terracotta 联机（需要 Network Extension）
         "enableTerracottaNodes",
         "terracottaNodes",
+        // versionIsolation 从「已接线」移出来了，原因见下：
+        // 核心 JavaLauncher.m:179-182 自己拼游戏目录，**完全忽略 GAME_DIR 环境变量**
+        // （那个变量只在 launchJar 分支用）。所以靠 setenv("GAME_DIR", 隔离目录)
+        // 根本改不到游戏真正用的目录，隔离形同虚设。
+        // 而且不能把核心的 gameDir 指到 versions/<id> —— 那样它会去找
+        // versions/<id>/versions/<id>/<id>.json，连版本本身都找不到。
+        // 与其让 UI 显示一个"已开启"但实际无效的开关，不如如实标注。
+        "versionIsolation",
         // 已接线，不要再加回：
         //   currentAccount   → AccountStore.persist() 写同步
         //   currentGamePathId → GameDirectoryStore.activate() 写同步
         //   finishedGame     → CoreBridge.recordGameLaunch()
         //   editorEnableWidgetSnap / editorSnapInAllLayers / editorWidgetSnapMode
         //                    → ControlEditor.applySnap()
-        //   versionIsolation → VersionRepository.gameDir(for:)
         //   controlLayout    → CoreLayoutExporter
         //   showFPS / showMemory / fpsDisplayMode → ZL2PerfSampler
     ]
@@ -1350,6 +1357,10 @@ enum ZLUnsupportedSettings {
         }
         if launcherLook.contains(key) {
             return "iOS 版界面跟随系统外观"
+        }
+        if key == "versionIsolation" {
+            return "iOS 核心启动时会自己算游戏目录，用的是固定的「实例/.minecraft」；" +
+                   "按版本隔离需要改这个目录，改了版本本身又找不到，所以暂时无效。"
         }
         if notWired.contains(key) {
             return "尚未接入，暂时无效"

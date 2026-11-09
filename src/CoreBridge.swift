@@ -205,8 +205,15 @@ enum CoreBridge {
         // 模组/存档/配置互不干扰。核心读的是 GAME_DIR 环境变量，
         // 所以必须在 launchJVM 之前把它改成隔离目录。
         let versionID = (metadata["id"] as? String) ?? ""
-        let isolatedDir: URL = VersionRepository.shared.prepareIsolatedDir(for: versionID)
-        let effectiveGameDir = isolatedDir.path
+        // 隔离目录仍然准备好（万一以后核心支持了直接能用），但**不再拿它当 GAME_DIR**。
+        //
+        // 原因：核心 JavaLauncher.m:179-182 在元数据启动分支里会自己算游戏目录
+        // （instances/<general.game_directory>/<profile.gameDir>），**完全忽略 GAME_DIR**。
+        // 我们之前把 GAME_DIR 指向隔离目录，等于"告诉它 A、它实际用 B"，
+        // 两边不一致，用户看到的模组目录和游戏真正读的不是同一个。
+        // 现在统一用 mcRoot，与 applyUserSettings 里设置的 general.game_directory 对齐。
+        _ = VersionRepository.shared.prepareIsolatedDir(for: versionID)
+        let effectiveGameDir = VersionRepository.shared.mcRoot.path
         setenv("GAME_DIR", effectiveGameDir, 1)
         NSLog("[ZL2] GAME_DIR = %@ (隔离=%@)", effectiveGameDir,
               VersionRepository.shared.isolationEnabled ? "开" : "关")

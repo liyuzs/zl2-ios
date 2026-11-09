@@ -53,7 +53,9 @@ enum ZLSettings {
 
     // MARK: game（游戏设置，11 项）
     static let gameSettings: [ZLSettingDef] = [
-        .init(key: "versionIsolation", type: .bool, defaultValue: "true", range: nil, group: "game"),
+        // 默认关：核心启动时自己算游戏目录、忽略 GAME_DIR，所以隔离实际无效。
+        // 详见 SettingsScreen 的 ZLUnsupportedSettings 注释。
+        .init(key: "versionIsolation", type: .bool, defaultValue: "false", range: nil, group: "game"),
         .init(key: "skipGameIntegrityCheck", type: .bool, defaultValue: "false", range: nil, group: "game"),
         // 安卓默认 "${BuildKeys.LAUNCHER_IDENTIFIER}[zl_version]"；
         // BuildKeys 是安卓构建期生成的常量，iOS 端以 "ZalithLauncher" 作为标识（待确认）
