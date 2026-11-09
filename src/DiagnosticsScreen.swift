@@ -283,7 +283,9 @@ struct DiagnosticsScreen: View {
     ///   · latest.log   —— 游戏自己打的日志（如果进到了那一步）
     ///   · 崩溃-*        —— 最近两个 crash report
     ///   · 目录清单.txt  —— 即使日志是空的，也能看出 versions/libraries/libs 有没有东西
-    private static func buildDiagnosticBundle(diagText: String) async -> URL? {
+    /// 组包。`internal`（非 private）是为了让启动失败页也能复用 ——
+    /// 「启动失败」恰恰是最需要日志的时刻，不该只在设置里的诊断页才能打包。
+    static func buildDiagnosticBundle(diagText: String) async -> URL? {
         let fm = FileManager.default
         let docs = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let mcRoot = VersionRepository.shared.mcRoot

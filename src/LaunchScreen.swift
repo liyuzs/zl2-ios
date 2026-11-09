@@ -1,6 +1,8 @@
 // ZL2-iOS · 启动进度页
 // 真实调用 Amethyst 核心：环境自检 → bootstrap → launchJVM
 import SwiftUI
+// 打包日志用到 UIActivityViewController / UIApplication
+import UIKit
 
 struct LaunchScreen: View {
     let versionName: String
@@ -16,6 +18,8 @@ struct LaunchScreen: View {
     @State private var logs: [String] = []
     @State private var failed = false
     @State private var lastError: String?
+    @State private var packingLog = false
+    @State private var packErrorText: String?
     @State private var coreLinked = false
     @State private var runtimeReady = false
     @State private var versionReady = false
@@ -36,6 +40,14 @@ struct LaunchScreen: View {
         }
         .background(ZLTheme.background)
         .onAppear(perform: runCheck)
+        .alert("打包失败", isPresented: Binding(
+            get: { packErrorText != nil },
+            set: { if !$0 { packErrorText = nil } }
+        )) {
+            Button("知道了", role: .cancel) { packErrorText = nil }
+        } message: {
+            Text(packErrorText ?? "")
+        }
     }
 
     private var header: some View {
@@ -142,6 +154,16 @@ struct LaunchScreen: View {
                                     .font(.system(size: 11))
                             }
                             .foregroundStyle(ZLTheme.warning)
+                        } else if e.contains("返回错误码") || e.contains("launchJVM") {
+                            // 这是真机上最可能出现的一类：JVM 起来了但没走到游戏。
+                            // 光一个错误码说明不了什么，具体原因在 ame.log 里。
+                            HStack(spacing: 6) {
+                                Image(systemName: "lightbulb").font(.system(size: 11))
+                                Text("JVM 没能启动游戏。点「打包日志」把现场发出来，原因通常在日志里")
+                                    .font(.system(size: 11))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .foregroundStyle(ZLTheme.warning)
                         } else if e.contains("内存") || e.contains("memory") {
                             HStack(spacing: 6) {
                                 Image(systemName: "lightbulb").font(.system(size: 11))
@@ -151,6 +173,13 @@ struct LaunchScreen: View {
                             .foregroundStyle(ZLTheme.warning)
                         }
                     }
+                    // 失败时最该给的不是「关闭」，是「把这个现场发出去」。
+                    ZLGoldButton(title: packingLog ? "正在打包…" : "打包日志发给开发者",
+                                 icon: packingLog ? "hourglass" : "shippingbox.and.arrow.backward",
+                                 enabled: !packingLog) {
+                        packLogs()
+                    }
+
                     HStack(spacing: 10) {
                         ZLGoldButton(title: "查看日志", icon: "doc.text") { isPresented = false }
                         Button {
@@ -176,6 +205,48 @@ struct LaunchScreen: View {
             }
         }
         .padding(ZLTheme.screenPadding)
+    }
+
+    // MARK: 打包日志
+
+    /// 把「启动失败现场」也变成可发送的 zip。
+    ///
+    /// 复用 DiagnosticsScreen 的组包逻辑（ame.log / latest.log / 崩溃报告 / 目录清单），
+    /// 额外把这一屏的错误信息和启动日志作为诊断正文塞进去 ——
+    /// 真机上最需要日志的时刻就是这里，不该要求用户先去设置里找诊断页。
+    private func packLogs() {
+        guard !packingLog else { return }
+        packingLog = true
+
+        var note = "=== 启动失败现场 ===\n"
+        note += "版本：" + versionName + "\n"
+        note += "错误：" + (lastError ?? "（没有错误信息）") + "\n"
+        note += "\n--- 启动页日志 ---\n"
+        note += logs.isEmpty ? "（空）" : logs.joined(separator: "\n")
+
+        Task {
+            let zip = await DiagnosticsScreen.buildDiagnosticBundle(diagText: note)
+            await MainActor.run {
+                packingLog = false
+                guard let zip else {
+                    packErrorText = "打包失败，可以直接去「设置 → 环境诊断」再试一次。"
+                    return
+                }
+                let av = UIActivityViewController(activityItems: [zip], applicationActivities: nil)
+                guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                      let root = scene.windows.first?.rootViewController else {
+                    packErrorText = "打包好了但打不开分享面板。文件名：" + zip.lastPathComponent
+                    return
+                }
+                if let pop = av.popoverPresentationController {
+                    pop.sourceView = root.view
+                    pop.sourceRect = CGRect(x: root.view.bounds.midX,
+                                           y: root.view.bounds.midY, width: 0, height: 0)
+                    pop.permittedArrowDirections = []
+                }
+                root.present(av, animated: true)
+            }
+        }
     }
 
     // MARK: 自检
