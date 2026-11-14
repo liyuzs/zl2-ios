@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **`_check-script-inventory` 说"不许漏同步"，实际只比文件名**：判据 D 只比对文件名集合（`missingInRepo` / `extraInRepo`），两边都有但**内容不同**时不报。实测：`_check-dead-types.js` 改了没同步（166 行 vs 157 行），而这条检查报 ✓。已补**判据 F：内容必须字节一致**（`fs.readFileSync(...).equals(...)`）；加完立刻抓到 2 个——其中一个就是**刚加的判据 F 自己**（第95轮那次也是"检查第一次跑就报自己"，再次证明机制有效）。
+
 - **试做"枚举 case 级死代码"检查，两版判据都放弃**：v1（扫整个枚举体）16 处里 **14 处误报**——Swift 的 `case` 同时是"枚举 case 定义"和"模式匹配"关键字（`switch case` / `case let x`）；v2（只扫定义区）仍误报 **7/18**（空枚举被判成有 case）。误报率 87%/39% 的检查比没有更糟，**不做**，原因已写进 `_check-dead-types` 的局限段防重复尝试。
 - **删 `ModrinthProjectType.datapack`**：全仓只出现在定义行，`from(_ kind:)` 没有对应分支、`AssetKind` 也没有此类型。→ **能力边界记录：Modrinth 的 5 类资源本项目只支持 4 类（不含 datapack）**。
 - **顺带核对**：`ZLPreflight`（第52轮建，93 轮前）的 7 项检查仍准确 —— `availableKeys` 动态算渲染器、未引用已删的 MobileGlues、布局名走 `coreActiveLayoutName`、Java 判定走 `hasRuntime`/`requiredJavaVersion`。
