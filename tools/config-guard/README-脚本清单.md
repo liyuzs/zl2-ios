@@ -77,6 +77,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-fallback-default.js` | 代码里"读不到时的兜底"必须与 `ZLSettings.defaultValue` 一致。`ZLSettingsStore` 读不到会用 defaultValue ✓，但 `CoreBridge` 等处**直接读 UserDefaults**、用自己的 `??`——**两个值之间没有任何机制保证一致**，改了 defaultValue 忘了改 `??`，首启动行为就静默变错 |
 | `_check-setting-defaults.js` | 设置项默认值只有一处来源：全仓不许出现 `defaultWhenUnset`；`boolValue/intValue/stringValue(_ key:)` 必须委托给 `store.xxx(`（由 ZLSettings 的 `defaultValue` 兜底） |
 | `_check-path-safety.js` | 路径拼接安全：处理远端数据/用户输入的 5 个文件里，用变量拼路径的那一行必须用到 `ZLPathSafety` 校验后的变量（或内联调用）；已知安全例外登记理由 |
+| `_check-log-secrets.js` | **日志不许打印敏感数据**（token / 密码 / 密钥 / 邮箱）。iOS 的 `NSLog` 会进 syslog，连着 Xcode 或 Console.app 就能看。这是**安全维度**的第一个检查 —— 第198轮找"整体覆盖的空白区"时发现它之前没人管。人工过 40 处全部干净（打印的是路径/错误/计数/图层名） |
 | `_check-download-magic.js` | "下载后写盘"必须校验内容（魔数或哈希）。第150轮补三个漏网的：`ZLYggdrasil.downloadSkin`（PNG 只判 >100 字节）· `ZLYggdrasil.ensureDownloaded`（authlib jar 只判 >100KB，HTML 错误页会被存成 jar → `-javaagent` 指向无效 jar → JVM 起不来）· `LoaderInstaller`（库 jar 直接写盘）。`MojangAPI` 在 ALLOW（通用流式下载器，有更强的 size 截断检测） |
 | `_check-decode-recovery.js` | 解码失败必须备份：4 个持久化文件有 `try? 解码` 就必须调 `ZLRecovery.preserveRawData`；全仓兜底扫"从 UserDefaults 取 data 再 try? 解码但没备份"的写法（判据前先剥注释，否则助手文件自己的注释会误报） |
 | `_check-install-docs.js` | 三份安装文档一致性：都必须提 JIT 与 StikDebug；只在一份里出现的工具名（孤例）会被报出来 |
