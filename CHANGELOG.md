@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **修三处过时文档**：①STATUS 第4条原写「**2 个页面还没接入** —— `MultiplayerRoomScreen` 与 `TerracottaScreen`」——实际 `MultiplayerRoomScreen` **已接在 `.room` 路由里**（只是没有导航入口）、`TerracottaScreen` 第132轮就删了（磁盘 0 文件、`AppRoute` 也无 `case terracotta`）。改成「**1 个路由没有入口**」并写清"不是页面没实现"。②改 `_check-dead-routes` 里 `.room` 的理由（"尚未接入"→"已接入路由但无入口按钮"）。③删掉 ALLOW 里多余的 `terracotta` 登记。
+- **新增判据：ALLOW 里登记的 case 必须真实存在于 AppRoute** —— `terracotta` 这种事会再发生（删页面忘了删登记），多余的登记会让人以为还有这个路由。注入验证（往 ALLOW 加 `noSuchRoute`）能精确报出。
+- **顺带审计（都干净）**：版本占用空间已在列表页显示（`includeSize: true`，`sizeBytes == 0` 时不显示）· 新手引导链完整（只在零版本时显示、文案准确、明确写 Forge 不支持）· 空状态 19 处都有指引。
+
 - **接上 `CoreBridge.gameLaunchCount`**：它第141轮就被发现"存在但全仓没人用"（注释还写着「供 UI 显示」）。现在首页版本描述后面显示「· 已启动 N 次」——对用户是正反馈（第一次成功启动后会看到「已启动 1 次」）。**只在 N > 0 时显示**（"已启动 0 次"是负反馈）；**横排**放在描述后面（首页是固定布局没有 ScrollView，第一版写竖排会多占 13pt）；在 `.task` 路径里赋值、不在 body 里读（`_check-hotpath-cost` 通过）。
 - **审计：空状态的可操作性** —— 19 处 `ZLEmptyState`，**17 处自带按钮**，另 2 处用文字给了指引（「打开上面的开关」/ 任务中心的说明性文字），合理。
 - **审计：游戏内菜单 40 个键的消费者** —— 全部都有 src 侧读取（2-3 处），没有"没人读"的。
