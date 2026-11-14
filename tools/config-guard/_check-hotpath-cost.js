@@ -4,8 +4,10 @@
 // 每次进首页都在主线程递归扫全部版本目录。第125轮把同一套方法推广到"渲染期"：
 // **body 与 computed var 会在每次重绘时求值**，里面放 IO 或全量遍历的代价最高。
 //
-// 判据（刻意保守，只认几类明确的昂贵操作）：
-//   在 `var body: some View {` 或 `var xxx: some View {` 的块内，
+// 判据（刻意保守，只认几类明确的昂贵操作），覆盖**三个高频层**：
+//   ① `var body` / `var xxx: some View` —— 每次重绘都会求值（最贵）
+//   ② `.onChange(...) { }` —— 每次值变化都跑
+//   ③ `ForEach(...) { }` —— 每一行都跑
 //   出现 listVersions / directorySize / 目录枚举 / JSON 解码 / 读文件 → 报。
 //
 // **豁免**（这些是显式副作用，不是渲染期计算 —— 第125轮实测踩过）：
@@ -81,17 +83,50 @@ for (const f of files) {
   }
 }
 
-console.log(`扫了 ${containers} 个渲染块（body / computed var）`);
+// ---- ② .onChange(...) { } 与 ③ ForEach(...) { } ----
+let onChangeCount = 0, forEachCount = 0;
+
+for (const f of files) {
+  const lines = fs.readFileSync(path.join(SRC, f), "utf8").split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (/\.onChange\s*\(/.test(line)) {
+      onChangeCount++;
+      const end = blockEnd(lines, i);
+      for (let q = i; q <= end; q++) {
+        const t = lines[q].trim();
+        if (t.startsWith("//")) continue;
+        for (const c of COSTLY) {
+          if (c.re.test(lines[q])) hits.push({ file: f, line: q + 1, inAt: i + 1, kind: c.name, code: t.slice(0, 72) });
+        }
+      }
+    }
+
+    if (/\bForEach\s*\(/.test(line)) {
+      forEachCount++;
+      const end = blockEnd(lines, i);
+      for (let q = i; q <= end; q++) {
+        const t = lines[q].trim();
+        if (t.startsWith("//")) continue;
+        for (const c of COSTLY) {
+          if (c.re.test(lines[q])) hits.push({ file: f, line: q + 1, inAt: i + 1, kind: c.name, code: t.slice(0, 72) });
+        }
+      }
+    }
+  }
+}
+console.log(`扫了 ${containers} 个渲染块、${onChangeCount} 个 .onChange、${forEachCount} 个 ForEach`);
 console.log('');
 
 if (hits.length === 0) {
-  console.log('✓ 渲染期没有昂贵操作（body 与 computed var 里不扫盘、不解码、不读文件）');
+  console.log('✓ 三个高频层都没有昂贵操作（渲染块 / .onChange / ForEach 里不扫盘、不解码、不读文件）');
   process.exit(0);
 }
 
-console.log(`⚠ ${hits.length} 处昂贵操作写在了渲染期 —— 每次重绘都会跑：`);
+console.log(`⚠ ${hits.length} 处昂贵操作写在了高频位置（渲染块 / .onChange / ForEach）—— 会反复执行：`);
 for (const h of hits) {
-  console.log(`  ${h.file}:${h.line}（在 L${h.inAt} 的渲染块里）  ${h.kind}`);
+  console.log(`  ${h.file}:${h.line}（在 L${h.inAt} 起的高频块里）  ${h.kind}`);
   console.log(`      ${h.code}`);
 }
 console.log('');
