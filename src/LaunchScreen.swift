@@ -165,10 +165,14 @@ struct LaunchScreen: View {
                                     .font(.system(size: 11))
                             }
                             .foregroundStyle(ZLTheme.warning)
-                        } else if e.contains("JIT") {
+                        } else if CoreBridge.jitStatusNote() != nil {
+                            // **第181轮改**：原来判的是 `e.contains("JIT")`，但 `e` 是
+                            // `ZLFriendlyError.text(error)`（**翻译后的中文**），英文原文里的 "JIT"
+                            // 早被翻掉了 → 这个分支**永远进不来**（第145轮那条"别拿会被翻译的文本当判据"）。
+                            // 改成直接问状态：只要 JIT 没开就顺带提一句。
                             HStack(spacing: 6) {
                                 Image(systemName: "lightbulb").font(.system(size: 11))
-                                Text("请先用 StikDebug 给本应用开启 JIT")
+                                Text("另外：JIT 还没启用 —— 不改的话就算启动成功也会非常卡")
                                     .font(.system(size: 11))
                             }
                             .foregroundStyle(ZLTheme.warning)
@@ -227,7 +231,7 @@ struct LaunchScreen: View {
 
     // MARK: 启动前预检
 
-    /// 把七项必崩条件列出来。只提示不阻止 —— 条件检查宁可宽松，
+    /// 把预检项逐条列出来（第181轮："七项"改成不写数量 —— 加一项就过时）。只提示不阻止 —— 条件检查宁可宽松，
     /// 一旦把能跑的组合误判成「不能启动」，用户就永远试不了了。
     private var preflightView: some View {
         let s = ZLPreflight.summary(preflight)

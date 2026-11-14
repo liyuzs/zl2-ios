@@ -12,6 +12,7 @@
 //   · 该版本需要的 Java 大版本，对应运行时在不在
 //   · 渲染器对应 dylib 是否在包内
 //   · 当前控制布局文件在不在
+//   · **JIT 有没有启用**（第181轮加：不开也能启动，但帧率个位数 —— 所以是 warn 不是 fail）
 //
 // 注意：**只提示，不阻止启动**。检查条件宁可宽松 —— 一旦把能跑的组合误判成
 // 「不能启动」，用户就永远试不了了，这比让他多试一次更糟。
@@ -143,6 +144,20 @@ enum ZLPreflight {
                                   advice: "进游戏会没有虚拟按键。重开一次 App 通常会自动生成"))
         }
 
+        // ---- 8. JIT ----
+        //
+        // **第181轮加**：原来 `CoreBridge` 里检测到 JIT 没启用时**只 NSLog** —— 用户看不到。
+        // 而 JIT 没开的表现不是崩溃，是"游戏卡成个位数帧率"，所以他只会觉得"这 App 很卡"。
+        // 放进预检里，启动前就能看到。级别是 **warn 不是 fail**（不开也能启动）。
+        if let jitNote = CoreBridge.jitStatusNote() {
+            out.append(ZLDiagItem(title: "JIT",
+                                  value: "未启用",
+                                  level: .warn,
+                                  advice: jitNote))
+        } else {
+            out.append(ZLDiagItem(title: "JIT", value: "已启用", level: .ok))
+        }
+
         return out
     }
 
@@ -171,6 +186,6 @@ enum ZLPreflight {
         if !warns.isEmpty {
             return ("\(warns.count) 项需要注意，但可以试着启动", .warn)
         }
-        return ("七项前置条件全部就位", .ok)
+        return ("前置条件全部就位", .ok)
     }
 }
