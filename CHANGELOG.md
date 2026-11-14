@@ -63,6 +63,13 @@
 
 ### 已知问题 / 新增
 
+- **对数据模型跑"字段读次数"审计，找到链条式死代码**：`AuthlibSession`（5 字段）被 `Account.init(authlib:)` 当参数类型引用 → `_check-dead-types` 判"有人用"，但那个 init **从没被调用** → 整条链死。这是该检查的**第四个盲区**（单层引用判定，静态算可达性需图分析），已记进局限段。已删 `AuthlibSession` + `init(authlib:)`。
+- **删 `acceptedCodeOfConduct`**：只出现 1 次（声明），全仓无读写——安卓抄来的占位字段，服务器准则确认流程没实现。
+- **删 `ControlAppearance` 三个冗余计算属性**（`darkBackgroundColor`/`darkContentColor`/`darkBorderColor`）：没人读且重复了 `resolved(dark:)` 的逻辑。**深色配色功能本身是好的**（`resolved` 直接读 `darkBackgroundHex`，ControlModelBridge 双向同步，编辑器有编辑入口）。
+- **核实外置登录的真实能力并写进代码**：`login()` 真的调 `/authserver/authenticate` 验密码 ✓，但**只取 id/name、丢弃 accessToken**，游戏内走 `addOffline`（**离线身份，进不了正版服**），皮肤靠 authlib-injector 反查。真要正版会话得补 token 存储 + refresh。
+- **审计口径踩了两次坑**：v1 把 SwiftUI View 算进来 → 512 假阳性（属性是隐式 self）；v2 只扫数据模型但用 `\.field` → 仍漏 `self.field` 裸名。v3 用"裸名总次数 ≤1"才得到合理的 11 个。
+- **剩余 7 个待判断**：`Account.uuidDashed`/`hasValidToken` · `ZLLayer.totalWidgets` · `ZLControlLayout.defaultLayout` · `ZLAddonSelection.optifine` · `CraftLauncherShortcuts.appShortcuts`（框架实例化，第85轮说不算死）。
+
 - **`ZLSettingDef` 的 `type` 和 `group` 都是 0 次读取**（115 项都声明了，代码一次没读）。`type` 没被读意味着"控件用错类型"没人管——`.int` 的项用 `toggle` 会存成 `Bool`，而 `CoreBridge` 用 `as? Int` 读 → **静默失效**（第151轮那个"分辨率 asInt 读不到"就是这类）。已把 `type` 当**契约**做成 `_check-type-control.js`：`.bool`→toggle · `.int`→slider/number/animateSpeed/blur/keyCode · `.string`→text/picker · `.enumValue`→picker/menu/darkMode。实测 **74 个设置项 · 72 处配对全部匹配**（现有代码是对的，但没有任何东西在守着它）；注入验证（bool 项改用 slider）能精确报出。
 - **`group` 保留但注明"代码不读"**：纯文档（render 15 / game 11 / control 29 / gamepad 10 / launcher 44 / other 6），设置页用自己的 `ZLSettingRow` 数组不按组展示。
 - `range` 字段补注释：说明"写入路径会 clamp"、"slider / animateSpeed / blurRow 都用它当上下限"。
