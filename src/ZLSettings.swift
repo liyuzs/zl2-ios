@@ -20,9 +20,18 @@ enum ZLSettingType: String {
 struct ZLSettingDef: Identifiable {
     var id: String { key }
     let key: String
+    /// 存进去的 Swift 类型（bool / int / string / …）。
+    ///
+    /// **第152轮实测：代码里 0 处直接读它** —— 但 UI 控件间接决定存什么类型，
+    /// 用错就会静默失效（第151轮那个"分辨率 as? Int 读不到"就是这类）。
+    /// 所以它虽然不被直接读，仍由 `_check-type-control.js` 当作**契约**来校验。
     let type: ZLSettingType
     let defaultValue: String
+    /// 取值区间。**写入路径会 clamp**（第151轮补），slider / animateSpeed 也用它当上下限。
     let range: ClosedRange<Int>?
+    /// 归属分组，仅用于**文档与对照安卓**（render / game / control / gamepad / launcher / other）。
+    /// **第152轮实测：代码里 0 处读它** —— 设置页用的是自己的 `ZLSettingRow` 数组，
+    /// 不按 group 分组展示。保留是因为它能让人一眼看出这 115 项各自属于哪块。
     let group: String
 
     /// 安卓端默认值为 null（如 ramAllocation / physicalKeyImeCode / lastIgnoredVersion）

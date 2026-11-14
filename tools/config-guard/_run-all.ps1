@@ -50,6 +50,7 @@ $checks = @(
     @('_check-settings-wiring.js', 'js',  '设置项落地归属'),
     @('_check-settings-entry.js',  'js',  '设置项都有 UI 入口'),
     @('_check-number-range.js',  'js',  '数字输入项必须有 range'),
+    @('_check-type-control.js',   'js',  '设置项类型与控件匹配'),
     @('_check-setting-defaults.js','js',  '设置项默认值只在一处声明'),
     @('_check-path-safety.js',      'js',  '路径拼接安全（防目录穿越）'),
     @('_check-download-magic.js', 'js', '下载写盘须校验内容'),
