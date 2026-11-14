@@ -199,11 +199,17 @@ struct RootView: View {
                 handlePendingAction()
 
                 // 启动后静默检查一次（不打扰，有新版才提示）
-                let checker = ZLUpdateChecker()
-                await checker.check()
-                if case .available(let info) = checker.state {
-                    updateInfo = info
-                    withAnimation(ZLSpring.bouncy.delay(0.4)) { showUpdateTip = true }
+                if ZLUpdateChecker.shouldAutoCheck() {
+                    // 6 小时内只自动查一次：GitHub 未认证 API 限额是每小时 60 次（按 IP），
+                    // 反复开关 App 会撞限额，撞上后用户只看到一句"失败"，很懵。
+                    // 手动点「检查更新」不受这个限制。
+                    let checker = ZLUpdateChecker()
+                    await checker.check()
+                    ZLUpdateChecker.markChecked()
+                    if case .available(let info) = checker.state {
+                        updateInfo = info
+                        withAnimation(ZLSpring.bouncy.delay(0.4)) { showUpdateTip = true }
+                    }
                 }
             }
             .navigationDestination(for: AppRoute.self) { route in

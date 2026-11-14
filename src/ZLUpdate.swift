@@ -37,6 +37,24 @@ final class ZLUpdateChecker: ObservableObject {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
     }
 
+    /// 自动检查的最小间隔：6 小时。
+    /// 理由：GitHub 未认证 API 限额每小时 60 次（按 IP），启动就查会撞限额。
+    /// 手动检查不受此限。
+    private static let autoCheckKey = "zl.update.lastAutoCheckAt"
+    private static let autoCheckInterval: TimeInterval = 6 * 3600
+
+    /// 距上次自动检查是否已超过 6 小时（从没查过 → true）
+    static func shouldAutoCheck() -> Bool {
+        let last = UserDefaults.standard.double(forKey: autoCheckKey)
+        guard last > 0 else { return true }
+        return Date().timeIntervalSince1970 - last >= autoCheckInterval
+    }
+
+    /// 记下这次自动检查的时间
+    static func markChecked() {
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: autoCheckKey)
+    }
+
     private let repo = "liyuzs/zl2-ios"
 
     /// 检查更新（手动或自动都可以调）
@@ -64,7 +82,16 @@ final class ZLUpdateChecker: ObservableObject {
                 return
             }
             guard http.statusCode == 200 else {
-                state = .failed("服务器返回 \(http.statusCode)")
+                // 说人话：403 是撞了 GitHub 的请求限额（每小时 60 次，按 IP），
+                // 5xx 是他那边出问题了。两种都告诉用户"过一会再试"，而不是甩一个数字。
+                switch http.statusCode {
+                case 403, 429:
+                    state = .failed("检查太频繁了。GitHub 对未登录请求有每小时次数限制，过一会儿再试")
+                case 500...599:
+                    state = .failed("GitHub 那边暂时有问题，过一会儿再试")
+                default:
+                    state = .failed("检查失败（HTTP \(http.statusCode)），过一会儿再试")
+                }
                 return
             }
 
