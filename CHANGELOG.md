@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **又两个"永远匹配不上"的错误判据**：第181轮修了 `contains("JIT")`，这轮把剩下的逐个核实 —— `contains("返回错误码")/contains("launchJVM")` **有效**（`launchReturned` 的文案就是「launchJVM 返回错误码 N」），但 **`contains("JRE")` 基本失效**（`bootstrapFailed` 的 5 个实参里**一个都不含 "JRE"**，都是"这个版本需要 **Java** 21，但包里只有…"）· **`contains("内存")` 当前不触发**。已把 `JRE` 改成 `Java`；`内存` 那条保留并加注释（将来出现 OOM 错误时能接住）。
+- **没做检查**：这 3 处已人工核实，按"先数分母"（分母只有 3）不单开一条 —— `_check-error-locale` 管的是"翻译优先按错误码"，管不了"实参里有没有那个词"。
+
 - **JIT 没开只写日志，用户看不到**：`CoreBridge` 里 `if let jitNote = jitStatusNote() { NSLog(...) }` —— 而 JIT 没开的表现**不是崩溃，是"卡成个位数帧率"**，用户只会觉得"这 App 很卡"。`LaunchScreen` 里那个 JIT 分支判的是 `e.contains("JIT")`，而 `e` 是**翻译后的中文** → **永远进不来**（第145轮那条的又一次违反）。**修法**：①启动前预检加第 8 项 JIT（`warn` 不是 `fail`）②`e.contains("JIT")` 改成 `jitStatusNote() != nil` ③去掉两处"七项"（加项就过时）。
 - 顺带印证第180轮那条「会变的数量不手写」：`"七项前置条件全部就位"` 在加第 8 项的那一刻就过时了。
 
