@@ -427,17 +427,24 @@ struct HomeScreen: View {
     }
 
     /// 从已安装版本里选一个作为首页显示/启动用的版本
-    /// 是否真的装了版本（首页显示名不是占位文案）
-    private var hasInstalledVersion: Bool {
-        !selectedVersion.isEmpty && !selectedVersion.hasPrefix("还没有")
-    }
+    //
+    // **第183轮删掉了这里一个重复声明**：原来这里还有一个
+    //   private var hasInstalledVersion: Bool {
+    //       !selectedVersion.isEmpty && !selectedVersion.hasPrefix("还没有")
+    //   }
+    // 而文件下方（新手引导那段）又声明了一个同名的、用真实仓库判断的版本 ——
+    // **Swift 会报 invalid redeclaration，编译不过**。两个是不同轮次加的：3b454c8 加的是文案驱动那个，
+    // 054d6f8（新手引导）加了真实数据那个，谁都没发现重名。
+    // 现在只保留下方那个（`!VersionRepository.shared.listVersions().isEmpty`）——
+    // 用显示文案判断"有没有版本"本身就是脆的：改一句提示语就会让它失效。
 
     /// 尝试响应「Siri / 快捷指令要求启动游戏」。
     /// **只有在版本列表真的读出来之后才能启动**，所以这个函数会被调用两次：
     /// 收到通知时一次、读完版本列表后一次。意图本身带 2 分钟时效，过期就丢掉。
     private func attemptAutoLaunch() {
         guard ZLPendingAction.hasPendingAutoLaunch() else { return }
-        guard !selectedVersion.isEmpty, !selectedVersion.hasPrefix("还没有") else { return }
+        // **第183轮改**：原来这里判 `!selectedVersion.hasPrefix("还没有")`（文案驱动）→ 改成问真实状态。
+        guard hasInstalledVersion else { return }
         guard ZLPendingAction.consumeAutoLaunchPending() else { return }
         ZLHaptic.success()
         launching = true
