@@ -21,6 +21,9 @@ struct HomeScreen: View {
     @State private var launching = false
     // 真正的版本名由 onAppear 从已安装列表里取，不能写死
     @State private var selectedVersion = ""
+    /// 版本描述（如「Fabric · 1.20.1」）。从版本 JSON 真实读取，读不到就不显示 ——
+    /// 原来这里是硬编码的 `Text("1.20.1 · Fabric 0.19.2")`，装什么版本都显示那一行（第141轮）。
+    @State private var versionDisplayMeta: String?
     // 彩蛋：连点标题
     @State private var titleTaps = 0
     @State private var eggText: String?
@@ -317,9 +320,13 @@ struct HomeScreen: View {
                         .foregroundStyle(ZLTheme.textPrimary)
                         .lineLimit(1)
                         .onTapGesture { versionTap() }
-                    Text("1.20.1 · Fabric 0.19.2")
-                        .font(.system(size: 12))
-                        .foregroundStyle(ZLTheme.textSecond)
+                    // 真实版本描述（原先是硬编码的 "1.20.1 · Fabric 0.19.2"）
+                    if let meta = versionDisplayMeta {
+                        Text(meta)
+                            .font(.system(size: 12))
+                            .foregroundStyle(ZLTheme.textSecond)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer(minLength: 4)
 
@@ -435,15 +442,18 @@ struct HomeScreen: View {
 
         guard !list.isEmpty else {
             selectedVersion = "还没有安装版本"
+            versionDisplayMeta = nil
             return
         }
         // 已有选中且仍然存在，就保留
         if !selectedVersion.isEmpty,
            list.contains(where: { selectedVersion == $0.id }) {
+            versionDisplayMeta = VersionRepository.displayMeta(for: selectedVersion)
             return
         }
         // 否则取第一个（列表已按修改时间排序）
         selectedVersion = list[0].id
+        versionDisplayMeta = VersionRepository.displayMeta(for: selectedVersion)
     }
 
     // MARK: - 新手引导

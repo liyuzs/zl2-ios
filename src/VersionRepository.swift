@@ -318,6 +318,35 @@ final class VersionRepository {
         return true
     }
 
+    /// 从版本 JSON 读一句人读的描述，给首页/列表显示用。
+    ///
+    /// 返回形如：`Fabric · 1.20.1`（加载器版，括号里是它继承的原版）
+    ///          `原版 · 正式版`（纯原版）
+    /// **读不到就返回 nil** —— 让调用方决定不显示，而不是编一个默认值（第128轮的教训）。
+    static func displayMeta(for versionID: String) -> String? {
+        let fm = FileManager.default
+        let p = shared.versionsDir.appendingPathComponent("\(versionID)/\(versionID).json")
+        guard let d = try? Data(contentsOf: p),
+              let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { return nil }
+
+        var parts: [String] = []
+        // 加载器：看 mainClass
+        if let mc = (o["mainClass"] as? String)?.lowercased() {
+            if mc.contains("fabric") { parts.append("Fabric") }
+            else if mc.contains("quilt") { parts.append("Quilt") }
+        }
+        // 基础版本：加载器版看 inheritsFrom，纯原版看 type
+        if let base = o["inheritsFrom"] as? String {
+            parts.append(base)
+        } else {
+            let t = (o["type"] as? String) ?? "release"
+            let kind = t == "release" ? "正式版" : (t == "snapshot" ? "快照版" : t)
+            parts.insert("原版 · " + kind, at: 0)
+        }
+        _ = fm   // 保留，将来若需要 attributesOfItem 时用
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     func directorySize(_ url: URL) -> Int64 {
         guard let en = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey]) else { return 0 }
         var total: Int64 = 0

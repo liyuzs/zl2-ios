@@ -387,16 +387,14 @@ struct VersionListScreen: View {
     }
 
     /// 版本简介：优先走缓存，没缓存才读磁盘并写入缓存
+    /// 版本描述（列表行里那行小字）。
+    ///
+    /// 第141轮：读 JSON 的逻辑统一走 `VersionRepository.displayMeta(for:)` ——
+    /// 原来这里和首页各写一份，输出格式还不一致（这里 "release · Fabric"，首页 "Fabric · 1.20.1"）。
+    /// 缓存层保留（列表几十行，不该每行都读文件）。
     private func versionMeta(_ id: String) -> String? {
         if let cached = metaCache[id] { return cached.isEmpty ? nil : cached }
-        let p = VersionRepository.shared.versionsDir.appendingPathComponent("\(id)/\(id).json")
-        guard let d = try? Data(contentsOf: p),
-              let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { return nil }
-        var parts: [String] = []
-        if let t = o["type"] as? String { parts.append(t) }
-        if let mc = o["mainClass"] as? String, mc.contains("fabric") { parts.append("Fabric") }
-        let text = parts.joined(separator: " · ")
-        // 写入缓存（用异步避免修改状态时的警告）
+        let text = VersionRepository.displayMeta(for: id) ?? ""
         DispatchQueue.main.async { metaCache[id] = text }
         return text.isEmpty ? nil : text
     }
