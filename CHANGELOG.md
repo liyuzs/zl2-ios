@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **零匹配保护再推广两个（累计 5 个）**：①`_check-a11y` 原来只报"无标签按钮 N 处"，现在先报「167 个 Image(systemName:)，其中 **85 个在 Button 里**」——它的判据靠 `labelBlockOf(i)` 判断"图标在不在 Button 里"，**这个函数一失效，所有图标都会被当成装饰性跳过**，"0 处无标签"就是空真 ②`_check-destructive-confirm` 的文件数为 0 也直接报错。验证方式：直接让 `labelBlockOf` 返回 null（模拟识别失效）→「其中 0 个在 Button 里」→ 报错；还原后回到 85。
+- 累计带零匹配保护的检查：`_check-error-hints` / `_check-path-safety` / `_check-setting-defaults` / `_check-a11y` / `_check-destructive-confirm`。
+
 - **三个检查补上「零匹配即失败」**：一个"匹配 N 处、然后判断全对"的检查，**N=0 时永远通过**——而 N=0 恰好是"判据过时"的典型信号，两者从输出上看不出区别。已改：①`_check-error-hints` 输出「匹配到 N 条 ZLDiagItem，其中 M 条带 fail/warn」②`_check-path-safety` 输出「匹配到 N 处 appendingPathComponent」③`_check-setting-defaults` 原来连文件数都不输出，现在「扫了 70 个文件、7 个读设置的 helper」。任一项为 0 直接报错，文案说清「**这不是"没问题"，是"没看到东西"**」。注入验证：把 `ZLDiagItem` 两文件全改名 / 把 `helperRe` 换成永不匹配的正则 → 都精确报错，还原后通过。
 
 - **要求每条检查自己写明「我查不到什么」**：新增 `_check-check-metadata.js`——每个 `_check-*.js` 的头部注释必须有「**局限**」段（只认哪些写法、判不了什么、什么时候该来改它）。**存量用基线冻结**（当前 40 条里 29 条未写，只许降不许升）。这轮先补了最典型的 7 个"抓具体写法"的检查：`_check-readme-claims` / `_check-license-page` / `_check-path-safety` / `_check-atomic-writes` / `_check-destructive-confirm` / `_check-error-hints` / `_check-setting-defaults`，各写明"改了哪种写法会失明"。33 → **29**。
