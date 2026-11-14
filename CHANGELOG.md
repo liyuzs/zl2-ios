@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **并发安全扫过一遍：8 个"切到后台"的块全部正确**。`Task.detached` / `DispatchQueue.global` / `concurrentPerform` 共 8 处：4 处 `await Task.detached{}.value`（await 把执行权交回原 actor）· 2 处是 continuation `resume`（可从任意线程调、不改 UI）· 2 处打包块的两个出口都有 `DispatchQueue.main.async`。
+- **这类问题不固化成检查**（写清理由）：第一版检测器报 6 处可疑、实际全是误报——不认 `await` 回 actor、不认 continuation resume、窗口太短看不到远处的 `main.async`。按第107轮教训（判据不可信就别留着，6/8 误报会让人以为真有问题），改为把结论写进交接文档「五、已验证、别再重复查」表。同表也补了「性能频率（124–126轮）」一行。
+
 - **高频位置检查从"渲染期"扩到三层**：`_check-hotpath-cost.js` 现在同时守 ①`body`/computed var（每次重绘）②`.onChange`（每次值变）③`ForEach`（每行）。实测 **228 渲染块 + 23 onChange + 98 ForEach，0 处昂贵操作**。合并进同一个检查而不是新开三个脚本——同一套"昂贵操作列表 + 大括号配对"逻辑，拆开会变成三份要同步维护的副本。注入验证：把 `listVersions()` 塞进某个 `.onChange` → 精确报出「…:91（在 L90 起的高频块里）」。
 - **性能频率谱系至此扫清**：onAppear（124轮修 1 处）· 渲染期（125轮，0 处）· onChange/ForEach（126轮，0 处）· `.task` 本来就是该放昂贵操作的地方（不查）。这条线收掉。
 
