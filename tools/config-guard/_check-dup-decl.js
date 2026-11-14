@@ -80,7 +80,15 @@ for (const f of files) {
   }
 }
 
-console.log(`扫了 ${files.length} 个文件`);
+
+// **第186轮加的"粗数"**：用一条简单正则数顶层类型，供和判据实际识别的个数对账。
+// 分母不是"扫了几个文件"（那是输入规模），而是"被测对象有多少个"。
+const __roughTypes = files.reduce((n, f) => {
+  const s = fs.readFileSync(path.join(SRC, f), 'utf8');
+  return n + (s.match(/^(?:public |internal |private |fileprivate |final )*(?:struct|class|enum)\s+\w+/gm) || []).length;
+}, 0);
+
+console.log(`扫了 ${files.length} 个文件 · 粗数顶层类型 ${__roughTypes} 个（不含 extension / @MainActor；判据识别的个数应与它接近）`);
 console.log(`同一类型内重复声明的：${problems.length} 处\n`);
 
 if (problems.length === 0) {

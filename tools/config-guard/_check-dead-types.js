@@ -129,7 +129,15 @@ for (const [file, text] of texts) {
   }
 }
 
-console.log(`扫描 ${files.length} 个文件`);
+
+// **第186轮加的"粗数"**：用一条简单正则数顶层类型，供和判据实际识别的个数对账。
+// 分母不是"扫了几个文件"（那是输入规模），而是"被测对象有多少个"。
+const __roughTypes = files.reduce((n, f) => {
+  const s = fs.readFileSync(path.join(SRC, f), 'utf8');
+  return n + (s.match(/^(?:public |internal |private |fileprivate |final )*(?:struct|class|enum)\s+\w+/gm) || []).length;
+}, 0);
+
+console.log(`扫描 ${files.length} 个文件 · 粗数顶层类型 ${__roughTypes} 个（不含 extension / @MainActor；判据识别的个数应与它接近）`);
 
 // ---- 附加判据（第143轮）：整个文件是死代码 ----
 // 原理：如果一个文件里**所有**顶层类型都只在本文件出现，那这个文件没有任何外部入口。
