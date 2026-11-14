@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **手工核实 22 个疑似死方法，删 20 个（约 133 行）**：核实方式是"src 裸名次数 + **core 的 .m/.h 引用**"——`ZLOverlayHost.attach`/`detach` 在 core 有 1/2 处引用，**保留**。
+- **连锁清理**：`ZLStaggerIn`（ViewModifier，`.staggerIn()` 删了它就没人用）· `MicrosoftTokenSet.expiresAt`（唯一读者 `isExpired` 删了它就成了死字段）· 删 `isExpired` 留下的空行。`refreshToken` **保留**（`MicrosoftAuth:268` 有赋值链，将来做刷新要用）。
+- **三处"看起来该用但被替代"**：①`GameOverlay.recordFrame` → 被 `GameFPSMonitor`（从核心帧计数换算）替代，**FPS 有数据源** ②`MojangAPI.applicableLibraries` → 被 `VersionInstaller` 自己的过滤替代（**跳过 natives + SHA-1 校验**，但不按 `rules` 过滤——natives 已跳过，影响小）③**`MicrosoftAuth.refreshed` 没有替代** → 微软 token 1 小时后过期，**每次都要重新登录**（token 刷新从未接通，这是能力边界）。
+
 - **处理第153轮留的 5 个死字段**：`Account.uuidDashed`（YAGNI）· `Account.hasValidToken`（外置登录不存 token，判断没对象）· `ZLLayer.totalWidgets`（统计字段没人读）· `ZLControlLayout.defaultLayout`（第144轮删假编辑器的遗留）· `ZLAddonSelection.optifine`（OptiFine 是 Forge 系，项目不支持 Forge）。**保留** `CraftLauncherShortcuts.appShortcuts`（`AppShortcutsProvider` 协议要求，已注明）。删前都核实过：`optifine` 剩下 6 处引用全是注释和文案字符串，无字段访问。
 - **修一条误导文案**：`DownloadAddonsScreen` 的 OptiFine 卡片原写「需要手动下载并放到 mods 目录（iOS 无法自动安装）」——**错的**：OptiFine 独立版不是 mod，放 mods 没用（要用官方安装器改 jar）；只有 Forge 版才放 mods，而项目不支持 Forge。改成实话。
 - **试了"方法级死代码"审计，放弃**：判据要同时躲开三个坑 —— `override func`（网络扩展由系统调）· **不带括号的函数引用**（`onCancel: cancelAddAccount` 是闭包传值）· **@objc 导出 + performSelector**（`activateLayerByPseudoKey:` 在 src 里 0 处调用但 core 天天用）。三版后（37→22）仍需人工核实，性价比不如人工。原因 + 已确认的真死方法（`modCount`/`selfCheck`/`offlineUUID`/`isExpired`/`switchToLayer` 等）都记进 `_check-dead-types` 局限段。
