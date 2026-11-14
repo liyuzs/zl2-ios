@@ -12,6 +12,10 @@
 // 里 `platformOnly` / `notWired` 两个集合。这份检查把文档里的数字和代码对撞。
 //
 // **局限**（不查什么）：
+//   · **只扫 `docs/设置项审计.md` 这一份**（第249轮发现）：README 里写着「115 项中 **36** 项真正生效，
+//     **75** 项不可用」—— **36+75=111≠115，且与权威值 30 不符**，挂了很久没人发现，因为本检查只看审计文档。
+//     想扩到 README/STATUS/HANDOFF，需要为每种表述各写一条正则（各文档说法不同），**第249轮评估后没做** ——
+//     数字本身有 `_gen-settings-audit` 生成器守着审计文档一份，剩下的靠人同步。
 //   · **只校验数字，不校验清单**：文档里"可用 N 项"必须等于四集合算出来的；但**那 N 项具体是谁**
 //     （列对没有、漏没漏）它不查。
 //   · **四个集合靠正则解析**（跳过注释行 + 按括号深度取）。集合写法一变（换成数组、
@@ -29,6 +33,7 @@ const ROOT = PATHS.REPO;
 const SETTINGS_SWIFT = path.join(ROOT, 'src', 'ZLSettings.swift');
 const SCREEN_SWIFT = path.join(ROOT, 'src', 'SettingsScreen.swift');
 const AUDIT_DOC = path.join(ROOT, 'docs', '设置项审计.md');
+
 const PROGRESS_DOC = path.join(ROOT, 'docs', '设置项接线进度.md');
 
 const read = p => fs.readFileSync(p, 'utf8');
