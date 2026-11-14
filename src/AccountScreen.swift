@@ -197,7 +197,13 @@ struct AccountScreen: View {
         }
         .sheet(isPresented: $showAuthlibLogin) {
             AuthlibLoginSheet { server, email, password in
-                // 真正的 Yggdrasil 认证：登录 → 拿角色名和皮肤
+                // 外置登录的**真实能力**（第153轮核实后写清）：
+                //   · `login()` 真的调了 /authserver/authenticate 并验证邮箱密码
+                //   · 但只取 selectedProfile 的 id/name，**丢弃了 accessToken**（拿不到 refresh token）
+                //   · 游戏内仍走 `addOffline` —— **离线身份**，进不了正版服
+                //   · 皮肤能显示，靠的是 authlib-injector（`-javaagent:...=<server>` 反查皮肤站）
+                // 原来还有个 `AuthlibSession`（带 accessToken / clientToken）走 Account 初始化，
+                // 但从没被实例化 —— 已删。真要支持正版会话，得补 token 存储 + refresh。
                 guard let norm = ZLYggdrasilClient.normalize(server) else {
                     authlibBusy = false
                     authlibError = "皮肤站地址不对"

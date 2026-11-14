@@ -14,6 +14,11 @@
 //     · v1（全枚举体扫 case）→ 16 处里 14 处误报（把 `switch ns.code { case NSFile... }` 当成枚举 case）
 //     · v2（只扫"定义区"= 第一个非 case 声明之前）→ 仍误报 7/18（空枚举 `enum ZLRenderers { static let ... }`）
 //   误报率 87% / 39% 的检查都会让人以为"这里有真问题"，比没有更糟（第127轮那条）。
+// **第四个盲区（第153轮）：链条式死代码** —— A 被 B 引用，但 B 自己没人用。
+//   实例：`AuthlibSession` 被 `Account.init(authlib:)` 当参数类型引用 → count=2 判"有人用"；
+//   而 `init(authlib:)` **从没被调用**（0 处）→ 整条链都是死的。
+//   本检查做的是"单层引用"判定，静态算可达性需要图分析，没做。
+//   人工发现方式：对数据模型的字段跑"定义外读取次数"（第153轮用这个找到 11 个）。
 //   **现状**：case 级死代码靠人工发现。已知案例：`CoreLaunchError.missingRuntime`（第146轮）、
 //   `ModrinthProjectType.datapack`（第147轮）—— 两个都已删。
 // 这样筛出来 17 个，其中：

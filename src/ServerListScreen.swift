@@ -20,7 +20,6 @@ struct ZLServerData: Identifiable, Equatable {
     var name: String
     var originIp: String
     var texturePackStatus: ZLTexturePackStatus = .prompt
-    var acceptedCodeOfConduct: Bool? = nil
     var icon: Data? = nil
 }
 

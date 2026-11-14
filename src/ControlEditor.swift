@@ -217,9 +217,9 @@ struct ControlAppearance: Identifiable, Codable, Equatable {
     var backgroundColor: Color { Color(hex: backgroundHex) }
     var contentColor: Color { Color(hex: contentHex) }
     var borderColor: Color { Color(hex: borderHex) }
-    var darkBackgroundColor: Color { Color(hex: darkBackgroundHex) }
-    var darkContentColor: Color { Color(hex: darkContentHex) }
-    var darkBorderColor: Color { Color(hex: darkBorderHex) }
+    // 第153轮删：这里原有 darkBackgroundColor / darkContentColor / darkBorderColor 三个计算属性，
+    // 但**没人读**（0 处），而且重复了 `resolved(dark:)` 的逻辑 —— 深色配色实际走后者。
+    // 留着容易让人以为渲染是从这三个属性拿颜色的。
 
     /// 按当前配色（浅色 / 暗色）解析出真正用来绘制的值
     func resolved(dark: Bool) -> ResolvedControlAppearance {

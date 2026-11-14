@@ -555,15 +555,6 @@ struct AuthlibConfiguration: Codable, Sendable, Equatable {
 }
 
 
-/// 外置认证会话（yggdrasil 的 accessToken / clientToken）
-struct AuthlibSession: Codable, Sendable, Equatable {
-    var profileName: String
-    var profileUUID: String   // 32 位无横线
-    var accessToken: String
-    var clientToken: String
-    var configuration: AuthlibConfiguration
-}
-
 /// 外置登录流程（authlib-injector 的 yggdrasil 协议）
 // MARK: - 认证结果 → Account
 
@@ -575,10 +566,4 @@ extension Account {
                   accessToken: profile.token.accessToken)
     }
 
-    init(authlib session: AuthlibSession) {
-        self.init(type: .authlib,
-                  username: session.profileName,
-                  uuid: AccountUUID.compact(from: session.profileUUID),
-                  accessToken: session.accessToken)
-    }
 }
