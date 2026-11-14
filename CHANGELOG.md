@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **新增 `_check-code-refs.js`：注释里的「本仓库文件:行号」必须仍指得到代码**。项目有 **26 处**这种对照引用（移植时逐行核对用的），重构会让行号漂移而编译器不管。三层判据：①文件存在 ②不越界 ③**该行不是空行/纯注释**（说明已漂移）。实测 26 处全部指向代码；三层注入（越界 / 真空行 / 文件不存在）都验证过。**局限**：抓不到"偏移到另一段代码"（需语义比对）——第一次注入把 448 改成 449 就通过了，因为 449 也是代码。
+- **顺带审计（都干净）**：版本号是单一来源（`MARKETING_VERSION` → Info.plist → `ZLUpdate.currentVersion`）· App Group 有 `?? .standard` 回退 · TODO 全仓只剩 2 处（`EasyTierTunnel` 联机占位，与文档一致）。
+
 - **文案教用户"从其他 App 分享进来"，但项目做不到**：`FileManagerScreen` 空状态原写「或者从其他 App 把文件分享到 CraftLauncher 里」，而 `project.yml` **没有 `CFBundleDocumentTypes`**（对方 App 的「用其他应用打开」里不会出现 CraftLauncher）、代码也没有 `onOpenURL` 接收。已改成「用「文件」App 把文件拖进 CraftLauncher 文件夹」（`UIFileSharingEnabled` 已开，这条可行）+ **STATUS 补第 10 条**记下能力边界。
 - **新增 `_check-share-claim.js`**："文案教了做不到的操作"的特殊形态——承诺的不是代码能力而是**系统级声明**（`CFBundleDocumentTypes` 在 YAML 里，编译器不管）。注入验证能精确报出。
 - **顺带审计（干净）**：`deploymentTarget iOS 16.0` 与代码里 2 处 `@available(iOS 16.0, *)` 一致，没有低版本静默缺失。
