@@ -158,7 +158,12 @@ struct LaunchScreen: View {
                 VStack(spacing: 10) {
                     if let e = lastError {
                         // 常见错误 → 给具体建议
-                        if e.contains("JRE") || e.contains("jli") {
+                        // **第182轮**：原来判 `contains("JRE") || contains("jli")` —— 但
+                        // `CoreLaunchError.bootstrapFailed` 的 5 个实参里**一个都不含 "JRE"**
+                        // （都是「这个版本需要 Java 21，但包里只有…」「jar 不存在：…」这种），
+                        // 所以这个分支基本进不来（和第181轮修的 `contains("JIT")` 是同一类）。
+                        // 改成判 "Java" —— 那 5 个实参里有 2 个含它；"jli" 保留（系统错误里可能出现）。
+                        if e.contains("Java") || e.contains("jli") {
                             HStack(spacing: 6) {
                                 Image(systemName: "lightbulb").font(.system(size: 11))
                                 Text("多半是 Java 运行时没打进包里，试着重新装一次")
@@ -187,6 +192,10 @@ struct LaunchScreen: View {
                             }
                             .foregroundStyle(ZLTheme.warning)
                         } else if e.contains("内存") || e.contains("memory") {
+                            // **第182轮核实**：`bootstrapFailed` 的实参里目前**没有**含"内存/memory"的，
+                            // 所以这个分支当前也不会触发。但保留它是有意义的 —— 将来如果真出现
+                            // OOM 类错误（或核心把 `OutOfMemoryError` 透上来），这里就能接住。
+                            // 不改成更具体的词，是因为那时无法预知核心会怎么措辞。
                             HStack(spacing: 6) {
                                 Image(systemName: "lightbulb").font(.system(size: 11))
                                 Text("内存不够，去设置里把分配改小一点")
