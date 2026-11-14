@@ -539,6 +539,22 @@ enum ZLFriendlyError {
                 return "安全连接失败，请检查网络环境"
             case .cancelled:
                 return "已取消"
+            // 下面这些是下载/API 场景最常见、原来会落兜底的（第146轮补）
+            case .badServerResponse:
+                return "服务器返回了异常状态（4xx/5xx），换个下载源或稍后重试"
+            case .cannotDecodeRawData, .cannotDecodeContentData, .cannotParseResponse:
+                return "服务器返回的内容不是预期格式 —— 可能是下载源返回了网页错误页，或接口变了"
+            case .resourceUnavailable:
+                return "服务器上找不到这个文件"
+            case .userAuthenticationRequired:
+                return "需要先登录才能访问"
+            case .dataNotAllowed:
+                return "当前网络限制了这个请求（比如开了省流量模式）"
+            // 注意：文件类的这两个码在 **NSURLErrorDomain** 里，不在 NSCocoaErrorDomain
+            case .fileDoesNotExist:
+                return "文件不存在，可能需要重新下载"
+            case .noPermissionsToReadFile:
+                return "没有权限读取这个文件"
             default:
                 break
             }

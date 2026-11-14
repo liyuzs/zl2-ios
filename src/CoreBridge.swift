@@ -8,7 +8,6 @@ enum CoreLaunchError: LocalizedError {
     case coreNotLinked
     case bootstrapFailed(String)
     case launchReturned(Int32)
-    case missingRuntime
 
     var errorDescription: String? {
         switch self {
@@ -18,8 +17,6 @@ enum CoreLaunchError: LocalizedError {
             return "初始化失败：\(m)"
         case .launchReturned(let code):
             return "launchJVM 返回错误码 \(code)"
-        case .missingRuntime:
-            return "缺少 Java 运行时"
         }
     }
 }
