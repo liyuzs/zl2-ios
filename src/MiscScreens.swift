@@ -76,7 +76,7 @@ struct SearchScreen: View {
                 .foregroundStyle(ZLTheme.textSecond.opacity(0.5))
             Text("输入关键词开始搜索").font(.system(size: 14))
                 .foregroundStyle(ZLTheme.textSecond)
-            Text("支持 Modrinth / CurseForge 全站资源").font(.system(size: 12))
+            Text("支持 Modrinth 全站资源").font(.system(size: 12))
                 .foregroundStyle(ZLTheme.textSecond.opacity(0.8))
         }
         .frame(maxWidth: .infinity)
@@ -409,8 +409,6 @@ struct SearchIDScreen: View {
     @State private var loading = false
     @State private var errorText: String?
     @State private var result: ModrinthHit?
-    @State private var platform = 0
-    private let platforms = ["全部", "Modrinth", "CurseForge"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -439,20 +437,6 @@ struct SearchIDScreen: View {
                     .buttonStyle(.plain)
                     .disabled(projectID.isEmpty || loading)
 
-                    Menu {
-                        ForEach(platforms.indices, id: \.self) { i in
-                            Button(platforms[i]) { platform = i }
-                        }
-                    } label: {
-                        HStack(spacing: 5) {
-                            Text(platforms[platform]).font(.system(size: 12))
-                            Image(systemName: "chevron.down").font(.system(size: 9))
-                        }
-                        .foregroundStyle(ZLTheme.textSecond)
-                        .padding(.horizontal, 12).frame(height: 40)
-                        .background(ZLTheme.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    }
                 }
 
                 if loading {

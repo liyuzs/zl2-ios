@@ -25,14 +25,6 @@ enum AssetKind: String, CaseIterable, Identifiable {
         }
     }
 
-    /// 每个类型的来源平台（真机里就是 Modrinth / CurseForge 等）
-    var sources: [String] {
-        switch self {
-        case .modpack, .mod, .resource, .shader: return ["Modrinth", "CurseForge"]
-        default: return ["本地"]
-        }
-    }
-
     /// ZL2 里每类内容的分类标签（来自 strings.xml）
     var categories: [String] {
         switch self {
@@ -84,7 +76,6 @@ struct AssetsScreen: View {
 
     @State private var query = ""
     @State private var sort = 0
-    @State private var source = 0
     // ZL2 的四个筛选维度：目标平台 / 游戏版本 / 类别 / 模组加载器
     @State private var platform = 0
     @State private var gameVersion = 0
@@ -308,11 +299,6 @@ struct AssetsScreen: View {
             .background(ZLTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-            filterCard("目标平台", current: kind.sources[min(source, kind.sources.count-1)]) {
-                ForEach(kind.sources.indices, id: \.self) { i in
-                    Button(kind.sources[i]) { source = i }
-                }
-            }
             filterCard("排序方式", current: kind.sorts[min(sort, kind.sorts.count-1)]) {
                 ForEach(kind.sorts.indices, id: \.self) { i in
                     Button(kind.sorts[i]) { sort = i }
@@ -364,9 +350,6 @@ struct AssetsScreen: View {
     private var toolbar: some View {
         VStack(spacing: 8) {
             HStack(spacing: 8) {
-                ForEach(kind.sources.indices, id: \.self) { i in
-                    ZLChip(title: kind.sources[i], selected: source == i) { source = i }
-                }
                 Spacer(minLength: 6)
                 filterMenu(title: "用途", options: platforms, selection: $platform)
                 filterMenu(title: "版本", options: mcVersions, selection: $gameVersion)
@@ -661,72 +644,6 @@ struct AssetsScreen: View {
             _ = try await ModrinthAPI.shared.download(f, to: dir)
         } catch {
             loadError = ZLFriendlyError.text(error)
-        }
-    }
-}
-
-// MARK: - 演示数据（真实实现接 Modrinth/CurseForge API）
-enum SampleData {
-    static func items(for kind: AssetKind) -> [AssetItem] {
-        switch kind {
-        case .modpack:
-            return [
-                .init(title: "Better MC [FORGE]", subtitle: "A proper Vanilla+ Modpack", author: "SHXRKIE", downloads: "12.6万", tags: ["Forge", "1.20.1"], version: "1.20.1"),
-                .init(title: "Vanilla Perfected", subtitle: "Vanilla+ 优化整合", author: "demonjoeTV", downloads: "152万", tags: ["Fabric", "1.21"], version: "1.21.4"),
-                .init(title: "OptiFabric Creator", subtitle: "OptiFine 替代方案", author: "Creator", downloads: "124万", tags: ["Fabric", "1.16-1.21"], version: "1.21.11"),
-            ]
-        case .mod:
-            return [
-                .init(title: "Waystones", subtitle: "传送石碑，远距离快速移动", author: "BlayTheNinth", downloads: "4.2亿", tags: ["Forge", "Fabric"], version: "14.0.2"),
-                .init(title: "JEI", subtitle: "物品与配方查询", author: "mezz", downloads: "8.9亿", tags: ["Forge"], version: "15.20.0"),
-                .init(title: "JourneyMap", subtitle: "实时小地图与路径点", author: "techbrew", downloads: "3.1亿", tags: ["Forge", "Fabric"], version: "5.10.3"),
-                .init(title: "AppleSkin", subtitle: "显示食物饱食度", author: "squeek502", downloads: "2.7亿", tags: ["Forge"], version: "2.5.1"),
-            ]
-        case .resource:
-            return [
-                .init(title: "Programmer Art", subtitle: "经典原版材质", author: "Mojang", downloads: "内置", tags: ["原版"], version: "1.20"),
-                .init(title: "VM 汉化资源包", subtitle: "VM汉化组官方汉化", author: "VM汉化组", downloads: "8.3万", tags: ["汉化"], version: "1.20.1"),
-                .init(title: "Mod Resources", subtitle: "1 个 Mod 文件资源", author: "自动生成", downloads: "—", tags: ["内置"], version: "1.0"),
-            ]
-        case .shader:
-            return [
-                .init(title: "BSL Shaders", subtitle: "最受欢迎的光影之一", author: "capttatsu", downloads: "1.2亿", tags: ["光影"], version: "v10.11"),
-                .init(title: "Complementary", subtitle: "高性能写实光影", author: "EminGT", downloads: "9800万", tags: ["光影"], version: "r5.3"),
-                .init(title: "Chocapic13", subtitle: "Bliss 修改版", author: "Chocapic13", downloads: "4200万", tags: ["光影"], version: "v2.1.2"),
-            ]
-        case .saves:
-            // 读真实存档目录，不再显示假示例
-            let dir = VersionRepository.shared.mcRoot
-                .appendingPathComponent("saves", isDirectory: true)
-            let fm = FileManager.default
-            guard let names = try? fm.contentsOfDirectory(atPath: dir.path) else { return [] }
-            return names
-                .filter { !$0.hasPrefix(".") }
-                .compactMap { name -> AssetItem? in
-                    let p = dir.appendingPathComponent(name)
-                    var isDir: ObjCBool = false
-                    guard fm.fileExists(atPath: p.path, isDirectory: &isDir), isDir.boolValue else { return nil }
-                    // 从 level.dat 拿不到版本就显示「—」，不编造
-                    return .init(title: name,
-                                 subtitle: "世界存档",
-                                 author: "本地",
-                                 downloads: "—",
-                                 tags: ["存档"],
-                                 version: "—")
-                }
-                .sorted { $0.title < $1.title }
-        case .favorite:
-            // 收藏从本地存储读，没有就空着（不再显示假条目）
-            let raw = UserDefaults.standard.string(forKey: "zl.assets.favorites") ?? ""
-            let ids = raw.split(separator: "\n").map(String.init).filter { !$0.isEmpty }
-            return ids.map { id in
-                AssetItem(title: id,
-                          subtitle: "已收藏",
-                          author: "—",
-                          downloads: "—",
-                          tags: ["收藏"],
-                          version: "—")
-            }
         }
     }
 }
