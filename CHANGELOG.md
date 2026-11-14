@@ -63,6 +63,8 @@
 
 ### 已知问题 / 新增
 
+- **换行符事故（记录一下，含两次误判）**：`AccountService.swift` 在 a66d8e2 里显示 554/545 行变更，但 `git diff -w` 只有 **13 增 4 删** —— 差异是换行符造成的噪音。过程：①我写的补丁脚本里 `const J = arr => arr.join(crlf ? '\r\n' : '\r\n')` 三元两边一样；②我误以为"同类文件都是 LF"就把它转成了 LF；③查了 `HEAD~1` 才发现**它原本就是 CRLF**（这个仓库是混合换行符），于是转回去，`git status` 恢复干净。**教训：改换行符前必须查那个文件自己的历史版本，不能按"同类文件应该一样"去推断。**
+
 - **错误 case 有没有真的被抛出**：把第174轮那条推广到全部 **12 个错误枚举、58 个 case**，查出 6 个"定义了但从不被创建"。**删 2 个**（`ZLLoaderInstallerError.mergeFailed` —— "合并"走的是系统错误；`libraryFailed` —— 库下载失败走 `failedLibs` 收集，**文案「下载加载器库失败」会骗人**）· **删 1 个重复**（`MSAuthError.slowDown` 与 `.rateLimited` 语义重复）· **标注 4 组**（`unsupportedAccountType` / `storageFailure` / 4 个 Xbox case —— 文案备好但没解析 Xbox 错误码 / `missingAccessToken`）。
 - **修一个真静默失败**：`AccountService.persist()` 原来 `if let data = try? encoder.encode(accounts)` —— **编码失败被吞掉**，账号存不进去而用户以为存上了，下次打开就没了。改成 `do/catch` + `NSLog`。
 - **新增 `_check-error-case-created.js`**：每个 case 必须有创建点（`throw` / `= Type.c` / `return .c` / 三元）；**只被 `case .c:` 匹配 = 消费，不算创建**；行尾有"未实现"标注的豁免。
