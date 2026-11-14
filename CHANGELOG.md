@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **把"渲染期不许有昂贵计算"做成检查**：新增 `_check-hotpath-cost.js` —— `var body` 与 computed var 会在**每次重绘**时求值，里面出现 `listVersions` / `directorySize` / 目录枚举 / JSON 解码 / 读文件就报。**第一次扫出的 2 处是误报**：`FileManagerScreen` 属性页把递归算目录大小放在 `.task { }` 里（正确做法），而检测器把 body 内嵌的 `.task` 也算成渲染期 → 加了豁免（`.task`/`.onAppear`/`.onChange`/`.sheet`/`.alert`/`.refreshable` 等副作用闭包内部不判）。改完重扫 **228 个渲染块，0 处**。注入验证：把 `listVersions()` 塞进某个 body → 精确报出「…:46（在 L45 的渲染块里）」。
+- 文件头写明局限：只认这 5 类操作，别的昂贵写法（排序、拼接、正则）不判。
+
 - **首页每次 onAppear 都在主线程递归扫全部版本目录**：`listVersions()` 对每个版本目录调 `directorySize()`（`fm.enumerator` 递归遍历 jar + libraries 数百文件 + mods，逐个 stat），而 `sizeBytes` 全项目**只有版本列表一处显示**。改为 `listVersions(includeSize: Bool = false)`，只有 `VersionListScreen` 传 `true`；UI 里 `sizeBytes == 0` 不显示。新增 `_check-startup-io.js` 静态守住这个默认值（本地没真机，测不了耗时，只能守默认）：断言参数默认 false + `directorySize` 受其门控；注入改成 true 会报。
 - **`_run-all.ps1` 加清单结构自检**：第79/124轮各踩一次——插三元组时多留逗号 → `@(...),,` → 数组套数组 → 报 `Join-Path: 无法将 System.Object[] 转换为参数 ChildPath`，**错误信息离病根太远**。现在每项必须是长度 3 的数组，否则直接报出是哪一项并提示原因。
 
