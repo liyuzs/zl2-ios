@@ -68,6 +68,7 @@ const SAFE_ASSIGN = /let\s+(\w+)\s*=\s*ZLPathSafety\.\w+\(/g;
 const VALIDATED_NAME = /ZLPathSafety\.validateNewName\(\s*(\w+)/g;
 
 let bad = [];
+let concatSites = 0;      // 匹配到多少处 appendingPathComponent（判据的"分母"）
 for (const file of GUARDED) {
   const text = read(file);
   const lines = text.split('\n');
@@ -78,6 +79,7 @@ for (const file of GUARDED) {
 
   lines.forEach((line, i) => {
     if (!line.includes('appendingPathComponent(')) return;
+    concatSites++;
     if (ALLOW_LINES.some(a => line.includes(a.match))) return;
     if (safeVars.size && [...safeVars].some(v => new RegExp('\\b' + v + '\\b').test(line))) return;
 
@@ -88,8 +90,15 @@ for (const file of GUARDED) {
   });
 }
 
-console.log(`检查 ${GUARDED.length} 个文件里用变量拼路径的地方`);
+console.log(`检查 ${GUARDED.length} 个文件：匹配到 ${concatSites} 处 appendingPathComponent`);
 console.log('');
+
+// 零匹配即失败：说明写法变了（或 GUARDED 名单过时），这时候"全都过了校验"是空真
+if (concatSites === 0) {
+  console.log('⚠ 一处 appendingPathComponent 都没匹配到 —— 判据可能已过时');
+  console.log('  这不是"没问题"，是"没看到东西"。请核对 GUARDED 名单与拼接写法。');
+  process.exit(1);
+}
 
 if (bad.length === 0) {
   console.log('✓ 远端数据与用户输入的路径段都过了 ZLPathSafety');

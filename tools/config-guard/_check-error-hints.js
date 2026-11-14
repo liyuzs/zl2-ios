@@ -16,6 +16,7 @@
 // · 只要求 `ZLPreflight` / `ZLDiagnostics` 里每条 `.fail` / `.warn` 的 `ZLDiagItem` 有非空 `advice:`。
 // · **查不到"advice 写得有没有用"** —— 满足"非空"就算过，写"重试一下"这种废话它也通过。
 // · **失效条件**：如果以后把诊断项改成别的结构（不再用 `ZLDiagItem`），它会对新结构完全失明。
+//   （第137轮起：这种情况下会因"零匹配"直接报错，不再静默通过）
 const fs = require('fs');
 const path = require('path');
 
@@ -27,6 +28,8 @@ const TARGETS = [
 ];
 
 const problems = [];
+let diagCount = 0;      // 匹配到的 ZLDiagItem 总数
+let leveled = 0;        // 其中带 fail/warn 的
 
 for (const t of TARGETS) {
   const full = path.join(SRC, t.file);
@@ -36,12 +39,12 @@ for (const t of TARGETS) {
   // 按 ZLDiagItem( ... ) 切成条目块，块内同时看 level 与 advice
   const re = /ZLDiagItem\(([\s\S]*?)\)\)?/g;
   let m;
-  let idx = 0;
   while ((m = re.exec(src)) !== null) {
-    idx++;
+    diagCount++;
     const block = m[1];
     const lv = block.match(/level:\s*\.(fail|warn)/);
     if (!lv) continue;
+    leveled++;
 
     const advice = block.match(/advice:\s*(.+)/);
     const hasAdvice = advice && advice[1].trim() !== 'nil' && advice[1].trim() !== '""';
@@ -53,8 +56,15 @@ for (const t of TARGETS) {
   }
 }
 
-console.log(`检查 ${TARGETS.length} 个直接面向用户的提示文件`);
+console.log(`检查 ${TARGETS.length} 个文件：匹配到 ${diagCount} 条 ZLDiagItem，其中 ${leveled} 条带 fail/warn`);
 console.log('');
+
+// **零匹配即失败**：说明正则和代码结构对不上了，这时候"全都有 advice"是空真
+if (diagCount === 0 || leveled === 0) {
+  console.log('⚠ 一条 ZLDiagItem 都没匹配到 —— 判据可能已过时（结构改名/正则失配）');
+  console.log('  这不是"没问题"，是"没看到东西"。请核对 ZLDiagItem 的写法是否变了。');
+  process.exit(1);
+}
 
 if (problems.length === 0) {
   console.log('✓ 预检与诊断里每条 fail/warn 都带了 advice（"怎么办"）');

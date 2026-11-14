@@ -25,6 +25,9 @@ const files = fs.readdirSync(SRC).filter(f => f.endsWith('.swift'));
 
 const problems = [];
 
+let helpersSeen = 0;     // 扫到多少个"读设置的 helper"
+let helperProblems = 0;
+
 for (const f of files) {
   const raw = fs.readFileSync(path.join(SRC, f), 'utf8');
   // 只扫代码，不扫注释（项目里注释会提到这些名字）
@@ -41,6 +44,7 @@ for (const f of files) {
   // 与 GameOverlay.boolValue 是同一个毛病，而旧版检查只盯三个名字所以漏了。
   const helperRe = /func\s+(boolValue|intValue|stringValue|readSettingBool)\s*\(\s*_\s+key\s*:\s*String[^)]*\)\s*->\s*(\w+)/g;
   for (const m of code.matchAll(helperRe)) {
+    helpersSeen++;
     const name = m[1];
     const want = {
       boolValue: 'store.bool(',
@@ -70,7 +74,14 @@ for (const f of files) {
 }
 
 if (problems.length === 0) {
-  console.log('✓ 设置项默认值只有一个来源（ZLSettings 的 defaultValue）');
+  console.log(`扫了 ${files.length} 个文件、${helpersSeen} 个读设置的 helper`);
+// 零匹配即失败：helpersRe 失配时"没有 helper 自带默认值"是空真
+if (helpersSeen === 0) {
+  console.log('⚠ 一个"读设置的 helper"都没匹配到 —— 判据可能已过时');
+  console.log('  这不是"没问题"，是"没看到东西"。请核对 helperRe 与 helper 的写法。');
+  process.exit(1);
+}
+console.log('✓ 设置项默认值只有一个来源（ZLSettings 的 defaultValue）');
   process.exit(0);
 }
 
