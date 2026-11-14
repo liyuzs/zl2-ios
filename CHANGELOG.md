@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **"重命名版本"是个活的假功能**：`VersionActionSheet` 里 `TextField("新名称", text: $newName)` 收集了输入，但"确定"调的是**无参数的 `onRename()`** —— **`newName` 从未被读取**；两个可达入口（`VersionContentScreen` / `VersionListScreen`）的 `onRename` 都只做刷新。**用户点重命名、输入新名字、点确定、版本名不变且无任何提示**。已在 `VersionActionSheet` 内真正执行改名（`performRename()`：空名/同名两个 guard + `renameVersion` + 错误显示），调用方 `onRename` 保持"刷新列表"语义。
+- **删 `ModifyVersionScreen.swift`（276 行）**：它的四项功能里"改名"是真实现但已被正主覆盖，"换 MC / 换加载器"是**假的**（只在结果文本里说"将改为 X"，不改任何东西），而它本身从未接线。
+
 - **三处假平台筛选**：`runSearch()` 用了 gameVersion / modLoader / category / platform / sort，**唯一没参与的是 `source`（目标平台）**，而全仓也没有 CurseForge API。删掉 `AssetsScreen` 的「目标平台」filterCard + 平台 chip + `kind.sources`、`SearchIDScreen` 的平台 Menu + `platforms`，文案改成「支持 Modrinth 全站资源」。
 - **删 344 行死代码**：`SampleData`（66 行，零引用且里面是**逼真的假 Modrinth 数据**）· `LaunchContract.swift`（213 行 / 7 类型，早期架构骨架，实际用 CoreBridge）· `ErrorScreen`（65 行，被 LaunchScreen 错误区覆盖）。文件数 70 → **69**。
 - **修 `_check-dead-types` 的三个盲区**：①**注释算引用**（`SampleData` 因注释里提一次而漏掉）→ 统计前剥整行注释 ②**文件内互相引用**（`LaunchContract` 6 个类型全零外部引用但互引让 count>1）→ 新判据"文件里所有类型都零外部引用 = 死文件" ③**跨语言动态引用**（新判据立刻把 `ZLOverlayHost.swift` 报成死文件，**但它由 ObjC 的 `NSClassFromString` 实例化、负责 FPS 悬浮层**）→ 扫 core 的 `.m` 把动态类名也算引用。**第③条差点造成真实损害。**
