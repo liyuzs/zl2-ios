@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **高频位置检查从"渲染期"扩到三层**：`_check-hotpath-cost.js` 现在同时守 ①`body`/computed var（每次重绘）②`.onChange`（每次值变）③`ForEach`（每行）。实测 **228 渲染块 + 23 onChange + 98 ForEach，0 处昂贵操作**。合并进同一个检查而不是新开三个脚本——同一套"昂贵操作列表 + 大括号配对"逻辑，拆开会变成三份要同步维护的副本。注入验证：把 `listVersions()` 塞进某个 `.onChange` → 精确报出「…:91（在 L90 起的高频块里）」。
+- **性能频率谱系至此扫清**：onAppear（124轮修 1 处）· 渲染期（125轮，0 处）· onChange/ForEach（126轮，0 处）· `.task` 本来就是该放昂贵操作的地方（不查）。这条线收掉。
+
 - **把"渲染期不许有昂贵计算"做成检查**：新增 `_check-hotpath-cost.js` —— `var body` 与 computed var 会在**每次重绘**时求值，里面出现 `listVersions` / `directorySize` / 目录枚举 / JSON 解码 / 读文件就报。**第一次扫出的 2 处是误报**：`FileManagerScreen` 属性页把递归算目录大小放在 `.task { }` 里（正确做法），而检测器把 body 内嵌的 `.task` 也算成渲染期 → 加了豁免（`.task`/`.onAppear`/`.onChange`/`.sheet`/`.alert`/`.refreshable` 等副作用闭包内部不判）。改完重扫 **228 个渲染块，0 处**。注入验证：把 `listVersions()` 塞进某个 body → 精确报出「…:46（在 L45 的渲染块里）」。
 - 文件头写明局限：只认这 5 类操作，别的昂贵写法（排序、拼接、正则）不判。
 
