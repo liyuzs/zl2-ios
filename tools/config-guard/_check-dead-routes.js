@@ -49,8 +49,7 @@ const navText = navLines.join('\n');
 // 新增的死路由**不要**往这里加，先判断该接入口还是该删。
 const ALLOW = {
   // 明确未接入的功能页（保留是有意的，理由如下）
-  room:             'MultiplayerRoomScreen 属联机房间，远程联机需要 Network Extension（付费开发者账号），尚未接入',
-  terracotta:       'TerracottaScreen 自身已声明为界面演示',
+  room:             'MultiplayerRoomScreen **已接入路由**（ZL2App 的 case .room 里渲染它），但界面没有导航到它的按钮 —— 远程联机需要 Network Extension（付费开发者账号）。所以这是「路由没入口」，不是「页面没实现」',
   // 第76-78轮已删除：exportPack / crashLog / selectGameVersion（页面被取代）
   //                searchID / serverList（已接上入口）
   //                gameDirs / cleanFiles / exportPackNew / controlLayout / logView
@@ -86,6 +85,17 @@ function destinationExtras(route) {
     if (extras.length >= 4) break;
   }
   return extras;
+}
+
+// **第157轮加的判据**：ALLOW 里登记的 case 必须真实存在于 AppRoute。
+// 实例：`terracotta` 的 case 第132轮就随 TerracottaScreen 删了，但登记一直留着，
+// 输出照旧说"已登记 2 个"，让人以为还有这个路由 —— **多余的登记会误导**。
+const staleAllow = Object.keys(ALLOW).filter(k => !cases.includes(k));
+if (staleAllow.length > 0) {
+  console.log('⚠ ALLOW 里这些登记已经过时（AppRoute 里没这个 case 了）：');
+  for (const k of staleAllow) console.log("    ." + k);
+  console.log('  删掉它们 —— 多余的登记会让人以为还有这个路由。');
+  process.exit(1);
 }
 
 console.log('· 已登记为已知死路由（' + Object.keys(ALLOW).length + ' 个，不判失败）：');
