@@ -16,12 +16,12 @@
 // 扩到全工程后比对了 289 个调用点，误报 0（前提是解析器先跳过字符串字面量）。
 // 系统 API 仍不查 —— 那需要真正的类型系统。
 //
-// **查不到什么（第120轮实测，别高估它）**：
-// ① **不查裸调用**。`GameMenuScreen` 内部的 `listRow(...)`、`infoRow(...)` 这类不带类型前缀的调用
-//    抓不到 —— 而这恰好是第119轮那个「enabled: 插到 options: 前面」的位置。
-//    试过扩：裸调用 1736 处里误报 9 处，全因实参里的三元 `? :` 被当成标签分隔符；
-//    加"冒号前必须是单个标识符"的过滤后误报反涨到 94（把合法标签也过滤掉了）。
-//    要正确区分"标签冒号"与"表达式里的冒号"，需要真正的语法分析 —— 静态解析到此为止。
+// **查不到什么（第121轮更新，别高估它）**：
+// ① **裸调用只查"实参里没有三元"的那部分**。第120轮试过全查，误报 9 → 加过滤后 94；
+//    第121轮换策略：实参串里出现 `?`（三元 `a ? b : c`，其冒号在顶层、与标签冒号字面相同）
+//    就跳过这个调用，其余照查 —— 实测 1657 处裸调用 **0 误报**，
+//    且能精确抓到第119轮那个「enabled: 插到 options: 前面」（调用 _,key,enabled,options vs 声明 _,key,options,enabled）。
+//    代价：含三元的调用不查（本项目里约 81 处）。
 // ② 不查系统 API 与跨文件重载（同名方法在多个类型里时，只要有一个声明匹配就放过）。
 //
 // 所以：**这一层的价值是"静态调用的标签与顺序全对"**，不是"所有调用都验过"。
@@ -200,7 +200,56 @@ for (const f of flat) {
   }
 }
 
-console.log(`声明：${decls.size} 个方法 · 比对了 ${callsChecked} 个调用点`);
+// ---- ③ 裸调用：同类型内部、不带类型前缀的调用（如 listRow(...)）----
+// 第121轮补。**只跳过实参含 `?` 的**：三元 `a ? b : c` 的冒号在顶层，
+// 与标签冒号字面相同，静态无法区分 —— 宁可漏，不误报（实测 0 误报 / 1657 处）。
+let bareChecked = 0, bareSkipped = 0;
+
+for (const f of flat) {
+  const marks = [];
+  let tm;
+  const typeRe = /\b(?:extension|enum|struct|class|actor)\s+([A-Za-z_]\w*)/g;
+  while ((tm = typeRe.exec(f.text)) !== null) marks.push({ idx: tm.index, type: tm[1] });
+  if (marks.length === 0) continue;
+
+  // 排除成员访问（前面是 `.`）与标识符内部，只留裸调用
+  const re = /(?<![.\w])([a-zA-Z_]\w*)\s*\(/g;
+  let m;
+  while ((m = re.exec(f.text)) !== null) {
+    const name = m[1];
+    if (['if','for','while','switch','guard','return','func','init','some','await',
+         'try','catch','case','throw','in'].includes(name)) continue;
+
+    let owner = null;
+    for (const mk of marks) { if (mk.idx < m.index) owner = mk.type; else break; }
+    if (!owner) continue;
+
+    const key = `${owner}.${name}`;
+    if (!decls.has(key)) continue;
+
+    const rawArgs = argsAt(f.text, f.text.indexOf('(', m.index));
+    if (rawArgs === null) continue;
+    if (/\?/.test(rawArgs)) { bareSkipped++; continue; }     // 含三元 → 跳过
+
+    const callLabels = labelsOf(rawArgs, 'call');
+    if (callLabels === null || callLabels.includes(null)) continue;
+
+    const sameArity = decls.get(key).filter(c => c.split(',').filter(x => x !== '').length === callLabels.length);
+    if (sameArity.length === 0) continue;
+
+    bareChecked++;
+    const got = callLabels.join(',');
+    if (!sameArity.includes(got)) {
+      problems.push({
+        file: f.name, type: owner, name,
+        call: got || '（无参数标签）',
+        decl: sameArity.join(' | '),
+        bare: true,
+      });
+    }
+  }
+}
+console.log(`声明：${decls.size} 个方法 · 静态调用 ${callsChecked} 处 · 裸调用 ${bareChecked} 处（跳过含三元的 ${bareSkipped} 处）`);
 console.log('');
 
 if (problems.length === 0) {
@@ -210,7 +259,7 @@ if (problems.length === 0) {
 
 console.log(`⚠ ${problems.length} 处标签对不上（会编译失败）：`);
 for (const p of problems) {
-  console.log(`\n  ${p.file}  ${p.type}.${p.name}(...)`);
+  console.log(`\n  ${p.file}  ${p.type}.${p.name}(...)${p.bare ? '  [同类型内部调用]' : ''}`);
   console.log(`    调用用的是： ${p.call}`);
   console.log(`    声明要求：   ${p.decl}`);
 }
