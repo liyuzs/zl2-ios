@@ -14,7 +14,11 @@ const { SRC } = require('./_paths');
 
 const BASELINE = path.join(__dirname, '_a11y-baseline.json');
 
-// 统计一个文件里"按钮的 label 是纯 Image 且附近没有 accessibilityLabel"的次数
+// 统计一个文件里"按钮的 label 是纯 Image 且没有名字"的次数
+//
+// 第111轮修正：原来的判据只看"附近有没有 accessibilityLabel"，
+// 于是把「图标 + Text("添加服务器")」这类**自带文字名字**的按钮也算成无标签（误报）。
+// 现在额外要求：按钮的 label 块里**没有 Text(**，才算没名字。
 function countUnlabeledIconButtons(src) {
   const lines = src.split('\n');
   let n = 0;
@@ -23,9 +27,10 @@ function countUnlabeledIconButtons(src) {
     // 往回找 12 行，看是不是 Button 的 label
     const up = lines.slice(Math.max(0, i - 12), i + 1).join('\n');
     if (!/Button\s*(\(|\{)/.test(up)) continue;
-    // 往后找 6 行看有没有 accessibilityLabel
-    const down = lines.slice(i, i + 6).join('\n');
+    // 往后找 10 行：有 accessibilityLabel 或 Text( 都算有名字
+    const down = lines.slice(i, i + 10).join('\n');
     if (/accessibilityLabel/.test(down)) continue;
+    if (/Text\s*\(/.test(down)) continue;
     n++;
   }
   return n;

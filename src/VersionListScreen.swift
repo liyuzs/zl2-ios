@@ -309,6 +309,7 @@ struct VersionListScreen: View {
                 Image(systemName: "gearshape.fill").font(.system(size: 15))
                     .foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 38, height: 34)
+                    .accessibilityLabel("版本设置")
                     .background(ZLTheme.surfaceAlt)
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
             }
@@ -321,6 +322,7 @@ struct VersionListScreen: View {
                 Image(systemName: "ellipsis").font(.system(size: 15))
                     .foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 38, height: 34)
+                    .accessibilityLabel("更多操作")
                     .background(ZLTheme.surfaceAlt)
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
             }

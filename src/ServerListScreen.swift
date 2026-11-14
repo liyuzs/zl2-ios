@@ -256,6 +256,7 @@ struct ServerListScreen: View {
                 Image(systemName: "pencil").font(.system(size: 13))
                     .foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 34, height: 32)
+                    .accessibilityLabel("编辑服务器")
                     .background(ZLTheme.surfaceAlt)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
@@ -265,6 +266,7 @@ struct ServerListScreen: View {
                 Image(systemName: "trash").font(.system(size: 13))
                     .foregroundStyle(ZLTheme.danger)
                     .frame(width: 34, height: 32)
+                    .accessibilityLabel("删除服务器")
                     .background(ZLTheme.surfaceAlt)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }

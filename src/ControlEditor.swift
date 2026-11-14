@@ -911,6 +911,7 @@ struct ControlEditorScreen: View {
                 Image(systemName: "chevron.left").foregroundStyle(ZLTheme.textPrimary)
                     .frame(width: 40, height: 36)
                     .background(ZLTheme.surface)
+                    .accessibilityLabel("返回")
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             .buttonStyle(.plain)
@@ -992,6 +993,7 @@ struct ControlEditorScreen: View {
                     .foregroundStyle(ZLTheme.textOnGold)
                     .frame(width: 40, height: 34)
                     .background(ZLTheme.primary)
+                    .accessibilityLabel("更多操作：添加控件、收藏柜、导出导入、新增控件层、保存并退出")
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
         }
@@ -1033,6 +1035,7 @@ struct ControlEditorScreen: View {
                 Spacer()
                 Button { addLayer() } label: {
                     Image(systemName: "plus.circle.fill").foregroundStyle(ZLTheme.primary)
+                        .accessibilityLabel("新增控件层")
                 }
                 .buttonStyle(.plain)
             }
