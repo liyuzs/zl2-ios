@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **新增 `_check-dup-switch-case.js`：同一个 `switch` 内重复 `case`** → 编译错误（case is already handled）。第三类编译检查（前两类：同类型 var/let 重名、enum 内重复 case）。分母 **328 处 `.name` / 83 个 switch → 0 处重复** ✓
+- **判据第一版失效了**：v1 从 `switch` 往下用"缩进 + 花括号"找 case，111 个 switch 只匹配到 **5 处**；而全项目实际有 **336 处 `case .x`** —— **分母差两个数量级**（"结果数量级异常先怀疑判据"的又一次应验）。v2 改成**从 `case` 往上找最近的 `switch`**（第162轮 `_check-silent-default` 验证过的方向），现在 328 处、覆盖 98%。
+- **局限**：`case .a where cond:` 与 `case .a:` 在 Swift 里是合法的（where 让它们不重叠）→ 本检查会报，需人工确认。
+
 - **新增 `_check-dup-case.js`：enum 内重复 `case`** → 编译错误。补上 `_check-dup-decl.js` 没覆盖的 `case`（它只查 var/let）。分母 **147 个 enum / 483 个 case → 0 处** ✓
 - **评估后放弃：`switch` 里 `case .typo` 拼错检查**。做了两版：单文件枚举池误报 **47/291（16%）**（枚举在别的文件）；全局池降到 **17/346（5%）**，但剩下全是 **`URLError.Code`**（`.timedOut`/`.notConnectedToInternet`…）—— 系统枚举，编译器会查、不可能拼错。**真问题 0、误报 17**，要继续只能堆 20 个名字的系统枚举白名单（白名单是"知识"，每加一个新枚举就要维护）。按"分母决定做不做"+"不做检查也是判断力"**放弃**，脚本已删，理由记在 CHANGELOG。
 
