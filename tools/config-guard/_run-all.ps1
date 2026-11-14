@@ -77,6 +77,7 @@ $checks = @(
     @('_check-dark-mode.js',        'js',  '深色模式是否真的生效'),
     @('_check-install-docs.js',     'js',  '三份安装文档一致性（JIT/StikDebug/孤例工具）'),
     @('_check-section-refs.js', 'js', '第N节引用要带标题'),
+    @('_check-obsolete-docs.js', 'js', '失效文档必须标注'),
     @('_check-capability-claims.js', 'js', '能力边界两份文档都要说'),
     @('_check-layout-keys.js',      'js',  '布局导出键 ↔ 核心读取'),
     @('_check-destructive-confirm.js', 'js', '破坏性按钮必须先确认（数据安全）'),
