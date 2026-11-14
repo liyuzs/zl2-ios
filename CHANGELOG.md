@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **两个检查的分母是"扫了几个文件"，不是"查了几个对象"**：`_check-dead-types` 和 `_check-dup-decl` 都只报「扫了 68 个文件」—— 那是**输入规模**。如果判据失效（一个类型都没识别），它们仍会输出"68 个文件、0 处问题"，**看起来完全正常**。已补粗数：「粗数顶层类型 **305** 个（不含 extension / @MainActor；判据识别的个数应与它接近）」。
+- **顺带做了一次分母对账**：`_check-state-written` 报 344 个 @State，独立粗数 358 —— **差异有解释**（14 个是 `@StateObject` + 注释里的 @State）→ 判据准确 ✓。`_check-empty-button` 241 也对得上。
+- **305 的校准过程**：struct 190 + class 22 + enum 93 + actor 17 = 322，但 **17 个 actor 全是 `@MainActor` 误匹配** → 真实 305。
+
 - **新增 `_check-dup-switch-case.js`：同一个 `switch` 内重复 `case`** → 编译错误（case is already handled）。第三类编译检查（前两类：同类型 var/let 重名、enum 内重复 case）。分母 **328 处 `.name` / 83 个 switch → 0 处重复** ✓
 - **判据第一版失效了**：v1 从 `switch` 往下用"缩进 + 花括号"找 case，111 个 switch 只匹配到 **5 处**；而全项目实际有 **336 处 `case .x`** —— **分母差两个数量级**（"结果数量级异常先怀疑判据"的又一次应验）。v2 改成**从 `case` 往上找最近的 `switch`**（第162轮 `_check-silent-default` 验证过的方向），现在 328 处、覆盖 98%。
 - **局限**：`case .a where cond:` 与 `case .a:` 在 Swift 里是合法的（where 让它们不重叠）→ 本检查会报，需人工确认。
