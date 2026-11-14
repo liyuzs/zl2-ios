@@ -63,6 +63,11 @@
 
 ### 已知问题 / 新增
 
+- **三处假平台筛选**：`runSearch()` 用了 gameVersion / modLoader / category / platform / sort，**唯一没参与的是 `source`（目标平台）**，而全仓也没有 CurseForge API。删掉 `AssetsScreen` 的「目标平台」filterCard + 平台 chip + `kind.sources`、`SearchIDScreen` 的平台 Menu + `platforms`，文案改成「支持 Modrinth 全站资源」。
+- **删 344 行死代码**：`SampleData`（66 行，零引用且里面是**逼真的假 Modrinth 数据**）· `LaunchContract.swift`（213 行 / 7 类型，早期架构骨架，实际用 CoreBridge）· `ErrorScreen`（65 行，被 LaunchScreen 错误区覆盖）。文件数 70 → **69**。
+- **修 `_check-dead-types` 的三个盲区**：①**注释算引用**（`SampleData` 因注释里提一次而漏掉）→ 统计前剥整行注释 ②**文件内互相引用**（`LaunchContract` 6 个类型全零外部引用但互引让 count>1）→ 新判据"文件里所有类型都零外部引用 = 死文件" ③**跨语言动态引用**（新判据立刻把 `ZLOverlayHost.swift` 报成死文件，**但它由 ObjC 的 `NSClassFromString` 实例化、负责 FPS 悬浮层**）→ 扫 core 的 `.m` 把动态类名也算引用。**第③条差点造成真实损害。**
+- **留 TODO**：`ModifyVersionScreen.swift`（276 行，真功能但从未接线）已加 ALLOW，下一轮决定接线或删。
+
 - **关于页那张「已加载的插件」是纯假的，已删**：卡片写着 `MobileGlues / com.pi.phux.mobileglues · 1.3.4`，三重误导——①项目**没有插件机制**（`ZLStrings` 里那些 plugin 文案是安卓整包提取未引用、两个相关设置项都在置灰集合里）②`MobileGlues` 在仓库里**一个文件都没有**（第103轮确认过，当时只改了 `LicenseScreen`，漏了这里）③包名与版本号是硬编码假数据。删掉整张卡片（17 行）。
 - **新增 `_check-hardcoded-versions.js`**：用户可见字符串里不许有硬编码版本号。判据：`Text`/`Label`/`LabeledContent` 等含 `1.20.1` 格式且**不含中文** → 报；含中文的多半是说明文字只提示；许可证名在 ALLOW。用第141/142轮两个真实事故当验收用例，都能精确报出。
 
