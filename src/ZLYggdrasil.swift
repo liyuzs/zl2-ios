@@ -121,7 +121,13 @@ struct ZLYggdrasilClient {
             req.setValue("ZL2-iOS/1.0", forHTTPHeaderField: "User-Agent")
             let (data, resp) = try await URLSession.shared.data(for: req)
             guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
-                  data.count > 100 else { return false }
+                  // **PNG 魔数**（89 50 4E 47）—— 只判 data.count > 100 会把 HTML 错误页存成 skin.png。
+                  // 与第40轮给 jar/zip 加的 PK 魔数校验同一思路（第150轮补）。
+                  data.count >= 8,
+                  [UInt8](data.prefix(4)) == [0x89, 0x50, 0x4E, 0x47] else {
+                NSLog("[ZL2] 皮肤下载内容不是 PNG（%ld 字节），已丢弃", data.count)
+                return false
+            }
             let fm = FileManager.default
             try? fm.createDirectory(at: gameDir, withIntermediateDirectories: true)
             let dst = gameDir.appendingPathComponent("skin.png")
@@ -168,6 +174,13 @@ enum ZLAuthlibInjector {
             let (data, resp) = try await URLSession.shared.data(for: r2)
             guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
                   data.count > 100_000 else { return false }
+            // **ZIP/JAR 魔数**（PK = 0x50 0x4B）—— 只判大小的话，一个 >100KB 的 HTML 错误页
+            // 会被存成 jar → isReady 变 true → -javaagent 指向无效 jar → JVM 启动直接失败
+            // （与第31轮 patchjna_agent.jar 那条同类）。第150轮补。
+            guard data.count >= 2, data[0] == 0x50, data[1] == 0x4B else {
+                NSLog("[ZL2] authlib-injector 下载内容不是 zip（%ld 字节），已丢弃", data.count)
+                return false
+            }
             try data.write(to: jarURL, options: .atomic)
             NSLog("[ZL2] authlib-injector 已下载：\(data.count) 字节")
             return true

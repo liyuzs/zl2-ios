@@ -16,6 +16,8 @@ struct ZLLoaderInstallResult {
 
 enum ZLLoaderInstallerError: LocalizedError {
     case badURL
+    /// 下载到的内容不是合法的 jar/zip（第150轮加：服务器可能返回网页错误页）
+    case badContent(String)
     case profileFailed(String)
     case mergeFailed(String)
     case libraryFailed(String)
@@ -23,6 +25,7 @@ enum ZLLoaderInstallerError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .badURL: return "URL 无效"
+        case .badContent(let s): return "下载到的不是 jar（可能是网页错误页）：\(s)"
         case .profileFailed(let s): return "获取加载器配置失败：\(s)"
         case .mergeFailed(let s): return "合并版本配置失败：\(s)"
         case .libraryFailed(let s): return "下载加载器库失败：\(s)"
@@ -142,6 +145,13 @@ struct ZLLoaderInstaller {
                                                      withIntermediateDirectories: true)
             do {
                 let d = try await fetch(url)
+                // **ZIP/JAR 魔数（PK = 0x50 0x4B）**（第150轮补）：
+                // 与 VersionInstaller / ModrinthAPI 的校验一致。没有它的话，
+                // 服务器返回的网页错误页会被存成 .jar，且 failedLibs 不会记 ——
+                // 用户看到"安装完成"，启动时 ClassNotFoundException。
+                guard d.count >= 2, d[0] == 0x50, d[1] == 0x4B else {
+                    throw ZLLoaderInstallerError.badContent(url.lastPathComponent)
+                }
                 try d.write(to: dest, options: .atomic)
             } catch {
                 // 单个库失败不中断，但**要记下来** —— 缺库的加载器启动会崩

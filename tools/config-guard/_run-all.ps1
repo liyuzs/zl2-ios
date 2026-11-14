@@ -51,6 +51,7 @@ $checks = @(
     @('_check-settings-entry.js',  'js',  '设置项都有 UI 入口'),
     @('_check-setting-defaults.js','js',  '设置项默认值只在一处声明'),
     @('_check-path-safety.js',      'js',  '路径拼接安全（防目录穿越）'),
+    @('_check-download-magic.js', 'js', '下载写盘须校验内容'),
     @('_check-decode-recovery.js',  'js',  '解码失败必须备份原始数据'),
     @('_check-dark-mode.js',        'js',  '深色模式是否真的生效'),
     @('_check-install-docs.js',     'js',  '三份安装文档一致性（JIT/StikDebug/孤例工具）'),

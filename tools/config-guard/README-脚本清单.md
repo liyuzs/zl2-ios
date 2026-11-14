@@ -57,6 +57,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-settings-entry.js` | 可用设置项是否有**UI 入口**（与 `_check-settings-wiring` 互补：那个查代码层消费，这个查用户能不能改）。第148轮实测：30 项 = 21 UI 控件 + 4 自动写入 + 1 手势 + 4 内部记账 + **没入口 0** |
 | `_check-setting-defaults.js` | 设置项默认值只有一处来源：全仓不许出现 `defaultWhenUnset`；`boolValue/intValue/stringValue(_ key:)` 必须委托给 `store.xxx(`（由 ZLSettings 的 `defaultValue` 兜底） |
 | `_check-path-safety.js` | 路径拼接安全：处理远端数据/用户输入的 5 个文件里，用变量拼路径的那一行必须用到 `ZLPathSafety` 校验后的变量（或内联调用）；已知安全例外登记理由 |
+| `_check-download-magic.js` | "下载后写盘"必须校验内容（魔数或哈希）。第150轮补三个漏网的：`ZLYggdrasil.downloadSkin`（PNG 只判 >100 字节）· `ZLYggdrasil.ensureDownloaded`（authlib jar 只判 >100KB，HTML 错误页会被存成 jar → `-javaagent` 指向无效 jar → JVM 起不来）· `LoaderInstaller`（库 jar 直接写盘）。`MojangAPI` 在 ALLOW（通用流式下载器，有更强的 size 截断检测） |
 | `_check-decode-recovery.js` | 解码失败必须备份：4 个持久化文件有 `try? 解码` 就必须调 `ZLRecovery.preserveRawData`；全仓兜底扫"从 UserDefaults 取 data 再 try? 解码但没备份"的写法（判据前先剥注释，否则助手文件自己的注释会误报） |
 | `_check-install-docs.js` | 三份安装文档一致性：都必须提 JIT 与 StikDebug；只在一份里出现的工具名（孤例）会被报出来 |
 | `_check-layout-keys.js` | 布局导出键 ↔ 核心读取：`d["键"]=` 里每个键都要在 core 源码里出现；核心不认的必须登记理由（现有 4 个：textSize / joystickColor / joystickSize / pressedBgColor） |
