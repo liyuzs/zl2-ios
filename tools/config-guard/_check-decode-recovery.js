@@ -35,6 +35,9 @@ const ALLOW = [
 ];
 
 const problems = [];
+let decodeSites = 0;      // 扫到多少处 try? 解码（判据的分母）
+let guardedSites = 0;     // 其中多少处有 ZLRecovery.preserveRawData
+let watchMissing = [];    // WATCH 里读不到的文件（改名/删了）
 
 // 只看代码，不看注释 —— 这个助手文件的**注释里**就写着 `try? JSONDecoder().decode(...)`，
 // 不剥掉注释会把自己报成问题（第81轮实测踩到）。
@@ -45,10 +48,14 @@ const stripComments = src => src
 
 // 1. 被监视的文件必须 import/使用 ZLRecovery
 for (const f of WATCH) {
-  const text = stripComments(fs.readFileSync(path.join(SRC, f), 'utf8'));
+  const full = path.join(SRC, f);
+  if (!fs.existsSync(full)) { watchMissing.push(f); continue; }
+  const text = stripComments(fs.readFileSync(full, 'utf8'));
   const hasDecode = /try\?\s+[\w.()]*decode\(/.test(text);
   if (!hasDecode) continue;                        // 没解码就不用管
-  if (!text.includes('ZLRecovery.preserveRawData')) {
+  decodeSites++;
+  if (text.includes('ZLRecovery.preserveRawData')) { guardedSites++; continue; }
+  {
     problems.push({ file: f, why: '有 try? 解码却没有 ZLRecovery.preserveRawData（失败会静默丢数据）' });
   }
 }
@@ -61,13 +68,26 @@ for (const f of files) {
   const text = stripComments(fs.readFileSync(path.join(SRC, f), 'utf8'));
   // 只看「从 UserDefaults 拿 data 再解码」这种形态
   if (/UserDefaults\.standard\.data\(forKey:/.test(text) && /try\?\s+[\w.()]*decode\(/.test(text)) {
-    if (!text.includes('ZLRecovery.preserveRawData')) {
+    decodeSites++;
+    if (text.includes('ZLRecovery.preserveRawData')) { guardedSites++; continue; }
+    {
       problems.push({ file: f, why: '从 UserDefaults 取 data 后 try? 解码，但没备份' });
     }
   }
 }
 
-console.log(`检查 ${WATCH.length} 个持久化文件 + 全仓兜底`);
+console.log(`检查 ${WATCH.length} 个持久化文件 + 全仓兜底：扫到 ${decodeSites} 处 try? 解码，其中 ${guardedSites} 处有备份`);
+if (watchMissing.length > 0) {
+  console.log('⚠ WATCH 里这些文件读不到（改名或删了）：' + watchMissing.join('、'));
+  console.log('  它们是这条检查的主要对象，读不到就等于没查。请更新 WATCH 名单。');
+  process.exit(1);
+}
+// 零匹配即失败：一处 try? 解码都没扫到，"全都会备份"是空真
+if (decodeSites === 0) {
+  console.log('⚠ 一处 try? 解码都没扫到 —— 判据可能已过时');
+  console.log('  这不是"没问题"，是"没看到东西"。请核对 try? 解码的写法与 WATCH 名单。');
+  process.exit(1);
+}
 console.log('');
 
 if (problems.length === 0) {
