@@ -273,8 +273,7 @@ enum ZLDiagnostics {
         }
 
         // 可用空间
-        if let attrs = try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory()),
-           let free = attrs[.systemFreeSize] as? Int64 {
+        if let free = ZLStorage.freeBytes() {
             let freeGB = Double(free) / 1024 / 1024 / 1024
             out.append(ZLDiagItem(
                 title: "可用空间",

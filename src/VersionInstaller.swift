@@ -125,6 +125,37 @@ actor VersionInstaller {
         }
         try raw.write(to: jsonPath, options: .atomic)
 
+        // ---- 预检剩余空间（第128轮）----
+        // 别让用户等下载到一半才失败：按版本 JSON 里的 size 字段估一下要多少，
+        // 不够就当场说清楚。assets 的大小不在 version JSON 里（要另下 asset index），
+        // 所以按 client + libraries 的 50% 粗估。
+        do {
+            var needed: Int64 = 0
+            if let dl = obj["downloads"] as? [String: Any],
+               let client = dl["client"] as? [String: Any],
+               let cs = client["size"] as? Int64 {
+                needed += cs
+            }
+            if let libs = obj["libraries"] as? [[String: Any]] {
+                for l in libs {
+                    if let a = (l["downloads"] as? [String: Any])?["artifact"] as? [String: Any],
+                       let sz = a["size"] as? Int64 {
+                        needed += sz
+                    }
+                }
+            }
+            needed += needed / 2                       // assets 粗估
+            let margin: Int64 = 200 * 1024 * 1024       // 留 200MB 给日志/存档/运行时
+            // 只有在**估得出**（needed > 0）且**查得到**（free != nil）时才拦；
+            // 任一为未知就放行 —— 宁可让下载自然失败，也不要把"查不到"误报成"空间不足"。
+            if needed > 0, let free = ZLStorage.freeBytes(), free < needed + margin {
+                throw InstallError.failed(
+                    "存储空间不足：这个版本大约需要 \(ZLStorage.human(needed))，" +
+                    "当前只剩 \(ZLStorage.human(free))。请先清理一些空间再装。" +
+                    "（现在中止，不会留下装了一半的版本）")
+            }
+        }
+
         // 2) client.jar
         guard let clientURL = detail.downloads?.client?.url else {
             throw InstallError.noDownloads
