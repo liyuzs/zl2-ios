@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **审计"默认值兜底"与通知机制，两条都干净**：①`?? 0` / `?? ""` / `?? Date()` / `?? 布尔` 全仓 **119 处**，逐个看过——绝大多数是正确语义；只有 7 处"显示文件大小"在 stat 失败时会显示「0 字节」而非「未知」，**轻微不精确、故意不改**（要改得把 7 个 model 的 `sizeBytes` 改成 Optional，而 0 字节是合法值、不能当哨兵）。②只定义 2 个 `Notification.Name`，post 与 `publisher(for:)` 全部对应、无孤立；`⌘R` 走广播通知、各页面随视图生命周期监听，6 个观察者各刷自己的数据。
+- **给 `pingAll()` 加注释说明"必须串行"**：串行 20 个服务器最坏 100 秒，但 `withTaskGroup` 的子任务**不继承 MainActor**，而 `ping` 里改 `loading`/`pings`/`failed` 这些 `@State` → 并发化就是"后台线程改 UI 状态"（第127轮刚审计过这类）。真要提速应把网络请求并行、结果收集完再一次性回主线程写状态。
+
 - **下载前预检磁盘空间**：`VersionInstaller.install()` 原来拿到 metadata 就直接下载，空间不足会"等几分钟 → 装到一半失败 → 留下不完整版本目录（预检报文件不存在，但用户不知道是空间问题）"。现按版本 JSON 的 `downloads.client.size` + `libraries[].downloads.artifact.size` 估算，assets 按前两者 50% 粗估，再留 200MB 余量；不够就抛错并说清"要多少 / 还剩多少 / 现在中止不会留下装了一半的版本"。**条件写死**：`needed > 0` 且 `free != nil` 才拦，任一未知就放行（宁可让下载自然失败，也不把"查不到"误报成"空间不足"）。
 - 新增 `src/ZLStorage.swift`（`freeBytes()` / `human(_:)`）—— **一处实现、两处使用**（诊断页显示 + 下载前预检），消掉 `ZLDiagnostics` 里那份重复的 `attributesOfFileSystem` 调用。`freeBytes()` 拿不到时返回 `nil` 而非 0，让调用方能区分"空间是 0"和"查不到"。
 
