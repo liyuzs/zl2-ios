@@ -509,9 +509,13 @@ struct HomeScreen: View {
 
             // 三步清单，第一步高亮
             VStack(alignment: .leading, spacing: 8) {
-                onboardingStep(1, "下载一个游戏版本", done: false, active: true)
-                onboardingStep(2, "选 Fabric 加载器（Forge 不支持）", done: false, active: false)
-                onboardingStep(3, "回到这里点「启动游戏」", done: false, active: false)
+                // **第204轮**：这三行原来都传 `done: false`，而 `onboardingStep` 的实现里
+                // 根本没用到 `done` —— 是个死参数（Swift 不会对未使用的函数参数报警，所以一直留着）。
+                // 这个卡片只在"一个版本都没装"时显示，那时三步本来就都没做，所以也不需要 done。
+                // 已把参数删掉。
+                onboardingStep(1, "下载一个游戏版本", active: true)
+                onboardingStep(2, "选 Fabric 加载器（Forge 不支持）", active: false)
+                onboardingStep(3, "回到这里点「启动游戏」", active: false)
             }
 
             Button {
@@ -542,7 +546,7 @@ struct HomeScreen: View {
         )
     }
 
-    private func onboardingStep(_ n: Int, _ text: String, done: Bool, active: Bool) -> some View {
+    private func onboardingStep(_ n: Int, _ text: String, active: Bool) -> some View {
         HStack(spacing: 8) {
             ZStack {
                 Circle()
