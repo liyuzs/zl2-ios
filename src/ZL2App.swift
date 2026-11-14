@@ -336,13 +336,17 @@ struct RootView: View {
                                             // 启动时必然 ClassNotFoundException，所以这里不能一律说"已安装"。
                                             if result.failedLibs.isEmpty {
                                                 await ZLTaskCenter.shared.update(installTask,
-                                                    detail: "已安装 \(result.versionID)（\(result.libraryCount) 个库）",
+                                                    // 第170轮：加"下一步"。用户还停在 Fabric 页（只有 onBack，不会自动回首页），
+                                                    // 不说的话他不知道要回去启动。措辞压在 lineLimit(2) 内（约 40 字符）。
+                                                    detail: "已安装 \(result.versionID)（\(result.libraryCount) 库）· 回首页启动就是 Fabric 版",
                                                     state: .done)
                                             } else {
                                                 let names = result.failedLibs.prefix(2).joined(separator: "、")
                                                 let more = result.failedLibs.count > 2 ? "…" : ""
                                                 await ZLTaskCenter.shared.update(installTask,
-                                                    detail: "已安装 \(result.versionID)，但有 \(result.failedLibs.count) 个库下载失败（\(names)\(more)）—— 这个加载器可能起不来，建议重装",
+                                                    // 第170轮：原文案约 70 字符，会被 lineLimit(2) 截断。压到 2 行内，
+                                                    // 保留"缺几个库 + 哪两个"这个最有用的信息。
+                                                    detail: "\(result.versionID) 有 \(result.failedLibs.count) 个库失败（\(names)\(more)）· 可能起不来，重装试试",
                                                     state: .failed)
                                             }
 
