@@ -35,6 +35,17 @@ struct GameMenuScreen: View {
     private let sdlEnabled: Bool
     /// 安卓 `isGyroscopeAvailable(context)`，iOS 用 CoreMotion 判断。
     private let gyroscopeAvailable: Bool
+
+    /// **手柄 / 手势 / 快捷栏 / 陀螺仪这几个模块在 iOS 上没接**。
+    ///
+    /// 依据（第119轮实测，可复核）：
+    /// · 这 21 个偏好键全部在 `ZLUnsupportedSettings.platformOnly` 里 —— 设置页早就置灰并写「iOS 不支持此能力」；
+    /// · 核心 `core/` 里 **0 处真实读取**（`gamepadControl` 命中的 3 处是 `gamepadControlList` 文件名列表，不是偏好）；
+    /// · 项目里没有 `GCController` / `GCKeyboard`；`CMMotionManager` 只被 `ZLGlass` 的视差动效用过。
+    ///
+    /// 但游戏内菜单里这些控件原本**都可调** —— 设置页说不行、进游戏却能拨、拨完又没反应。
+    /// 所以统一置灰，与设置页口径一致。**将来真接入了，把这里改成 true 即可恢复**。
+    private static let inputExtrasWired = false
     /// 安卓 `gamepadViewModel.getAllConfigKeys()`；iOS 未接入配置管理时为空数组。
     private let gamepadMappingConfigs: [String]
     /// 安卓 `AllSettings.enableTerracotta`。
@@ -468,8 +479,9 @@ struct GameMenuScreen: View {
         let gamepadOn = boolValue("gamepadControl")
         // 安卓 remapEnabled：总开关打开且处于映射模式
         let remapEnabled = gamepadOn && stringValue("gamepadInputMode") == "GamepadInputMode.Mapped"
+                           && Self.inputExtrasWired
 
-        switchRow(ZLStrings.settings_gamepad_title, "gamepadControl")
+        switchRow(ZLStrings.settings_gamepad_title, "gamepadControl", enabled: Self.inputExtrasWired)
 
         Color.clear.frame(height: 8)
 
@@ -518,9 +530,10 @@ struct GameMenuScreen: View {
     /// 手势控制本身（GameMenuSubscreen.kt:883-944）
     @ViewBuilder
     private var gestureControlRows: some View {
-        let gestureOn = boolValue("gestureControl")
+        let gestureOn = boolValue("gestureControl") && Self.inputExtrasWired
 
-        switchRow(ZLStrings.settings_control_gesture_control_title, "gestureControl")
+        switchRow(ZLStrings.settings_control_gesture_control_title, "gestureControl",
+                  enabled: Self.inputExtrasWired)
         listRow(ZLStrings.settings_control_gesture_tap_action_title,
                 key: "gestureTapMouseAction",
                 options: gestureActionOptions,
@@ -538,8 +551,8 @@ struct GameMenuScreen: View {
     /// 快捷栏相关（GameMenuSubscreen.kt:946-1042）
     @ViewBuilder
     private var gestureHotbarRows: some View {
-        let customHotbar = stringValue("hotbarRule") == "HotbarRule.Custom"
-        let longClick = boolValue("hotbarLongClick")
+        let customHotbar = stringValue("hotbarRule") == "HotbarRule.Custom" && Self.inputExtrasWired
+        let longClick = boolValue("hotbarLongClick") && Self.inputExtrasWired
 
         listRow(ZLStrings.game_menu_option_hotbar_rule,
                 key: "hotbarRule",
@@ -548,14 +561,17 @@ struct GameMenuScreen: View {
                                    label: ZLStrings.game_menu_option_hotbar_rule_auto),
                     GameMenuOption(value: "HotbarRule.Custom",
                                    label: ZLStrings.game_menu_option_hotbar_rule_custom),
-                ])
+                ],
+                enabled: Self.inputExtrasWired)
         // 快捷栏宽/高在设置里存 0~1000，界面上按 0~100% 显示（安卓 hotbarWidth/10f）
         decimalSliderRow(ZLStrings.game_menu_option_hotbar_width, "hotbarWidth",
                          enabled: customHotbar)
         decimalSliderRow(ZLStrings.game_menu_option_hotbar_height, "hotbarHeight",
                          enabled: customHotbar)
-        switchRow(ZLStrings.game_menu_option_hotbar_double_click, "hotbarDoubleClick")
-        switchRow(ZLStrings.game_menu_option_hotbar_long_click, "hotbarLongClick")
+        switchRow(ZLStrings.game_menu_option_hotbar_double_click, "hotbarDoubleClick",
+                  enabled: Self.inputExtrasWired)
+        switchRow(ZLStrings.game_menu_option_hotbar_long_click, "hotbarLongClick",
+                  enabled: Self.inputExtrasWired)
         sliderRow(ZLStrings.game_menu_option_hotbar_long_click_delay, "hotbarLongClickDelay",
                   range: 100...1000, suffix: "ms", enabled: longClick)
     }
@@ -573,7 +589,7 @@ struct GameMenuScreen: View {
     // 陀螺仪（GameMenuSubscreen.kt:1046-1162）
     @ViewBuilder
     private var gyroscopeRows: some View {
-        let usable = gyroscopeAvailable
+        let usable = gyroscopeAvailable && Self.inputExtrasWired
         let gyroOn = boolValue("gyroscopeControl")
         let enabled = usable && gyroOn
         let smoothing = boolValue("gyroscopeSmoothing")
