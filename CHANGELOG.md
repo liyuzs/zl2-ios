@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **发现一个编译阻断**：`HomeScreen.swift` 里有**两个同名 `private var hasInstalledVersion`**（L431 靠显示文案 `hasPrefix("还没有")` 判断的旧版 —— `3b454c8` 加的；L478 用 `listVersions().isEmpty` 的新版 —— `054d6f8`「新手引导」那轮加的）。**Swift 会报 `invalid redeclaration`，编译不过**。两处不同轮次加的，谁都没发现重名；`swift-lint` 只查括号配对照样通过。**这意味着 build-235（11/8）之后加的东西很可能一直编译不过。** 已删掉文案驱动那个、保留真实数据那个，并把 `attemptAutoLaunch` 的 `hasPrefix("还没有")` 一并改成 `hasInstalledVersion`。
+- **新增 `_check-dup-decl.js`**：同一类型内重复声明 `var`/`let` → 报。**判据修正三次**：①把函数体内的局部变量也算进了类型 → 限定"缩进 = 类型缩进 + 4" ②弹栈用"行首是 `}`"导致 `body` 的结尾 `}` 把 struct 弹掉、**判据完全空转** → 改成按缩进弹 ③**`func` 允许重载** → 只查 `var`/`let`。
+- **顺带**：`_check-script-inventory` 抓到新脚本里写死了 `D:\ios-zl2` → 已改用 `require('./_paths')`。
+
 - **又两个"永远匹配不上"的错误判据**：第181轮修了 `contains("JIT")`，这轮把剩下的逐个核实 —— `contains("返回错误码")/contains("launchJVM")` **有效**（`launchReturned` 的文案就是「launchJVM 返回错误码 N」），但 **`contains("JRE")` 基本失效**（`bootstrapFailed` 的 5 个实参里**一个都不含 "JRE"**，都是"这个版本需要 **Java** 21，但包里只有…"）· **`contains("内存")` 当前不触发**。已把 `JRE` 改成 `Java`；`内存` 那条保留并加注释（将来出现 OOM 错误时能接住）。
 - **没做检查**：这 3 处已人工核实，按"先数分母"（分母只有 3）不单开一条 —— `_check-error-locale` 管的是"翻译优先按错误码"，管不了"实参里有没有那个词"。
 
