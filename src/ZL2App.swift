@@ -482,12 +482,14 @@ struct MultiplayerScreen: View {
                                     "联机体验与参与者的网络情况有较大关系。",
                                 ])
                             } else if tab == 1 {
+                                notConnectedNotice
                                 section("房主教程", [
                                     "1. 开启「启用多人联机」开关",
                                     "2. 启动游戏，进入存档后按 ESC → 对局域网开放",
                                     "3. 通过悬浮窗的联机菜单创建房间，把邀请码发给朋友",
                                 ])
                             } else {
+                                notConnectedNotice
                                 section("房客教程", [
                                     "1. 确认游戏版本与模组和房主完全一致",
                                     "2. 开启「启用多人联机」开关",
@@ -546,6 +548,26 @@ struct MultiplayerScreen: View {
         }
         .background(ZLTheme.background.ignoresSafeArea())
         .navigationBarHidden(true)
+    }
+
+    /// 两个教程 tab 顶部的提示。
+    /// 步骤本身保留（它说明了接入后的设计意图），但必须让用户先知道现在走不通 ——
+    /// 否则用户会照着"开启启用多人联机开关"去找一个置灰的开关（第134轮）。
+    private var notConnectedNotice: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(ZLTheme.warning)
+            Text("当前版本尚未接入远程联机，以下步骤是接入后的用法，现在照着做走不通。" +
+                 "想和朋友一起玩，用右边「局域网游戏」，同一 WiFi 下能直接发现。")
+                .font(.system(size: 11))
+                .foregroundStyle(ZLTheme.warning)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(ZLTheme.primarySoft)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     // 局域网发现（同一 WiFi 下，零依赖）

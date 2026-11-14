@@ -25,7 +25,7 @@ const body = coreSrc.slice(s, e);
 const coreNames = [];
 for (const line of body.split('\n')) {
   if (/^\s*#define/.test(line)) continue;          // 跳过宏定义本身
-  const code = line.replace(/\/\/.*$/, '');        // 去注释
+  const code = line.replace(/\/\/[^\r\n]*/, '');   // 去注释（`.` 不匹配 `\r`，CRLF 文件会漏剥）
   const re = /add(?:key|spec)\(([A-Za-z0-9_]+)\)/g;
   let m;
   while ((m = re.exec(code)) !== null) coreNames.push(m[1]);

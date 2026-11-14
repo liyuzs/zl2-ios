@@ -18,6 +18,11 @@
 //   ③ 扫描排除 `ZLStrings.swift`：那是安卓文案整包提取（1536 条），
 //      多数没被界面引用，拿它判会一直误报。
 //   新增引导步骤时，请顺手往 CLAIMS 里加一条。
+//   ④ **新增（第134轮）**：`DISABLED_SETTINGS_CLAIMS` 专治「教程教用户开一个置灰的开关」。
+//      判据：文案里出现某句操作，而它对应的设置键在 `notWired` / `platformOnly` 里 →
+//      再看这句话附近 30 行有没有「做不到」的提示词或警示组件调用。
+//      有提示 → 合格（正确写法：步骤留着 + 事先说清现在不行）；没有 → 报。
+//      同时扫 `ZL2App.swift`（`MultiplayerScreen` 的教程在那里）。
 
 const fs = require('fs');
 const path = require('path');
@@ -34,7 +39,7 @@ const read = p => { try { return fs.readFileSync(p, 'utf8'); } catch { return ''
 const stripComments = src => src
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .split('\n')
-  .map(line => line.replace(/\/\/.*$/, ''))
+  .map(line => line.replace(/\/\/[^\r\n]*/, ''))   // 不能用 .*$ 结尾的正则 —— JS 的 . 不匹配 \r，CRLF 文件会漏剥注释
   .join('\n');
 
 const guideText = stripComments(read(GUIDE)) + '\n' + stripComments(read(POLISH));
@@ -116,13 +121,66 @@ for (const g of GESTURES) {
 console.log(`检查了 ${checked} 条"文案里教了的操作"，${swept} 类手势`);
 console.log('');
 
-if (problems.length === 0) {
-  console.log('✓ 引导/提示里教的每个操作，都能在代码里找到实现');
+// ---- 附加判据（第134轮）：教程教了置灰的设置 ----
+const SETTINGS_SRC = path.join(SRC, "SettingsScreen.swift");
+const settingsText = read(SETTINGS_SRC);
+
+function collectSet(name) {
+  const m = settingsText.match(new RegExp("static let " + name + ": Set<String> = \\[([\\s\\S]*?)\\]"));
+  if (!m) return new Set();
+  const keys = new Set();
+  for (const line of m[1].split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t.startsWith("")) continue;
+    const k = t.match(/^"([^"]+)"/);
+    if (k) keys.add(k[1]);
+  }
+  return keys;
+}
+const disabledKeys = new Set([...collectSet("notWired"), ...collectSet("platformOnly")]);
+
+// 文案 → 设置键（人工登记；新增教程步骤时补一条）
+const DISABLED_SETTINGS_CLAIMS = [
+  { text: "开启「启用多人联机」开关", key: "enableTerracotta" },
+];
+
+// 提示词 **或** 警示组件调用（第134轮：警示写在组件里，调用点只有组件名）
+const HINT_WORDS = /尚未接入|未接入|走不通|不支持|用不了|暂时没有|还没接入|notConnectedNotice|warningBanner|unsupportedBadge/i;
+
+const SCAN_FILES = [path.join(SRC, "ZL2App.swift"), GUIDE, POLISH];
+
+let disabledClaims = 0;
+for (const f of SCAN_FILES) {
+  const text = stripComments(read(f));
+  if (!text) continue;
+  const lines = text.split(/\r?\n/);
+  for (const claim of DISABLED_SETTINGS_CLAIMS) {
+    if (!disabledKeys.has(claim.key)) continue;
+    lines.forEach((line, i) => {
+      if (!line.includes(claim.text)) return;
+      const lo = Math.max(0, i - 30);
+      const hi = Math.min(lines.length, i + 30);
+      if (HINT_WORDS.test(lines.slice(lo, hi).join(String.fromCharCode(10)))) return;
+      disabledClaims++;
+      console.log("⚠ " + path.basename(f) + ":" + (i + 1) + " 教程教用户「" + claim.text + "」，");
+      console.log("    但设置项 " + claim.key + " 在置灰集合里，附近也没有提示。");
+    });
+  }
+}
+
+const totalBad = problems.length + disabledClaims;
+
+if (totalBad === 0) {
+  console.log("✓ 引导/提示里教的每个操作，都能在代码里找到实现");
+  console.log("✓ 也没有「教用户去开一个置灰的设置项」的教程");
   process.exit(0);
 }
 
-console.log(`⚠ ${problems.length} 条教了但做不到：`);
-for (const p of problems) console.log(`  · ${p}`);
-console.log('');
-console.log('修法：要么补实现，要么把文案改成实际能做操作 —— 别教用户做不存在的事。');
+if (problems.length > 0) {
+  console.log("⚠ " + problems.length + " 条教了但做不到：");
+  for (const q of problems) console.log("  · " + q);
+  console.log("");
+}
+console.log("修法：要么补实现，要么把文案改成实际能做操作。");
+console.log("      若步骤要保留（说明设计意图），就在同一处加一条醒目提示（如 notConnectedNotice）。");
 process.exit(1);
