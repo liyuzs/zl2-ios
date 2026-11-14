@@ -68,6 +68,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-error-exhaustive.js` | `errorDescription` 的 switch 不许有 `default:` —— 枚举 switch 加 default 会**关掉编译器的穷尽检查**，将来新增的错误 case 会静默显示成兜底文案。第176轮实测 12 个全部穷尽 ✓。**不查"只记日志不提示"**（实测分母只有 9 个 catch 且已干净，评估过不值得单开） |
 | `_check-state-written.js` | `@State` 必须有写入路径（赋值 / `$binding` / 原地修改），**且"声明行的初值"不算写入**。只有**字面量初值**且从不被写的才报（`= .random` / `= Date()` 这类表达式初值每次重建求值，是设计不是缺陷）。分母 343 个，第177轮实测 0 处问题 |
 | `_check-dup-decl.js` | **同一类型内**重复声明 `var`/`let` → Swift 报 `invalid redeclaration`，**编译不过**。第183轮靠它发现 `HomeScreen` 里有两个 `hasInstalledVersion`（一个是文案驱动的旧版、一个是真实数据的新版，不同轮次加的）。`swift-lint` 只查括号，查不出这个。**func 不查**（允许重载） |
+| _check-dup-case.js | 同一个 enum 块内重复 case → 编译错误（invalid redeclaration）。第184轮补上 _check-dup-decl.js 没覆盖的 case（它只查 var/let）。分母 147 个 enum / 483 个 case，实测 0 处 |
 | `_check-empty-button.js` | 按钮的 action 不许为空（点了没反应，而用户看到的是个正常按钮）。分母 695 → 排除 `Button(action:)`（`{}` 是 label）→ 排除 `role: .cancel`（alert 里空 action 是**标准写法**，第178轮 11 个误报全是这种）→ **241**。实测 0 处 |
 | `_check-number-range.js` | 用 `number(...)` 自由输入的设置项**必须有 `range`**。第151轮发现 `range` 字段只被 slider 的 min/max 用过，写入路径 `store.set(_:_: Int)` **完全不 clamp** → 分辨率宽高能存 0 / 负数 / 99999999（传给 JVM 是"渲染尺寸 0"或"分配巨大缓冲"）。已给 `set(Int)` 加统一 clamp + 分辨率两项补 `range: 0...7680` |
 | `_check-type-control.js` | 设置项的 `type` 与 UI 控件是否匹配。第152轮发现 `ZLSettingDef.type` **全仓 0 次直接读取**，但控件间接决定存进去的 Swift 类型——用错就静默失效（第151轮"分辨率 as? Int 读不到"就是这类）。把 type 当**契约**：`.bool`→toggle · `.int`→slider/number/animateSpeed/blur/keyCode · `.string`→text/picker · `.enumValue`→picker/menu/darkMode |

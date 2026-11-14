@@ -61,6 +61,7 @@ $checks = @(
     @('_check-error-exhaustive.js','js', 'errorDescription 必须穷尽'),
     @('_check-state-written.js',   'js',  '@State 必须有写入路径'),
     @('_check-dup-decl.js',       'js',  '同类型内不许重复声明'),
+    @('_check-dup-case.js',       'js',  'enum 内不许重复 case'),
     @('_check-empty-button.js',   'js',  '按钮不能空 action'),
     @('_check-number-range.js',  'js',  '数字输入项必须有 range'),
     @('_check-type-control.js',   'js',  '设置项类型与控件匹配'),
