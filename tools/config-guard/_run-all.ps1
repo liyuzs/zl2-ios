@@ -51,6 +51,7 @@ $checks = @(
     @('_check-settings-wiring.js', 'js',  '设置项落地归属'),
     @('_check-settings-entry.js',  'js',  '设置项都有 UI 入口'),
     @('_check-orphan-keys.js',    'js',  'UserDefaults 键都在定义里'),
+    @('_check-shortcut-types.js', 'js',  '快捷项 type 都有对应 case'),
     @('_check-number-range.js',  'js',  '数字输入项必须有 range'),
     @('_check-type-control.js',   'js',  '设置项类型与控件匹配'),
     @('_check-setting-defaults.js','js',  '设置项默认值只在一处声明'),

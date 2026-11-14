@@ -57,6 +57,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-settings-wiring.js` | 设置项落地归属：115 项里"可用"的 30 项，每项必须有归属（核心桥接 / Swift 消费 / 内部状态位白名单）。第135轮实测 10 桥接 + 16 消费 + 4 内部位，0 项无归属。**这条替代了 `_audit-stores.js` 的方向**——后者抓字面量键，而设置实际走 `ZLSettingsStore.set` 的**动态键**，抓不到 |
 | `_check-settings-entry.js` | 可用设置项是否有**UI 入口**（与 `_check-settings-wiring` 互补：那个查代码层消费，这个查用户能不能改）。第148轮实测：30 项 = 21 UI 控件 + 4 自动写入 + 1 手势 + 4 内部记账 + **没入口 0** |
 | `_check-orphan-keys.js` | UserDefaults 的键必须是 ZL2 设置项或已登记的**内部键**。第158轮：`applyUserSettings()` 用硬编码键名读设置，**拼错就永远读到 nil，设置不生效且无任何提示**。实测 0 孤儿；注入验证能把 `jvmArgs`→`jvmArgz` 精确抓出 |
+| `_check-shortcut-types.js` | `project.yml` 的 `UIApplicationShortcutItemType` 必须都有对应的 `case`（**跨文件类型：YAML ↔ Swift**）。第160轮实测 3 个全匹配；失效形态是"在 project.yml 加了快捷项但忘了写 case → 长按图标点了**没反应**，`completionHandler(false)` 静默失败" |
 | `_check-number-range.js` | 用 `number(...)` 自由输入的设置项**必须有 `range`**。第151轮发现 `range` 字段只被 slider 的 min/max 用过，写入路径 `store.set(_:_: Int)` **完全不 clamp** → 分辨率宽高能存 0 / 负数 / 99999999（传给 JVM 是"渲染尺寸 0"或"分配巨大缓冲"）。已给 `set(Int)` 加统一 clamp + 分辨率两项补 `range: 0...7680` |
 | `_check-type-control.js` | 设置项的 `type` 与 UI 控件是否匹配。第152轮发现 `ZLSettingDef.type` **全仓 0 次直接读取**，但控件间接决定存进去的 Swift 类型——用错就静默失效（第151轮"分辨率 as? Int 读不到"就是这类）。把 type 当**契约**：`.bool`→toggle · `.int`→slider/number/animateSpeed/blur/keyCode · `.string`→text/picker · `.enumValue`→picker/menu/darkMode |
 | `_check-setting-defaults.js` | 设置项默认值只有一处来源：全仓不许出现 `defaultWhenUnset`；`boolValue/intValue/stringValue(_ key:)` 必须委托给 `store.xxx(`（由 ZLSettings 的 `defaultValue` 兜底） |
