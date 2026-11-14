@@ -16,35 +16,56 @@ const BASELINE = path.join(__dirname, '_a11y-baseline.json');
 
 // 统计一个文件里"按钮的 label 是纯 Image 且没有名字"的次数
 //
-// 第111轮修正：原来的判据只看"附近有没有 accessibilityLabel"，
-// 于是把「图标 + Text("添加服务器")」这类**自带文字名字**的按钮也算成无标签（误报）。
-// 现在额外要求：按钮的 label 块里**没有 Text(**，才算没名字。
+// 判据演进（四次）：
+//   110轮 只认 accessibilityLabel → 78 处（含大量误报）
+//   112轮 补 Text(…)：图标+文字的按钮本来就有名字 → 45
+//   113轮 补 Button("标题")：标题即无障碍名 → 33
+//   114轮 **改成结构性判定**：按大括号取出整个 Button label 块再判断，
+//          不再用固定行窗口 —— 文字可能在图标**上方**（TerracottaScreen 的
+//          `Text("分享联机核心日志") + Spacer + chevron.right` 就是这样）。
 function countUnlabeledIconButtons(src) {
   const lines = src.split('\n');
+
+  // 给一个行号，找它所属 Button 的 label 块文本（找不到返回 null）
+  const labelBlockOf = (idx) => {
+    for (let k = idx; k >= Math.max(0, idx - 25); k--) {
+      if (!/Button\s*(\(|\{)/.test(lines[k])) continue;
+      // Button 带标题参数 → 有名字
+      const m = lines[k].match(/Button\s*\(([^)]*)/);
+      if (m) {
+        const arg = m[1].trim();
+        if (arg.length > 0 && !/^(role|action|label)\s*:/.test(arg)) return { titled: true, body: '' };
+      }
+      // 从这一行往后做括号配对，取出整块
+      let depth = 0, started = false, buf = '';
+      for (let q = k; q < Math.min(lines.length, k + 120); q++) {
+        const line = lines[q];
+        buf += line + '\n';
+        for (const ch of line) {
+          if (ch === '{') { depth++; started = true; }
+          else if (ch === '}') { depth--; }
+        }
+        if (started && depth <= 0) {
+          // **关键约束（第114轮）**：图片那一行必须在这个 Button 的块内。
+          // 否则"往上找 25 行"会跳到无关的按钮上 —— 路径条里的装饰图标
+          // 就是这样被误算进工具栏按钮的（FileManagerScreen 实测）。
+          if (idx < k || idx > q) return null;
+          return { titled: false, body: buf };
+        }
+      }
+      return null;
+    }
+    return null;
+  };
+
   let n = 0;
   for (let i = 0; i < lines.length; i++) {
     if (!/Image\(systemName:\s*"/.test(lines[i])) continue;
-    // 往回找 12 行，看是不是 Button 的 label
-    const up = lines.slice(Math.max(0, i - 12), i + 1).join('\n');
-    if (!/Button\s*(\(|\{)/.test(up)) continue;
-    // 往后找 10 行：有 accessibilityLabel 或 Text( 都算有名字
-    const down = lines.slice(i, i + 10).join('\n');
-    if (/accessibilityLabel/.test(down)) continue;
-    if (/Text\s*\(/.test(down)) continue;
-
-    // 第113轮补：`Button("标题") { }` / `Button(变量) { }` 这类**带标题参数**的按钮
-    // 本身就念得出名字（iOS 会拿标题当无障碍名）。要排除的只是
-    // `Button { }`（无参）与 `Button(role:/action:/label:)`（全是修饰参数）。
-    let btnTitle = false;
-    for (let k = i; k >= Math.max(0, i - 12); k--) {
-      const m = lines[k].match(/Button\s*\(([^)]*)/);
-      if (!m) continue;
-      const arg = m[1].trim();
-      btnTitle = arg.length > 0 && !/^(role|action|label)\s*:/.test(arg);
-      break;
-    }
-    if (btnTitle) continue;
-
+    const blk = labelBlockOf(i);
+    if (!blk) continue;            // 不在任何 Button 里（装饰性图标）
+    if (blk.titled) continue;      // Button("标题") 自带名字
+    if (/accessibilityLabel/.test(blk.body)) continue;
+    if (/Text\s*\(/.test(blk.body)) continue;
     n++;
   }
   return n;

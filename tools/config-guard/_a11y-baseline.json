@@ -1,18 +1,16 @@
 {
-  "AccountScreen.swift": 2,
   "AssetsScreen.swift": 1,
   "ControlEditor.swift": 2,
   "DownloadScreen.swift": 3,
   "LogViewScreen.swift": 1,
   "MiscScreens.swift": 1,
-  "ModifyVersionScreen.swift": 2,
+  "ModifyVersionScreen.swift": 1,
   "ModsManagerScreen.swift": 2,
   "ResourceManagerScreen.swift": 1,
   "SavesManagerScreen.swift": 2,
   "SettingsScreen.swift": 1,
   "TaskCenter.swift": 1,
-  "TerracottaScreen.swift": 3,
-  "VersionContentScreen.swift": 1,
-  "VersionManageScreens.swift": 3,
+  "TerracottaScreen.swift": 1,
+  "VersionManageScreens.swift": 2,
   "ZL2App.swift": 1
 }

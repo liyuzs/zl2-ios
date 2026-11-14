@@ -188,6 +188,7 @@ struct VersionIconPicker: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(ZLTheme.textSecond)
+                        .accessibilityLabel("关闭")
                 }
                 .buttonStyle(.plain)
 

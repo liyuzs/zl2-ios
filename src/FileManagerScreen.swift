@@ -105,7 +105,7 @@ struct FileManagerScreen: View {
     private var toolbar: some View {
         HStack(spacing: 8) {
             Button { onBack() } label: {
-                Image(systemName: "chevron.left").foregroundStyle(ZLTheme.textPrimary)
+                Image(systemName: "chevron.left").foregroundStyle(ZLTheme.textPrimary).accessibilityLabel("返回")
                     .frame(width: 38, height: 34)
                     .background(ZLTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -134,7 +134,7 @@ struct FileManagerScreen: View {
                        : "清空回收站",
                        role: .destructive) { confirmEmptyTrash = true }
             } label: {
-                Image(systemName: "ellipsis.circle").foregroundStyle(ZLTheme.textSecond)
+                Image(systemName: "ellipsis.circle").foregroundStyle(ZLTheme.textSecond).accessibilityLabel("更多操作")
                     .frame(width: 36, height: 34)
                     .background(ZLTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
