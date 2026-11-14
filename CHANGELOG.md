@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **试做"枚举 case 级死代码"检查，两版判据都放弃**：v1（扫整个枚举体）16 处里 **14 处误报**——Swift 的 `case` 同时是"枚举 case 定义"和"模式匹配"关键字（`switch case` / `case let x`）；v2（只扫定义区）仍误报 **7/18**（空枚举被判成有 case）。误报率 87%/39% 的检查比没有更糟，**不做**，原因已写进 `_check-dead-types` 的局限段防重复尝试。
+- **删 `ModrinthProjectType.datapack`**：全仓只出现在定义行，`from(_ kind:)` 没有对应分支、`AssetKind` 也没有此类型。→ **能力边界记录：Modrinth 的 5 类资源本项目只支持 4 类（不含 datapack）**。
+- **顺带核对**：`ZLPreflight`（第52轮建，93 轮前）的 7 项检查仍准确 —— `availableKeys` 动态算渲染器、未引用已删的 MobileGlues、布局名走 `coreActiveLayoutName`、Java 判定走 `hasRuntime`/`requiredJavaVersion`。
+
 - **补全 `ZLFriendlyError` 的错误码映射（7 → 14 个 case）**：第145轮改成"错误码优先"后只覆盖 7 个码。补上最常落兜底的 7 个 —— `.badServerResponse`（4xx/5xx，最常见）· `.cannotDecodeRawData`/`.cannotDecodeContentData`/`.cannotParseResponse`（**正是"下载源返回 HTML 错误页"那个场景**）· `.fileDoesNotExist`/`.noPermissionsToReadFile`（**这两个在 `NSURLErrorDomain` 里**，原来那三条 `NSCocoaErrorDomain` 的文件 case 抓不到）· `.resourceUnavailable` · `.dataNotAllowed` · `.userAuthenticationRequired`。
 - **删 `CoreLaunchError.missingRuntime`**：全仓 0 处 —— 从没被抛出也没被匹配，死 case 会让人误以为"缺运行时"有专门处理。
 - 顺带审计（按第145轮清单）：11 处 `+ "/"` 拼路径在 **iOS 上安全**（分隔符固定）；`String(describing:)` / `.description` 做判断 **0 处**。
