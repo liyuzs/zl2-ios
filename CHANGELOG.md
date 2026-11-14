@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **下载前预检磁盘空间**：`VersionInstaller.install()` 原来拿到 metadata 就直接下载，空间不足会"等几分钟 → 装到一半失败 → 留下不完整版本目录（预检报文件不存在，但用户不知道是空间问题）"。现按版本 JSON 的 `downloads.client.size` + `libraries[].downloads.artifact.size` 估算，assets 按前两者 50% 粗估，再留 200MB 余量；不够就抛错并说清"要多少 / 还剩多少 / 现在中止不会留下装了一半的版本"。**条件写死**：`needed > 0` 且 `free != nil` 才拦，任一未知就放行（宁可让下载自然失败，也不把"查不到"误报成"空间不足"）。
+- 新增 `src/ZLStorage.swift`（`freeBytes()` / `human(_:)`）—— **一处实现、两处使用**（诊断页显示 + 下载前预检），消掉 `ZLDiagnostics` 里那份重复的 `attributesOfFileSystem` 调用。`freeBytes()` 拿不到时返回 `nil` 而非 0，让调用方能区分"空间是 0"和"查不到"。
+
 - **并发安全扫过一遍：8 个"切到后台"的块全部正确**。`Task.detached` / `DispatchQueue.global` / `concurrentPerform` 共 8 处：4 处 `await Task.detached{}.value`（await 把执行权交回原 actor）· 2 处是 continuation `resume`（可从任意线程调、不改 UI）· 2 处打包块的两个出口都有 `DispatchQueue.main.async`。
 - **这类问题不固化成检查**（写清理由）：第一版检测器报 6 处可疑、实际全是误报——不认 `await` 回 actor、不认 continuation resume、窗口太短看不到远处的 `main.async`。按第107轮教训（判据不可信就别留着，6/8 误报会让人以为真有问题），改为把结论写进交接文档「五、已验证、别再重复查」表。同表也补了「性能频率（124–126轮）」一行。
 
