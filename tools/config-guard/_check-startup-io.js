@@ -52,10 +52,18 @@ if (sig) {
   const bodyStart = src.indexOf('{', src.indexOf('func listVersions'));
   if (bodyStart > 0) {
     const body = blockAfter(src, bodyStart);
-    for (const line of body.split('\n')) {
-      if (!line.includes('directorySize(')) continue;
-      if (!line.includes('includeSize')) {
-        problems.push(`listVersions 里直接调了 directorySize 而没有 includeSize 门控：「${line.trim().slice(0, 60)}」`);
+    const bodyLines = body.split('\n');
+    for (let bi = 0; bi < bodyLines.length; bi++) {
+      if (!bodyLines[bi].includes('directorySize(')) continue;
+      // **第194轮加固**：原来只判"同一行有没有 includeSize"。
+      // 当前代码是三元写法 `includeSize ? directorySize(dir) : 0`（同行 ✓），
+      // 但如果改写成 `if includeSize { size = directorySize(dir) }`，
+      // `directorySize(` 那行就不含 includeSize → **假警报**。
+      // 所以改成看窗口（前 2 行 + 本行 + 后 1 行）——门控在这几行内出现就算。
+      const window = [bodyLines[bi - 2] || '', bodyLines[bi - 1] || '',
+                      bodyLines[bi], bodyLines[bi + 1] || ''].join(' ');
+      if (!window.includes('includeSize')) {
+        problems.push(`listVersions 里直接调了 directorySize 而没有 includeSize 门控：「${bodyLines[bi].trim().slice(0, 60)}」`);
       }
     }
   }
