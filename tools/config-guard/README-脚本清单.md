@@ -21,6 +21,8 @@ cd C:\Users\21793\.dsh\config-guard
 
 ---
 | `run-checks.js` | **跨平台执行器（不是检查）**：解析 `_run-all.ps1` 里的清单并逐个执行，供 macOS CI 用。清单只有一份来源，避免两份漂移。`node run-checks.js [--with-tests] [--quiet]` |
+| `_spot-check.ps1` | **抽查工具（不是检查，手动跑）**：绕过 `_run-all.ps1`，**逐个单跑**清单里的脚本，判定「退出码≠0 **或** 输出里有 ErrorRecord」。存在理由见第122轮：`_check-links.ps1` 因第 2 行有 U+FEFF 而跑不起来，但 PowerShell 报错不终止、退出码仍是 0，`_run-all.ps1` 只看退出码 → **假绿 26 轮**。改过执行器判定、批量改过脚本、或每隔一阵抽查时跑它 |
+
 
 
 ## 一、当前必跑（每轮改完代码后跑；条数以 `_run-all.ps1` 的输出为准）
