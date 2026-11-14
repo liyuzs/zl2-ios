@@ -314,8 +314,20 @@ actor MicrosoftAuth {
         req.httpBody = try JSONSerialization.data(withJSONObject: payload)
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw MSAuthError.invalidResponse("无响应") }
-        if http.statusCode == 401 || http.statusCode == 403 {
-            throw MSAuthError.invalidResponse("\(http.statusCode)")
+        // **第174轮**：原来 401/403 一律抛 `.invalidResponse("\(statusCode)")` →
+        // 用户看到「响应异常：403」，不知道怎么办。而 MSAuthError 里已经有专门的说法：
+        //   · 401 凭据被拒 → 让用户重新跑一次设备码登录
+        //   · 403 微软按 IP 拒绝（代理/机房 IP 常见）→ 提示换网络
+        //   · 429 频率限制 → 原来根本没拦，会掉到「非 JSON 响应」这种更莫名的话
+        switch http.statusCode {
+        case 401:
+            throw MSAuthError.expired
+        case 403:
+            throw MSAuthError.ipBlocked
+        case 429:
+            throw MSAuthError.rateLimited
+        default:
+            break
         }
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw MSAuthError.invalidResponse("非 JSON 响应")
