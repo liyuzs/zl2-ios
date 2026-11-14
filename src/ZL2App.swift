@@ -45,7 +45,6 @@ enum AppRoute: Hashable {
     case download
     case settings
     case account
-    case controlEditor
     case about
     case assets(String)          // 资源类型名
     case versionContent(String)  // 版本内容类型名
@@ -228,8 +227,6 @@ struct RootView: View {
                                    onDownload: { path.append(.download) })
                 case .account:
                     AccountScreen().navigationTitle("账户")
-                case .controlEditor:
-                    ControlsScreen().navigationTitle("控制布局")
                 case .about:
                     AboutScreen().navigationTitle("关于")
                 case .assets(let kindName):
@@ -635,78 +632,6 @@ struct MultiplayerScreen: View {
             }
         }
     }
-}
-
-// MARK: - 控制布局编辑
-struct ControlsScreen: View {
-    @State private var keys: [ControlKey] = ControlKey.defaults
-    @State private var editing = false
-
-    var body: some View {
-        ZStack {
-            ZLTheme.background.ignoresSafeArea()
-            GeometryReader { geo in
-                ZStack {
-                    ForEach($keys) { $key in
-                        keyView($key)
-                            .position(x: key.x * geo.size.width, y: key.y * geo.size.height)
-                            .gesture(editing ? DragGesture().onChanged { v in
-                                key.x = min(max(v.location.x / geo.size.width, 0.05), 0.95)
-                                key.y = min(max(v.location.y / geo.size.height, 0.05), 0.95)
-                            } : nil)
-                    }
-                }
-            }
-            VStack {
-                HStack {
-                    Spacer()
-                    Button { editing.toggle() } label: {
-                        Text(editing ? "完成" : "编辑")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(ZLTheme.textOnGold)
-                            .padding(.horizontal, 22)
-                            .frame(height: 40)
-                            .background(editing ? ZLTheme.success : ZLTheme.primary)
-                            .clipShape(Capsule())
-                    }
-                    .padding(ZLTheme.screenPadding)
-                }
-                Spacer()
-                Text(editing ? "拖动按键调整位置" : "点击右上角「编辑」开始调整")
-                    .font(.system(size: 12))
-                    .foregroundStyle(ZLTheme.textSecond)
-                    .padding(.bottom, 18)
-            }
-        }
-    }
-
-    private func keyView(_ key: Binding<ControlKey>) -> some View {
-        Text(key.wrappedValue.label)
-            .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(ZLTheme.textPrimary)
-            .frame(width: key.wrappedValue.w, height: key.wrappedValue.w * 0.62)
-            .background(ZLTheme.surface.opacity(0.92))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
-    }
-}
-
-struct ControlKey: Identifiable {
-    let id = UUID()
-    var label: String
-    var x: Double
-    var y: Double
-    var w: CGFloat = 58
-
-    static let defaults: [ControlKey] = [
-        .init(label: "W", x: 0.15, y: 0.72),
-        .init(label: "A", x: 0.07, y: 0.85),
-        .init(label: "S", x: 0.15, y: 0.85),
-        .init(label: "D", x: 0.23, y: 0.85),
-        .init(label: "跳", x: 0.86, y: 0.82, w: 66),
-        .init(label: "蹲", x: 0.73, y: 0.90, w: 62),
-        .init(label: "背包", x: 0.88, y: 0.58, w: 66),
-    ]
 }
 
 // MARK: - 关于（真机：致谢列表 + 已加载插件）
