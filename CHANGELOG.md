@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **两处"用户以为成功、实际失败"的静默吞错**：①`emptyTrash` 的 `for i in items { try? fm.removeItem(at: i) }`——"清空回收站"是**永久删除**，文件被占用时静默跳过，用户以为空间释放了；`guard let ... else { return }` 读不到目录时也不说话。现在会报「几个、哪几个、它们还在回收站里」。②`LoaderInstaller` 的库下载用**空 `catch`** + `done += 1`（成败都加）+ 返回 `libraryCount: libs.count`（**计划数**），调用方显示「已安装 X（N 个库）」——**缺库也照样说装好了**，而缺库的 Fabric 加载器启动必然 `ClassNotFoundException`。现在 `failedLibs` 记录失败项、文案说「可能起不来，建议重装」、状态标 `.failed`。这与第40轮修的 `VersionInstaller.failedLibs` 同类，当时 `LoaderInstaller` 漏了。
+- **空 catch 审计（错误处理的第三个角度）**：3 处 —— `ControlLayoutModel` ×2 是第12轮确认的 Codable 容错解码（合理）+ `LoaderInstaller`（本轮已修）。现在 0 处可疑。
+- 顺带：全仓 211 处 `try?` 里跟进"改变数据"操作的 66 处，62 处"完全静默"但逐个看过都合理（`createDirectory` 幂等、临时目录清理）。
+
 - **新增 `_check-settings-entry.js`：可用设置项是否都有 UI 入口**。与 `_check-settings-wiring` 互补——那个查"代码层有没有人消费"（有 UI 没人用=假功能），这个查"用户能不能改到"（有消费没入口=改不到）。实测 **30 项 = 21 UI 控件 + 4 自动写入 + 1 手势 + 4 内部记账 + 没入口 0**。过程修正：第一版漏了 `number(` 控件形态和 `ControlEditor.swift` 文件，误报 10 项，补齐后 0 项。注入验证能把 `menuBallPos` 从"手势"名单拿掉的情况精确报出。
 - 顺带审计（承接第147轮"检查承诺 vs 实现"）：15 个成功文案含**全称词**（每个/所有/全部）的检查，逐个看实际输出，**4 个"没有分母"的全都有**（42 个脚本 / 9 个文档 / 26 个键 / 91 个 View）——是我的审计判据漏了"个脚本""个键"这类单位，不是检查说大话。
 
