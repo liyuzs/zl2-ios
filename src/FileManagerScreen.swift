@@ -450,9 +450,27 @@ struct FileManagerScreen: View {
         refreshTrashSize()
     }
 
+    /// 清空回收站 —— **永久删除，不可恢复**。
+    ///
+    /// 第149轮修：原来 `guard let ... else { return }` 静默返回、`for i in items { try? removeItem }`
+    /// 把每个失败都吞掉。文件被占用/权限不足时，用户以为空间释放了，实际还在。
+    /// 现在：读不到目录要说，删不掉也要说清"几个、哪几个、还在回收站"。
     private func emptyTrash() {
-        guard let items = try? fm.contentsOfDirectory(at: trashDir, includingPropertiesForKeys: nil) else { return }
-        for i in items { try? fm.removeItem(at: i) }
+        guard let items = try? fm.contentsOfDirectory(at: trashDir, includingPropertiesForKeys: nil) else {
+            errorText = "读不到回收站目录，可能它本来就是空的，或者 App 没有访问权限。"
+            return
+        }
+        var failed: [String] = []
+        for i in items {
+            do { try fm.removeItem(at: i) }
+            catch { failed.append(i.lastPathComponent) }
+        }
+        if !failed.isEmpty {
+            let shown = failed.prefix(3).joined(separator: "、")
+            let more = failed.count > 3 ? "…" : ""
+            errorText = "有 \(failed.count) 个文件没能删掉（可能正被占用）：\(shown)\(more)。\n"
+                + "它们还在回收站里，稍后可以再试一次。"
+        }
         refreshTrashSize()
     }
 

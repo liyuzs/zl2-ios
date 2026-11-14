@@ -9,6 +9,9 @@ struct ZLLoaderInstallResult {
     var profileJSONPath: URL
     var mainClass: String
     var libraryCount: Int
+    /// 下载失败的库（URL 最后一段）。**不为空说明这个加载器很可能起不来** ——
+    /// 原来单个库失败被空 catch 吞掉，结果里还报"已安装 N 个库"（第149轮）。
+    var failedLibs: [String] = []
 }
 
 enum ZLLoaderInstallerError: LocalizedError {
@@ -104,6 +107,7 @@ struct ZLLoaderInstaller {
         // 下载库
         let libRoot = VersionRepository.shared.mcRoot.appendingPathComponent("libraries", isDirectory: true)
         var done = 0
+        var failedLibs: [String] = []
         for lib in libs {
             guard let name = lib["name"] as? String else { continue }
             guard let artifact = (lib["downloads"] as? [String: Any])?["artifact"] as? [String: Any],
@@ -140,18 +144,24 @@ struct ZLLoaderInstaller {
                 let d = try await fetch(url)
                 try d.write(to: dest, options: .atomic)
             } catch {
-                // 单个库失败不中断
+                // 单个库失败不中断，但**要记下来** —— 缺库的加载器启动会崩
+                failedLibs.append(url.lastPathComponent)
             }
             done += 1
             let p = 0.2 + 0.75 * Double(done) / Double(max(libs.count, 1))
             onProgress("下载加载器库 \(done)/\(libs.count)", p)
         }
 
-        onProgress("安装完成", 1.0)
+        if failedLibs.isEmpty {
+            onProgress("安装完成", 1.0)
+        } else {
+            onProgress("安装完成，但 \(failedLibs.count) 个库下载失败（这个加载器可能起不来）", 1.0)
+        }
         return ZLLoaderInstallResult(versionID: versionID,
                                      profileJSONPath: jsonURL,
                                      mainClass: mainClass,
-                                     libraryCount: libs.count)
+                                     libraryCount: libs.count,
+                                     failedLibs: failedLibs)
     }
 
     /// maven 坐标 → 路径：group:artifact:version → group/path/artifact/version/artifact-version.jar

@@ -311,9 +311,19 @@ struct RootView: View {
                                                     }
                                                 }
                                             }
-                                            await ZLTaskCenter.shared.update(installTask,
-                                                detail: "已安装 \(result.versionID)（\(result.libraryCount) 个库）",
-                                                state: .done)
+                                            // 第149轮：库下载失败时结果里会带 failedLibs —— 缺库的加载器
+                                            // 启动时必然 ClassNotFoundException，所以这里不能一律说"已安装"。
+                                            if result.failedLibs.isEmpty {
+                                                await ZLTaskCenter.shared.update(installTask,
+                                                    detail: "已安装 \(result.versionID)（\(result.libraryCount) 个库）",
+                                                    state: .done)
+                                            } else {
+                                                let names = result.failedLibs.prefix(2).joined(separator: "、")
+                                                let more = result.failedLibs.count > 2 ? "…" : ""
+                                                await ZLTaskCenter.shared.update(installTask,
+                                                    detail: "已安装 \(result.versionID)，但有 \(result.failedLibs.count) 个库下载失败（\(names)\(more)）—— 这个加载器可能起不来，建议重装",
+                                                    state: .failed)
+                                            }
 
                                             // 用户勾了 Fabric API 就得真装上（原来这个选择完全没用）
                                             if !sel.apiVersion.isEmpty {
