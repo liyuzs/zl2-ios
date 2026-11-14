@@ -53,6 +53,7 @@ $checks = @(
     @('_check-orphan-keys.js',    'js',  'UserDefaults 键都在定义里'),
     @('_check-shortcut-types.js', 'js',  '快捷项 type 都有对应 case'),
     @('_check-pending-routes.js',  'js',  '待处理路由都有消费分支'),
+    @('_check-silent-default.js',  'js',  '字符串 switch 的 default 要留日志'),
     @('_check-number-range.js',  'js',  '数字输入项必须有 range'),
     @('_check-type-control.js',   'js',  '设置项类型与控件匹配'),
     @('_check-setting-defaults.js','js',  '设置项默认值只在一处声明'),
