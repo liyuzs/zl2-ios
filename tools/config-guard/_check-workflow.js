@@ -1,5 +1,13 @@
 // 极简 YAML 结构校验：专门针对 GitHub Actions workflow 的 block scalar 缩进。
 // 不追求完整 YAML 规范，只要能抓出「步骤缩进错、run 内容被截断、块标量丢失」这几类致命错。
+//
+// **局限**（不查什么）—— **这条检查的局限特别重要，因为 workflow 错了 CI 就跑不起来**：
+//   · **不是 YAML 解析器**。只做"缩进 + 块标量"的结构校验，**不验证 YAML 语法本身**
+//     （比如引号没闭合、锚点写错、多行折叠符用错，它都发现不了）。
+//   · **不查 action 的版本号对不对**（`actions/checkout@v4` 写成 `@v99` 也通过）。
+//   · **不查 secrets / 环境变量名拼错**（那要跟仓库的 secrets 列表对，本地拿不到）。
+//   · **不查 CI 逻辑是否正确**（步骤顺序、条件表达式、矩阵展开）—— 只查"结构上像不像一个能跑的 workflow"。
+//   · 真正能不能跑，只能推上去看 Actions 的输出。**这条检查的价值是"在推之前挡掉明显的结构错误"。**
 const fs = require('fs');
 const nodePath = require('path');
 const PATHS = require('./_paths');
