@@ -105,7 +105,7 @@ struct DownloadScreen: View {
             installMsg = "\(id) 安装完成"
             installFrac = 1
         } catch {
-            installMsg = "安装失败：\(ZLFriendlyError.text(error))"
+            installMsg = "安装失败：\(ZLFriendlyError.text(error))。已经下好的文件不用重下，再点一次「安装」会接着装。"
         }
         installing = nil
     }
@@ -252,6 +252,12 @@ struct DownloadScreen: View {
                         }
                         ProgressView(value: installFrac)
                             .tint(ZLTheme.primary)
+                        // 说清"切出去会怎样"：iOS 会把 App 挂起，下载任务被取消。
+                        // 但每个文件下完就落盘、下次会跳过已完成的 —— 所以不会白下。
+                        Text("安装中请保持 App 在前台。切出去可能中断，但已下载的文件不用重下，再点一次会接着装。")
+                            .font(.system(size: 10))
+                            .foregroundStyle(ZLTheme.textSecond.opacity(0.8))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(12)
                     .background(ZLTheme.surface)
