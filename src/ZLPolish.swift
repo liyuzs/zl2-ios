@@ -518,6 +518,45 @@ enum ZLFriendlyError {
         let raw = ns.localizedDescription
         let lower = raw.lowercased()
 
+        // **先按错误码判断（与语言无关）** —— 第145轮补。
+        // 原来这 9 条映射全靠 `localizedDescription` 做文本匹配，而它在中文系统上
+        // 已经是中文（"请求超时。"），`contains("timed out")` 永远不匹配
+        // → 全部落兜底，用户看到的是"请求超时。（错误码 -1001）"。
+        if ns.domain == NSURLErrorDomain {
+            switch URLError.Code(rawValue: ns.code) {
+            case .timedOut:
+                return "网络超时，请检查网络后重试"
+            case .notConnectedToInternet:
+                return "没有网络连接"
+            case .networkConnectionLost:
+                return "网络断开了一下，重试即可"
+            case .cannotConnectToHost:
+                return "连不上服务器，可能是网络问题或服务器暂时不可用"
+            case .cannotFindHost, .dnsLookupFailed:
+                return "找不到服务器地址，请检查网络或稍后重试"
+            case .secureConnectionFailed, .serverCertificateUntrusted,
+                 .serverCertificateHasBadDate, .serverCertificateNotYetValid:
+                return "安全连接失败，请检查网络环境"
+            case .cancelled:
+                return "已取消"
+            default:
+                break
+            }
+        }
+        if ns.domain == NSCocoaErrorDomain {
+            switch ns.code {
+            case NSFileNoSuchFileError, NSFileReadNoSuchFileError:
+                return "文件不存在，可能需要重新下载"
+            case NSFileReadNoPermissionError, NSFileWriteNoPermissionError:
+                return "没有权限访问该位置"
+            case NSFileWriteOutOfSpaceError:
+                return "存储空间不足"
+            default:
+                break
+            }
+        }
+
+        // 文本匹配作**补充**（非标准错误、或非 URLSession / 文件 API 抛出的）
         // 网络类
         if lower.contains("timed out") || lower.contains("timeout") {
             return "网络超时，请检查网络后重试"
