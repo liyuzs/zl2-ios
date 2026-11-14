@@ -172,3 +172,40 @@ node 'C:\Users\21793\.dsh\config-guard\_check-script-inventory.js'
 
 所以每次加检查，也问一句：**"它验证的这件事，是不是已经有更可靠的机制在管？"**
 如果在管 → 别加；如果没人管且你加不了 → **写进 STATUS 的已知限制**。
+---
+
+## 第 11 条：改完文件，看 `git diff --stat` 的规模对不对
+
+**一条自检，成本两秒，能抓住一整类事故。**
+
+**判据**：改完之后跑 `git diff --stat`。**如果改动行数远超你实际改的量，就是"横切属性"被洗了**（换行符 / 编码 / BOM / 行尾空格）。
+
+ios-zl2 的这个坑踩过两次，**原因不同但表现一样**：
+
+| 轮次 | 怎么发生的 | 表现 |
+|---|---|---|
+| 175 | 我**推测**"同类文件都是 LF"，把一个原本 CRLF 的文件转成了 LF | `AccountService.swift` 显示 554/545 变更，`git diff -w` 只有 13/4 |
+| **223** | 插入脚本用 `lines.split(/\r?\n/).join('\n')` —— **天然丢 CRLF** | `_check-dead-routes.js` 显示 276 行变更，`diff -w` **为空** |
+
+### 固定的两步自检
+
+```powershell
+git diff --stat              # 规模对不对？我只加了 8 行，为什么显示 252？
+git diff -w --stat           # 忽略空白后还剩什么？为空 = 纯粹是格式噪音
+```
+
+**`-w` 后变小 → 格式问题；`-w` 后不变 → 真改动了内容。**
+
+### 写"读全文 → 改 → 写回"的脚本时，显式保留换行符
+
+```js
+const raw = fs.readFileSync(p, 'utf8');
+const eol = raw.includes('\r\n') ? '\r\n' : '\n';   // ← 先问它现在是什么
+const lines = raw.split(/\r?\n/);
+// …改 lines…
+fs.writeFileSync(p, lines.join(eol));
+```
+
+**不要用 `join('\n')` 一把梭** —— 它在 LF 文件上无害，在 CRLF 文件上把整个文件重写一遍。
+
+一句话：**这个仓库是混合换行的，所以"文件本来的换行符"必须当成输入读进来，不能当成默认值。**
