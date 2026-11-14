@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **新增 `_check-orphan-keys.js`**：`CoreBridge.applyUserSettings()` 用**硬编码键名**读设置——键名拼错或指向已删的设置项，就会**永远读到 nil、设置不生效且无任何提示**（代码看起来完全正常）。判据：所有含 `UserDefaults` 的行里的 `forKey:` 键，必须是 ZLSettings 定义里的一项、或已登记的内部键（6 个，每个写明为什么）。实测 **0 孤儿**；注入验证（`jvmArgs`→`jvmArgz`）能精确抓出。
+- **设置集合加"登记必须有效"判据**：`platformOnly`(57)/`notWired`(4)/`renderOnly`(14)/`launcherLook`(10) 共 85 项**全部在 ZLSettings 里**（115 = 85 + 30 对得上）。但这种事会过时（`terracotta` 就是删了 case 忘了删登记），所以这四个集合里登记的 key 必须真实存在，否则报错。注入验证能精确报出。
+- **过程修正判据**：第一版把 `host.value(forKey: "ctrlView")` 这种 **KVC** 也当成 UserDefaults 键 → 误报 3 个；改成"只认含 `UserDefaults` 的行"后归零。`control_layout`/`defaultTouchCtrl` 是**核心键的记账本**，归入白名单。
+
 - **修三处过时文档**：①STATUS 第4条原写「**2 个页面还没接入** —— `MultiplayerRoomScreen` 与 `TerracottaScreen`」——实际 `MultiplayerRoomScreen` **已接在 `.room` 路由里**（只是没有导航入口）、`TerracottaScreen` 第132轮就删了（磁盘 0 文件、`AppRoute` 也无 `case terracotta`）。改成「**1 个路由没有入口**」并写清"不是页面没实现"。②改 `_check-dead-routes` 里 `.room` 的理由（"尚未接入"→"已接入路由但无入口按钮"）。③删掉 ALLOW 里多余的 `terracotta` 登记。
 - **新增判据：ALLOW 里登记的 case 必须真实存在于 AppRoute** —— `terracotta` 这种事会再发生（删页面忘了删登记），多余的登记会让人以为还有这个路由。注入验证（往 ALLOW 加 `noSuchRoute`）能精确报出。
 - **顺带审计（都干净）**：版本占用空间已在列表页显示（`includeSize: true`，`sizeBytes == 0` 时不显示）· 新手引导链完整（只在零版本时显示、文案准确、明确写 Forge 不支持）· 空状态 19 处都有指引。
