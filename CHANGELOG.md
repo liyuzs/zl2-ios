@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **新增 `_check-silent-default.js`：字符串 switch 的 `default` 不许静默**。字符串 switch **没有编译器穷尽检查**，`default: break` 会把"漏掉的 case"变成"什么都没发生"——第161轮的 bug 就是这个形态。三层区分：**字符串要报** · 枚举不报（强制穷尽 + "处理少数 case"是正常写法）· 数值不报（值域无界，default 必须有）。实测 **11 个字符串 switch，0 处静默**；注入验证（把 default 的 NSLog 换回 break）能精确报出。
+- **过程修正判据**：第一版只看 `default:` 那一行，把"`default:` 换行 + NSLog(...)"也当成静默 → 上一轮刚修的两处被误报。改成取 default 块的**完整内容**后归零。
+
 - **修真 bug：长按图标点「设置」不会跳页**——`ZL2App:34` 写 `setRoute("settings")`，但 `handlePendingAction()` 的转换表只有 `download`/`versionList`/`multiplayer`，`default: break` **静默丢弃**。用户点了 App 会打开但**停在首页、不跳设置页、无任何提示**。已补 `case "settings"`，并把 `default: break` 改成 `default:` + `NSLog`（未知路由至少留日志）。
 - **新增 `_check-pending-routes.js`**："字符串当凭据"的第六类，**双向**校验：写侧 `setRoute("xxx")` ↔ 读侧 `switch route` 的 case。注入验证能精确报出「写了但没人消费」。
 - **链路现在是查四段**：①声明（project.yml 160轮）②处理（case 160轮）③**路由字符串↔消费分支（本轮）**④用户看到结果。
