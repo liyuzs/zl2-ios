@@ -15,7 +15,9 @@ const path = require('path');
 const { GUARD } = require('./_paths');
 
 // 当前基线（第136轮：39 条检查里 26 条还没写局限）
-const BASELINE = 29;
+// **第213轮：29 → 26**（给 _check-orphan-views / _check-interpolation / _check-fixed-widths 各补了局限段）
+// 改小之前确认过：是**真的补了**，不是判据变宽 —— 那三条现在能被 **局限** 命中。
+const BASELINE = 26;
 
 // 必须写成**标题形式**，裸词不算：
 //   · 裸的「局限」二字会被测试探针的注释（"故意没写局限"）误命中 —— 第108轮同款坑。
