@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **新增 `_check-error-exhaustive.js`：`errorDescription` 的 switch 不许有 `default:`**。枚举 switch 加 default 会**关掉编译器的穷尽检查**，将来新增的错误 case 会静默显示成兜底文案。实测 **12 个全部穷尽** ✓；注入验证能精确报出。
+- **评估后不做的检查**：「重要操作里只记日志、没有 UI 反馈」的 catch。先核了分母 —— 全项目 84 个 catch，其中在"重要操作"函数里的只有 **9 个**，6 个有 UI 反馈、**0 个只有日志**，剩 3 个是第149轮已知的空 catch。**分母太小且已干净，不单开一条**（不含羞于"不做检查也是判断力"）。
+
 - **换行符事故（记录一下，含两次误判）**：`AccountService.swift` 在 a66d8e2 里显示 554/545 行变更，但 `git diff -w` 只有 **13 增 4 删** —— 差异是换行符造成的噪音。过程：①我写的补丁脚本里 `const J = arr => arr.join(crlf ? '\r\n' : '\r\n')` 三元两边一样；②我误以为"同类文件都是 LF"就把它转成了 LF；③查了 `HEAD~1` 才发现**它原本就是 CRLF**（这个仓库是混合换行符），于是转回去，`git status` 恢复干净。**教训：改换行符前必须查那个文件自己的历史版本，不能按"同类文件应该一样"去推断。**
 
 - **错误 case 有没有真的被抛出**：把第174轮那条推广到全部 **12 个错误枚举、58 个 case**，查出 6 个"定义了但从不被创建"。**删 2 个**（`ZLLoaderInstallerError.mergeFailed` —— "合并"走的是系统错误；`libraryFailed` —— 库下载失败走 `failedLibs` 收集，**文案「下载加载器库失败」会骗人**）· **删 1 个重复**（`MSAuthError.slowDown` 与 `.rateLimited` 语义重复）· **标注 4 组**（`unsupportedAccountType` / `storageFailure` / 4 个 Xbox case —— 文案备好但没解析 Xbox 错误码 / `missingAccessToken`）。
