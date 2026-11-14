@@ -1,5 +1,10 @@
 # EasyTier 集成设计（骨架）
 
+> ⚠️ **本文档描述的能力当前没有实现** —— EasyTier 隧道需要 **Network Extension**（付费开发者账号）。代码里 `EasyTierTunnel` 的 `startTunnel` 是从网络扩展调用过来的，本 App 内没有入口。
+>
+> 保留本文是因为它记录了设计思路，将来有付费账号时可能用得上。
+
+
 > 前置事实：`docs/联机方案.md` 附录 A 已实测确认 —— EasyTier 的 Rust 核心能编译成
 > `aarch64-apple-ios` 静态库（139 MB，3m32s）。本文档定义**怎么把它接进 ZL2-iOS**。
 
