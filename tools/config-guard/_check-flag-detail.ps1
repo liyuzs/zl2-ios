@@ -1,5 +1,5 @@
 ﻿. "$PSScriptRoot\_paths.ps1"
-﻿$d = $ZL2Repo
+$d = $ZL2Repo
 # 真正可疑的：名字明确是「弹层」的，且赋值了但既没 sheet 也没 if 渲染
 $targets = @(
     @{ f = 'AccountScreen.swift';       v = 'showAddAccount' },

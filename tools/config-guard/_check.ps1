@@ -1,5 +1,5 @@
 ﻿. "$PSScriptRoot\_paths.ps1"
-﻿$d = $ZL2Repo
+$d = $ZL2Repo
 $f = Join-Path $d 'src\ZLStrings.swift'
 $c = Get-Content $f -Raw -Encoding UTF8
 

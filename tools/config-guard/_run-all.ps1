@@ -122,6 +122,13 @@ foreach ($item in $all) {
             $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $path 2>&1
         }
         $code = $LASTEXITCODE
+
+        # **非终止错误也要算失败**（第122轮）：
+        # PowerShell 脚本里某一行报错（比如变量名带脏字符）但不终止时，
+        # 整个脚本仍会跑完并返回 0 —— 于是 `_check-links.ps1` 明明跑不起来，
+        # 这里却一直报"✓"。判据要同时看输出里有没有 ErrorRecord。
+        $hadError = @($out | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] }).Count
+        if ($code -eq 0 -and $hadError -gt 0) { $code = "ERR($hadError)" }
     } catch {
         $out = @("$($_.Exception.Message)")
         $code = 'THROW'

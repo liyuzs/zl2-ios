@@ -1,4 +1,4 @@
-# 统一解析仓库路径（PowerShell 版，供各 .ps1 脚本 dot-source）
+﻿# 统一解析仓库路径（PowerShell 版，供各 .ps1 脚本 dot-source）
 #
 # 与 _paths.js 同一逻辑：让工具集不依赖固定的 D:\ios-zl2。
 # 用法：

@@ -1,5 +1,5 @@
 ﻿. "$PSScriptRoot\_paths.ps1"
-﻿$d = $ZL2Repo
+$d = $ZL2Repo
 $model = Join-Path $d 'src\ControlLayoutModel.swift'
 $export = Join-Path $d 'src\CoreLayoutExport.swift'
 

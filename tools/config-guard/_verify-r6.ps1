@@ -1,5 +1,5 @@
 ﻿. "$PSScriptRoot\_paths.ps1"
-﻿$d = $ZL2Repo
+$d = $ZL2Repo
 Write-Output "=== 本轮接线验证 ==="
 $checks = @(
     @{ n = 'editorEnableWidgetSnap';  f = 'src\ControlEditor.swift';      p = 'readSettingBool("editorEnableWidgetSnap"' },

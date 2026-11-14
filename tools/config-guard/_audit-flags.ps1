@@ -1,5 +1,5 @@
 ﻿. "$PSScriptRoot\_paths.ps1"
-﻿$d = $ZL2Repo
+$d = $ZL2Repo
 $files = Get-ChildItem "$d\src" -Filter '*.swift'
 
 Write-Output "=== 标志-监听配对检查 ==="

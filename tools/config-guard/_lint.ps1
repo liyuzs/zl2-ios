@@ -1,5 +1,5 @@
 ﻿. "$PSScriptRoot\_paths.ps1"
-﻿$d = $ZL2Repo
+$d = $ZL2Repo
 Write-Output "=== 括号平衡全量检查 ==="
 $bad = 0
 Get-ChildItem "$d\src" -Filter '*.swift' | ForEach-Object {

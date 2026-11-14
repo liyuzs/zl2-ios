@@ -1,5 +1,5 @@
 ﻿. "$PSScriptRoot\_paths.ps1"
-﻿$d = $ZL2Repo
+$d = $ZL2Repo
 # 1. 从 ZLUnsupportedSettings 取出已标注的
 $sf = Join-Path $d 'src\SettingsScreen.swift'
 $src = Get-Content $sf -Raw -Encoding UTF8
