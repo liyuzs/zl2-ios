@@ -118,7 +118,13 @@ final class VersionRepository {
         var hasJar: Bool { jarURL != nil }
     }
 
-    func listVersions() -> [InstalledVersion] {
+    /// 列出版本目录。
+    ///
+    /// includeSize 默认为 false：算目录大小要递归遍历整个版本目录
+    /// （jar + libraries 数百文件 + 可能的 mods），逐个 stat 累加。
+    /// 而首页/资源页/版本内容页都只需要 id 与是否存在，只有版本列表要显示大小 ——
+    /// 所以默认不算，避免"每次进首页都在主线程递归扫一遍所有版本目录"（第124轮）。
+    func listVersions(includeSize: Bool = false) -> [InstalledVersion] {
         guard let entries = try? fm.contentsOfDirectory(at: versionsDir,
                                                        includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey],
                                                        options: [.skipsHiddenFiles]) else {
@@ -134,7 +140,8 @@ final class VersionRepository {
             let hasJSON = fm.fileExists(atPath: json.path)
             let hasJar = fm.fileExists(atPath: jar.path)
             guard hasJSON || hasJar else { continue }
-            let size = directorySize(dir)
+            // 只在真的要显示大小时才递归遍历（默认不算）
+            let size = includeSize ? directorySize(dir) : 0
             let mod = (try? dir.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
             result.append(InstalledVersion(id: id,
                                            jsonURL: json,

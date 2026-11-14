@@ -26,6 +26,7 @@ $g = 'C:\Users\21793\.dsh\config-guard'
 $checks = @(
     @('swift-lint.js',              'js',  'Swift 括号配对'),
     @('_check-indentation.js',     'js',  '缩进：块内贴行首'),
+    @('_check-startup-io.js',      'js',  '首屏不做递归目录扫描'),
     @('_check-interpolation.js',    'js',  '插值里拼错的变量名'),
     @('_check-imports.js',          'js',  '框架 import 缺失（会编译失败）'),
     @('_check-error-hints.js',      'js',  '失败提示必须带 advice'),
@@ -103,6 +104,23 @@ $ok = 0
 $failed = @()
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
+# ---- 清单结构自检（第124轮加）----
+# 往三元组列表插新行时多留一个逗号，PowerShell 会把 `@(...),,` 解析成数组套数组，
+# 然后在 Join-Path 处报「无法将 System.Object[] 转换为参数 ChildPath」——
+# 错误信息离病根太远（第79/124轮各踩一次）。这里先验一遍，报出具体是哪一项。
+$badShape = @()
+foreach ($it in $all) {
+    if ($it -isnot [array] -or @($it).Count -ne 3) { $badShape += ,$it }
+}
+if ($badShape.Count -gt 0) {
+    Write-Host "✗ 清单结构有误：$($badShape.Count) 项不是【脚本名, 类型, 说明】三元组" -ForegroundColor Red
+    Write-Host "  （多半是插入新行时多留了一个逗号，写成 ) , 结尾又加了一行）" -ForegroundColor DarkGray
+    foreach ($b in $badShape) {
+        $txt = if ($null -eq $b) { "(null)" } else { ($b | ForEach-Object { "$_" }) -join " / " }
+        Write-Host "   • $txt" -ForegroundColor Yellow
+    }
+    exit 1
+}
 foreach ($item in $all) {
     $name = $item[0]
     $kind = $item[1]

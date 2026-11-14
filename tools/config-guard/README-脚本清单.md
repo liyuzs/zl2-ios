@@ -43,6 +43,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-dead-routes.js` | 死路由：`AppRoute` 的 case 没有任何导航调用（append / onOpen / NavigationLink）。① 新增死路由判失败；② 已知的登记在 ALLOW；③ **对每个已知死路由，还会打印它的目的地上挂了什么**（修饰符 `xxx(...)` / 内部 `path.append` / `onOpen`）——因为挂在没人走的路由上的东西也永远不生效（第78轮实例：`.zlGuide(.controlEditor)` 编辑器首导挂错地方） |
 | `_check-pending-action.js` | 快捷指令待处理动作的结构完整性：唯一写入口 setRoute、consumeRoute 有过期判断、除 setRoute 外不许直接写 zl.pendingRoute、RootView 同时有冷启动与前台两条消费路径 |
 | `_check-fixed-widths.js` | 布局溢出：`.frame(width: N)` 里 N ≥ 280 必然超出手机竖屏（最窄 320pt − 两侧 18pt） |
+| `_check-startup-io.js` | 首屏性能：断言 `listVersions` 默认 `includeSize: false`、且 `directorySize` 受它门控。第124轮发现首页 `onAppear` 会**递归扫全部版本目录算大小**（而大小只有版本列表一处显示）。本地没真机测不了耗时，只能静态守住默认值 |
 | `_check-a11y.js` | 图标按钮无障碍：统计"Button 里只有 Image、又没有 accessibilityLabel"的数量，**只许降不许升**（基线在 `_a11y-baseline.json`）。第110轮补了顶栏 5 个 + 主界面 4 个导航入口的标签，其余 78 处记为已知欠账 |
 | `_check-hstack-budget.js` | 横向预算：同一 `HStack` **直接子层**多个固定宽度之和 ≥288pt（375pt 屏可用 339pt 的 85%）就报。⚠️ 只看内联块，写在 computed property 里的宽度追不到（已在文件头写明） |
 | `_check-dark-mode.js` | 深色模式链路：`ZLPalette.color` 必须会按 darkMode 把 `…Light` 换成 `…Dark`；RootView 必须把系统 colorScheme 同步给 ThemeManager；色板 Light/Dark 两组键必须成对 |

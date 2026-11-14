@@ -279,8 +279,11 @@ struct VersionListScreen: View {
                         Text(j).font(.system(size: 10))
                             .foregroundStyle(ZLTheme.textSecond)
                     }
-                    Text(ByteCountFormatter.string(fromByteCount: v.sizeBytes, countStyle: .file))
-                        .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+                    // sizeBytes == 0 表示"没算"（见 listVersions 的 includeSize），不显示
+                    if v.sizeBytes > 0 {
+                        Text(ByteCountFormatter.string(fromByteCount: v.sizeBytes, countStyle: .file))
+                            .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
+                    }
                 }
             }
             Spacer()
@@ -463,7 +466,7 @@ struct VersionListScreen: View {
             versions = []
             loadError = "没有读取 versions 目录的权限。"
         } else {
-            versions = VersionRepository.shared.listVersions()
+            versions = VersionRepository.shared.listVersions(includeSize: true)
             loadError = nil
         }
         isLoading = false
