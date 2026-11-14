@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **扫出并修掉 2 处"名单里的文件读不到就静默跳过"**：按"监视对象消失"这个判据扫全部检查——6 个有写死文件名单，4 个没 `existsSync`。核实后 `_check-install-docs` 已正确（`missing` 计入 fail）、`_check-script-inventory` 的 `PATH_EXEMPT` 是豁免名单不用改；`_check-doc-stats`（`catch { continue; }` 静默跳过）与 `_check-path-safety`（GUARDED 少一个只减分母）要改。都加了"名单存在性"保护，报错文案统一说「**读不到就等于没查**」。
+- 附带发现：`path-safety` 的 `read()` 没有 try/catch，文件不存在会**抛异常崩掉**而不是走友好提示 → 改成循环里先 `fs.existsSync` 再读。
+
 - **`_check-decode-recovery` 加双层保护（累计 6 个）**：①分母 + 零匹配——输出「扫到 N 处 try? 解码，其中 M 处有备份」，N=0 报错 ②**名单失效保护**（这层是新的）——`WATCH` 里的文件先 `existsSync`，读不到就报「这些文件读不到（改名或删了），它们是这条检查的主要对象，读不到就等于没查」。双层注入验证：正则换成 `/__never_match__/` →「扫到 0 处」报错；WATCH 改成不存在的文件 →「读不到」报错。
 - 累计带零匹配保护：`_check-error-hints` / `_check-path-safety` / `_check-setting-defaults` / `_check-a11y` / `_check-destructive-confirm` / `_check-decode-recovery`。
 
