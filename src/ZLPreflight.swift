@@ -86,7 +86,8 @@ enum ZLPreflight {
                 out.append(ZLDiagItem(title: "资源索引",
                                       value: objs > 0 ? "正常（有资源文件）" : "正常（但资源文件还没下）",
                                       level: objs > 0 ? .ok : .warn,
-                                      advice: objs > 0 ? nil : "没有资源文件时游戏能起但没贴图没声音"))
+                                      // 第171轮：原来只说后果（没贴图没声音），没说怎么办
+                                      advice: objs > 0 ? nil : "没有资源文件时游戏能起但没贴图没声音 —— 重装这个版本可以补上"))
             } else {
                 out.append(ZLDiagItem(title: "资源索引",
                                       value: "indexes/\(idx).json 不存在",
@@ -104,7 +105,9 @@ enum ZLPreflight {
             out.append(ZLDiagItem(title: "Java 运行时",
                                   value: "需要 Java \(major)，包里只有 \(have.isEmpty ? "无" : have.map(String.init).joined(separator: "/"))",
                                   level: .fail,
-                                  advice: "这个包缺对应的运行时，需要重新构建打包"))
+                                  // 第171轮：原来写"需要重新构建打包"—— 那是开发者的动作，用户做不了。
+                                  // 预检是给用户看的，他能做的只有"要一个新包"。
+                                  advice: "这个包缺对应的 Java 运行时，不是你操作能修的 —— 联系给你这个 App 的人要新包"))
         }
 
         // ---- 6. 渲染器 ----
@@ -119,7 +122,8 @@ enum ZLPreflight {
             out.append(ZLDiagItem(title: "渲染器",
                                   value: "包内没有可用的渲染器",
                                   level: .fail,
-                                  advice: "构建不完整，需要重新打包（Frameworks 缺 dylib）"))
+                                  // 第171轮：同上 —— "重新打包"是开发者的动作
+                                  advice: "包里的渲染器文件不全（Frameworks 缺 dylib），不是你操作能修的 —— 联系给你这个 App 的人要新包"))
         }
 
         // ---- 7. 控制布局 ----
