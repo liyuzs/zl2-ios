@@ -63,6 +63,11 @@
 
 ### 已知问题 / 新增
 
+- **修：启动器在 iPhone 上会被强制横屏**——`UISupportedInterfaceOrientations` 只声明了横屏，而启动器界面全是 `VStack` 竖排设计（STATUS 第5条讨论"竖屏偏挤"说明意图是竖屏）。`src/Info.plist` 不存在，XcodeGen 从 properties 生成，所以配置就是唯一真相。**改法**：①iPhone 允许竖屏（iPad 保持横屏）②`ZLAppDelegate.orientationLock` + `supportedInterfaceOrientationsFor`（核心启动时把 `SurfaceViewController` 换成 root，只能由 delegate 全局控制）③`CoreBridge` 两处 `launchJVM` 前后切横屏/切回竖屏（放在 `throw` 之前，保证启动失败也恢复）。
+- **加 `NSLocalNetworkUsageDescription`**：`LanDiscovery` 用 BSD socket + `IP_ADD_MEMBERSHIP` 加入组播组 `224.0.2.60`，iOS 14+ 会弹本地网络权限提示。不声明也能用（系统默认文案），声明了能说清原因。
+- **新增 `_check-orientation.js`**：声明了 Portrait 就必须有切横屏逻辑，且切横屏/切回竖屏**次数配对**。双向注入验证都能精确报出。
+- **⚠️ 这条改动真机没验证过**：依赖"root 换成 `SurfaceViewController` 时 UIKit 会重新查询方向"。若游戏画面被裁切/拉伸，说明假设不成立，需补 `windowScene.requestGeometryUpdate`。已写进 STATUS 第 9 条。
+
 - **新增 `_check-fallback-default.js`：兜底值必须等于声明的默认值**。`ZLSettingsStore` 读不到时会用 `defaultValue` 兜底 ✓，但 `CoreBridge` 等处**直接读 `UserDefaults`**、用自己的 `?? `——**两个值之间没有任何机制保证一致**；改了 `defaultValue` 忘了改 `??`，用户没设置过时拿到的就不是声明的默认值，**首启动行为静默变错**。实测 **11 处全一致**（是"碰巧一致"不是"有保障"）。四类判据：`string ?? "X"` / `integer()` 无 `??` / `bool()` 无 `??` / `as? Bool ?? X`。双向注入验证都能精确报出。
 - 这是"两端约定清点表"的第六类：type 读写两侧（152+163）· 键名↔定义表（158）· 路由字符串↔消费分支（161）· shortcut↔case（160）· SF Symbol↔真实存在（159）· **兜底值↔声明默认值（164）**。
 
