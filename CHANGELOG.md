@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **文案教用户"从其他 App 分享进来"，但项目做不到**：`FileManagerScreen` 空状态原写「或者从其他 App 把文件分享到 CraftLauncher 里」，而 `project.yml` **没有 `CFBundleDocumentTypes`**（对方 App 的「用其他应用打开」里不会出现 CraftLauncher）、代码也没有 `onOpenURL` 接收。已改成「用「文件」App 把文件拖进 CraftLauncher 文件夹」（`UIFileSharingEnabled` 已开，这条可行）+ **STATUS 补第 10 条**记下能力边界。
+- **新增 `_check-share-claim.js`**："文案教了做不到的操作"的特殊形态——承诺的不是代码能力而是**系统级声明**（`CFBundleDocumentTypes` 在 YAML 里，编译器不管）。注入验证能精确报出。
+- **顺带审计（干净）**：`deploymentTarget iOS 16.0` 与代码里 2 处 `@available(iOS 16.0, *)` 一致，没有低版本静默缺失。
+
 - **修：启动器在 iPhone 上会被强制横屏**——`UISupportedInterfaceOrientations` 只声明了横屏，而启动器界面全是 `VStack` 竖排设计（STATUS 第5条讨论"竖屏偏挤"说明意图是竖屏）。`src/Info.plist` 不存在，XcodeGen 从 properties 生成，所以配置就是唯一真相。**改法**：①iPhone 允许竖屏（iPad 保持横屏）②`ZLAppDelegate.orientationLock` + `supportedInterfaceOrientationsFor`（核心启动时把 `SurfaceViewController` 换成 root，只能由 delegate 全局控制）③`CoreBridge` 两处 `launchJVM` 前后切横屏/切回竖屏（放在 `throw` 之前，保证启动失败也恢复）。
 - **加 `NSLocalNetworkUsageDescription`**：`LanDiscovery` 用 BSD socket + `IP_ADD_MEMBERSHIP` 加入组播组 `224.0.2.60`，iOS 14+ 会弹本地网络权限提示。不声明也能用（系统默认文案），声明了能说清原因。
 - **新增 `_check-orientation.js`**：声明了 Portrait 就必须有切横屏逻辑，且切横屏/切回竖屏**次数配对**。双向注入验证都能精确报出。
