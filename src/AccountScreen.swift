@@ -137,7 +137,9 @@ struct AccountScreen: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(acc.username).font(.system(size: 14, weight: .medium))
                             .foregroundStyle(ZLTheme.textPrimary)
-                        Text(acc.type == .microsoft ? "微软账号" : (acc.type == .authlib ? "外置认证" : "离线账号"))
+                        // **第190轮**：外置认证实际是**离线身份**（只验了密码、丢弃了 accessToken），
+                        // 在列表里加「离线」二字，免得用户以为它和微软账号一样能进正版服。
+                        Text(acc.type == .microsoft ? "微软账号" : (acc.type == .authlib ? "外置认证（离线）" : "离线账号"))
                             .font(.system(size: 11)).foregroundStyle(ZLTheme.textSecond)
                     }
                     Spacer()
@@ -233,7 +235,10 @@ struct AccountScreen: View {
 
                         await MainActor.run {
                             authlibBusy = false
-                            authlibSuccess = "已登录：\(profile.name)"
+                            // **第190轮**：原来这里只写「已登录：名字」——
+                            // 用户会以为"登录成功了，能进正版服了"，而实际是**离线身份**（见上面 L200-206 的说明）。
+                            // 一个半成品要能在被误用的那一刻自己喊停，所以把真实能力写进提示里。
+                            authlibSuccess = "已登录：\(profile.name) —— 皮肤会显示；但游戏内是离线身份，进不了需要正版验证的服务器"
                         }
                     } catch {
                         await MainActor.run {
