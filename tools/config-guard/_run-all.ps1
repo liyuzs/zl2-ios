@@ -76,6 +76,7 @@ $checks = @(
     @('_check-decode-recovery.js',  'js',  '解码失败必须备份原始数据'),
     @('_check-dark-mode.js',        'js',  '深色模式是否真的生效'),
     @('_check-install-docs.js',     'js',  '三份安装文档一致性（JIT/StikDebug/孤例工具）'),
+    @('_check-capability-claims.js', 'js', '能力边界两份文档都要说'),
     @('_check-layout-keys.js',      'js',  '布局导出键 ↔ 核心读取'),
     @('_check-destructive-confirm.js', 'js', '破坏性按钮必须先确认（数据安全）'),
     @('_check-atomic-writes.js',    'js',  '写持久化文件必须原子（防截断）'),
