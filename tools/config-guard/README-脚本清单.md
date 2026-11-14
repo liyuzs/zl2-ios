@@ -94,6 +94,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-check-metadata.js` | **检查自己的元数据**：每个 `_check-*.js` 的头部注释里必须写明「**局限**」（只认哪些写法、判不了什么、什么时候该来改它）。第135轮的教训是 `_audit-stores.js` 因代码改成动态键而悄悄失明、却一直报绿 110 多轮。存量用**基线冻结**（当前 29/40 未写，只许降不许升） |
 | `_paths.js` / `_paths.ps1` | **路径解析助手（不是检查）**：让脚本不写死 `D:\ios-zl2`。解析顺序：环境变量 `ZL2_REPO` → 从脚本位置向上找 `project.yml` → 本机默认值。JS 用 `require('./_paths')`，PS1 用 `. "$PSScriptRoot\_paths.ps1"` |
 | `_check-delivery-docs.js` | 交付包里的文档必须在仓库有来源（不许"孤本"），且副本内容必须与仓库一致（漏同步会报） |
+| `_check-doc-config-sync.js` | `给朋友的安装指南.md` 里的**配置属性**必须与 `project.yml` 一致（最低系统 ↔ `deploymentTarget` · 包名 ↔ `PRODUCT_BUNDLE_IDENTIFIER` · 方向 ↔ 有没有 `Portrait`）。`_check-delivery-docs` 只查"副本与仓库同步"，**不管内容对不对** —— 第165轮改了 iPhone 竖屏但指南还写"仅横屏"，就是它抓不到的 |
 | `_check-delivery-index.js` | 交付包入口说明的完整性（双向）：交付包里每个文件都要在「从这里开始.md」里出现；说明里提到的文件必须真的存在 |
 
 ## 二、契约测试（改了对应模块才需要跑）
