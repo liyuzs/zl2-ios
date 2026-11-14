@@ -95,7 +95,11 @@ console.log(`        不算大小的 ${withoutSize.length} 处（${uniq(withoutS
 console.log('');
 
 if (problems.length === 0) {
-  console.log('✓ 列版本的默认路径不做递归目录扫描（首页不会因此卡）');
+  console.log('✓ 列版本的默认路径不做递归目录扫描');
+  // **第219轮改**：原来这句是「（首页不会因此卡）」—— 那是**因果推断**，不是本检查验证的东西。
+  // 它只证明了"默认参数是 false + directorySize 被门控住"；真机耗时从未测过，
+  // 而且用户主动打开「显示大小」那一屏照样会扫。所以改成只报事实 + 指出该看哪里。
+  console.log('   （只保证默认路径；真机首屏耗时未测，见项目状态-当前.md 第 1 条）');
   process.exit(0);
 }
 
