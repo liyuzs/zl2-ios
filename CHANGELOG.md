@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **`_check-decode-recovery` 加双层保护（累计 6 个）**：①分母 + 零匹配——输出「扫到 N 处 try? 解码，其中 M 处有备份」，N=0 报错 ②**名单失效保护**（这层是新的）——`WATCH` 里的文件先 `existsSync`，读不到就报「这些文件读不到（改名或删了），它们是这条检查的主要对象，读不到就等于没查」。双层注入验证：正则换成 `/__never_match__/` →「扫到 0 处」报错；WATCH 改成不存在的文件 →「读不到」报错。
+- 累计带零匹配保护：`_check-error-hints` / `_check-path-safety` / `_check-setting-defaults` / `_check-a11y` / `_check-destructive-confirm` / `_check-decode-recovery`。
+
 - **零匹配保护再推广两个（累计 5 个）**：①`_check-a11y` 原来只报"无标签按钮 N 处"，现在先报「167 个 Image(systemName:)，其中 **85 个在 Button 里**」——它的判据靠 `labelBlockOf(i)` 判断"图标在不在 Button 里"，**这个函数一失效，所有图标都会被当成装饰性跳过**，"0 处无标签"就是空真 ②`_check-destructive-confirm` 的文件数为 0 也直接报错。验证方式：直接让 `labelBlockOf` 返回 null（模拟识别失效）→「其中 0 个在 Button 里」→ 报错；还原后回到 85。
 - 累计带零匹配保护的检查：`_check-error-hints` / `_check-path-safety` / `_check-setting-defaults` / `_check-a11y` / `_check-destructive-confirm`。
 
