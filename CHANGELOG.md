@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **新增 `_check-shortcut-types.js`**：`project.yml` 的 `UIApplicationShortcutItemType` 必须都有对应的 `case`——**跨文件类型（YAML ↔ Swift）**的第五类"字符串当凭据"校验。失效形态：加了快捷项忘了写 case → 长按图标点了**没反应**，`completionHandler(false)` 静默失败。实测 3 个全匹配；注入验证能精确报出。
+- **审计快捷项链路（全通）**：URL scheme 无声明无处理（一致，不是 bug）· 三个 shortcut type 配置↔代码全匹配 · 三条消费链完整（`consumeRoute` ← ZL2App:119 · `consumeLaunchFlag` ← :127 · `consumeAutoLaunchPending` ← HomeScreen:439）。
+- **顺带记下一段有价值的注释**：`ZLPendingAction.markAutoLaunchPending` 上方解释了为什么从"Notification + 0.8 秒猜"改成"带 2 分钟时效的标志"——0.8 秒不够时首页的 `guard !selectedVersion.isEmpty` 直接 return，**通知是一次性的、启动意图就丢了**，用户会说"用 Siri 启动游戏没反应"。这是「没有报错的 bug」被主动发现并修好的案例。
+
 - **修一个不存在的 SF Symbol**：`folder.fill.badge.person.crop` **在 SF Symbols 里不存在**（只有 `folder.badge.person.crop`，带 `.fill` 的 badge 变体没有）——`VersionManageScreens.swift:92`「当前游戏目录」卡片左侧那个图标**一直是空白的**，因为 `Image(systemName:)` 对无效名**不报错、不崩溃、只渲染空白**。顺带核实 `person.badge.key.fill` 是合法的（iOS 16+）。
 - **新增 `_check-symbol-names.js`（基线冻结）**：没有 SF Symbols 完整列表没法自动验证，所以把 **67 个逐个核实过的名字**固化，新增的要人工确认。注入验证（`sparkles`→`sparklez`）能精确抓出。
 - **这已经是"用字符串当凭据"的第四类交叉验证**：UserDefaults 键（158轮）· 设置项 key（158轮）· 通知名（129轮）· **SF Symbol 名（本轮）**。
