@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **修一个不存在的 SF Symbol**：`folder.fill.badge.person.crop` **在 SF Symbols 里不存在**（只有 `folder.badge.person.crop`，带 `.fill` 的 badge 变体没有）——`VersionManageScreens.swift:92`「当前游戏目录」卡片左侧那个图标**一直是空白的**，因为 `Image(systemName:)` 对无效名**不报错、不崩溃、只渲染空白**。顺带核实 `person.badge.key.fill` 是合法的（iOS 16+）。
+- **新增 `_check-symbol-names.js`（基线冻结）**：没有 SF Symbols 完整列表没法自动验证，所以把 **67 个逐个核实过的名字**固化，新增的要人工确认。注入验证（`sparkles`→`sparklez`）能精确抓出。
+- **这已经是"用字符串当凭据"的第四类交叉验证**：UserDefaults 键（158轮）· 设置项 key（158轮）· 通知名（129轮）· **SF Symbol 名（本轮）**。
+
 - **新增 `_check-orphan-keys.js`**：`CoreBridge.applyUserSettings()` 用**硬编码键名**读设置——键名拼错或指向已删的设置项，就会**永远读到 nil、设置不生效且无任何提示**（代码看起来完全正常）。判据：所有含 `UserDefaults` 的行里的 `forKey:` 键，必须是 ZLSettings 定义里的一项、或已登记的内部键（6 个，每个写明为什么）。实测 **0 孤儿**；注入验证（`jvmArgs`→`jvmArgz`）能精确抓出。
 - **设置集合加"登记必须有效"判据**：`platformOnly`(57)/`notWired`(4)/`renderOnly`(14)/`launcherLook`(10) 共 85 项**全部在 ZLSettings 里**（115 = 85 + 30 对得上）。但这种事会过时（`terracotta` 就是删了 case 忘了删登记），所以这四个集合里登记的 key 必须真实存在，否则报错。注入验证能精确报出。
 - **过程修正判据**：第一版把 `host.value(forKey: "ctrlView")` 这种 **KVC** 也当成 UserDefaults 键 → 误报 3 个；改成"只认含 `UserDefaults` 的行"后归零。`control_layout`/`defaultTouchCtrl` 是**核心键的记账本**，归入白名单。
