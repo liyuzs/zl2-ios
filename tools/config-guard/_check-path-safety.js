@@ -69,7 +69,10 @@ const VALIDATED_NAME = /ZLPathSafety\.validateNewName\(\s*(\w+)/g;
 
 let bad = [];
 let concatSites = 0;      // 匹配到多少处 appendingPathComponent（判据的"分母"）
+const missingGuarded = [];
 for (const file of GUARDED) {
+  // 先查存在：`read()` 没有 try/catch，文件不存在会直接抛异常（崩掉而不是走 missingGuarded）
+  if (!fs.existsSync(path.join(SRC, file))) { missingGuarded.push(file); continue; }
   const text = read(file);
   const lines = text.split('\n');
 
@@ -92,6 +95,13 @@ for (const file of GUARDED) {
 
 console.log(`检查 ${GUARDED.length} 个文件：匹配到 ${concatSites} 处 appendingPathComponent`);
 console.log('');
+
+// 名单存在性：GUARDED 里的文件读不到，那就等于没查那个文件
+if (missingGuarded.length > 0) {
+  console.log('⚠ GUARDED 里这些文件读不到（改名或删了）：' + missingGuarded.join('、'));
+  console.log('  请更新 GUARDED 名单，否则它们永远不会被这条检查覆盖。');
+  process.exit(1);
+}
 
 // 零匹配即失败：说明写法变了（或 GUARDED 名单过时），这时候"全都过了校验"是空真
 if (concatSites === 0) {

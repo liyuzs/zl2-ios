@@ -60,11 +60,14 @@ const DOCS = ['README.md', 'STATUS.md'];
 
 const problems = [];
 let checked = 0;
+const missingDocs = [];   // DOCS 里读不到的文件（改名/删了）—— 读不到就等于没查
 
 for (const doc of DOCS) {
   const full = path.join(ROOT, doc);
   let text;
-  try { text = fs.readFileSync(full, 'utf8'); } catch { continue; }
+  let text2;
+  try { text2 = fs.readFileSync(full, 'utf8'); } catch { missingDocs.push(doc); continue; }
+  text = text2;
 
   // 一行里可能同时有三个数字，逐个比对
   const CLAIMS = [
@@ -95,6 +98,12 @@ console.log(`实际：${actualSwift} 个 Swift / ${actualM} 个核心 .m / ${act
 console.log(`检查了 ${checked} 处「当前状态」里的规模数字`);
 console.log('');
 
+// 名单存在性：DOCS 里的文件读不到，这条检查的主要对象就没了
+if (missingDocs.length > 0) {
+  console.log('⚠ 这些文档读不到（改名或删了）：' + missingDocs.join('、'));
+  console.log('  它们是这条检查的主要对象，读不到就等于没查。请更新 DOCS 名单。');
+  process.exit(1);
+}
 if (problems.length === 0) {
   console.log('✓ README / STATUS 里的规模数字与实际一致');
   process.exit(0);
