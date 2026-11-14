@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **关于页那张「已加载的插件」是纯假的，已删**：卡片写着 `MobileGlues / com.pi.phux.mobileglues · 1.3.4`，三重误导——①项目**没有插件机制**（`ZLStrings` 里那些 plugin 文案是安卓整包提取未引用、两个相关设置项都在置灰集合里）②`MobileGlues` 在仓库里**一个文件都没有**（第103轮确认过，当时只改了 `LicenseScreen`，漏了这里）③包名与版本号是硬编码假数据。删掉整张卡片（17 行）。
+- **新增 `_check-hardcoded-versions.js`**：用户可见字符串里不许有硬编码版本号。判据：`Text`/`Label`/`LabeledContent` 等含 `1.20.1` 格式且**不含中文** → 报；含中文的多半是说明文字只提示；许可证名在 ALLOW。用第141/142轮两个真实事故当验收用例，都能精确报出。
+
 - **首页那行版本描述是硬编码的**：`HomeScreen` 里写着 `Text("1.20.1 · Fabric 0.19.2")`——无论装什么版本都显示这一行（第43轮那类"假数据"的漏网之鱼，而且在首页最显眼处）。已新增 `VersionRepository.displayMeta(for:)` 从版本 JSON 真实读取（加载器版→`Fabric · 1.20.1`，纯原版→`原版 · 正式版`，读不到返回 nil 就不显示这行）；首页用 `@State` 存（**不能在 body 里读文件**——第125轮的 `_check-hotpath-cost` 实测拦住了这条思路）。
 - 顺带统一：`VersionListScreen.versionMeta` 与首页各写一份"读 JSON 拼描述"且输出格式不一致，现在都走 `displayMeta`，列表页保留自己的缓存层。
 
