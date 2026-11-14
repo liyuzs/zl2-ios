@@ -63,6 +63,11 @@
 
 ### 已知问题 / 新增
 
+- **`MultiplayerScreen` 的三节教程在教用户做不到的事**：「房主教程」「房客教程」里"开启「启用多人联机」开关"（该开关在 `notWired` 里置灰）、"通过悬浮窗的联机菜单创建房间"（入口第133轮已删）、"输入邀请码加入房间"（未实现）——而右栏已诚实写着「远程联机（EasyTier）[尚未接入]」，左边教、右边说不行。已加警示组件 `notConnectedNotice`（步骤保留说明设计意图，但事先说清现在走不通、想一起玩用局域网）。
+- **`_check-guide-claims.js` 新增判据**：`DISABLED_SETTINGS_CLAIMS`（文案 → 设置键）——教程里出现某句操作、对应设置在 `notWired`/`platformOnly` 里、且附近 30 行既无提示词也无警示组件调用 → 报。注入验证能精确报出两处。
+- **挖出跨轮 bug：CRLF 文件的注释一行都剥不掉**。`stripComments` 用 `line.replace(/\/\/.*$/, '')`，而 JS 的 **`.` 不匹配 `\r`**，`ZL2App.swift`（CRLF）的每行都匹配不上 → **这条检查对几十轮来一直是瞎的**。已改为 `/\/\/[^\r\n]*/`；`_test-keynames.js` 同样写法一并修（修后 119 条用例仍全过）。
+- 同轮踩的坑：`String.replace(str, str)` 第二个参数里 **`$` 有特殊含义**（`` $` `` = 匹配之前的全部内容），我把注释写成 `// 不能用 \`.*$\`：…` 导致**整个文件被展开、头部重复两遍**。已改为全部用函数式 `replace(re, () => str)`。
+
 - **清掉 Terracotta 残留属性（16 处 / 两文件）**：承接上轮删页面，`GameMenuScreen` 与 `GameOverlay` 里还留着 `enableTerracotta` 与 `onOpenTerracottaMenu` 两个属性 + 一个恒假 if 块 + 未使用的 `terracottaMenuTitle`。核实都是纯死代码（前者恒 false、后者从没被赋值）后删除。
 - **故意保留的三个设置项（并写明理由）**：`ZLSettings` / `SettingsScreen` 的 `enableTerracotta` / `enableTerracottaNodes` / `terracottaNodes` **不能删**——它们在设置页显示「尚未接入」，对用户是**有用的说明**，删了用户在设置里就完全看不到 Terracotta 这回事。已按第129轮的教训把这段理由写进 `notWired` 的注释，免得将来有人顺着"页面都删了"一起删掉。
 
