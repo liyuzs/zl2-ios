@@ -27,6 +27,7 @@ $checks = @(
     @('swift-lint.js',              'js',  'Swift 括号配对'),
     @('_check-indentation.js',     'js',  '缩进：块内贴行首'),
     @('_check-startup-io.js',      'js',  '首屏不做递归目录扫描'),
+    @('_check-hotpath-cost.js',   'js',  '渲染期不许昂贵操作'),
     @('_check-interpolation.js',    'js',  '插值里拼错的变量名'),
     @('_check-imports.js',          'js',  '框架 import 缺失（会编译失败）'),
     @('_check-error-hints.js',      'js',  '失败提示必须带 advice'),

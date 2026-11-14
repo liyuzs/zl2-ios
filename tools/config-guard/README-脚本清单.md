@@ -44,6 +44,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-pending-action.js` | 快捷指令待处理动作的结构完整性：唯一写入口 setRoute、consumeRoute 有过期判断、除 setRoute 外不许直接写 zl.pendingRoute、RootView 同时有冷启动与前台两条消费路径 |
 | `_check-fixed-widths.js` | 布局溢出：`.frame(width: N)` 里 N ≥ 280 必然超出手机竖屏（最窄 320pt − 两侧 18pt） |
 | `_check-startup-io.js` | 首屏性能：断言 `listVersions` 默认 `includeSize: false`、且 `directorySize` 受它门控。第124轮发现首页 `onAppear` 会**递归扫全部版本目录算大小**（而大小只有版本列表一处显示）。本地没真机测不了耗时，只能静态守住默认值 |
+| `_check-hotpath-cost.js` | 渲染期开销：`body` / computed var 里不许出现 `listVersions` / `directorySize` / 目录枚举 / JSON 解码 / 读文件（每次重绘都会跑）。**豁免** `.task` / `.onAppear` / `.onChange` 等副作用闭包内部。第125轮扫 228 个渲染块，0 处 |
 | `_check-a11y.js` | 图标按钮无障碍：统计"Button 里只有 Image、又没有 accessibilityLabel"的数量，**只许降不许升**（基线在 `_a11y-baseline.json`）。第110轮补了顶栏 5 个 + 主界面 4 个导航入口的标签，其余 78 处记为已知欠账 |
 | `_check-hstack-budget.js` | 横向预算：同一 `HStack` **直接子层**多个固定宽度之和 ≥288pt（375pt 屏可用 339pt 的 85%）就报。⚠️ 只看内联块，写在 computed property 里的宽度追不到（已在文件头写明） |
 | `_check-dark-mode.js` | 深色模式链路：`ZLPalette.color` 必须会按 darkMode 把 `…Light` 换成 `…Dark`；RootView 必须把系统 colorScheme 同步给 ThemeManager；色板 Light/Dark 两组键必须成对 |
