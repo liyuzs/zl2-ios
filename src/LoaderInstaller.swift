@@ -129,7 +129,13 @@ struct ZLLoaderInstaller {
                         try? FileManager.default.createDirectory(at: dest.deletingLastPathComponent(),
                                                                  withIntermediateDirectories: true)
                         if let d = try? await fetch(u) {
-                            try? d.write(to: dest, options: .atomic)
+                            // **第179轮**：写失败会让库文件不存在，但 `failedLibs` 只记"下载失败"不记"写失败"，
+                            // 于是后面报"缺库"时那个列表是空的 —— 误导排查。改成失败记下来。
+                            do {
+                                try d.write(to: dest, options: .atomic)
+                            } catch {
+                                failedLibs.append(url.lastPathComponent + "（写盘失败）")
+                            }
                         }
                     }
                 }

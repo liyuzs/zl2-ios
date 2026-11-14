@@ -98,8 +98,13 @@ enum CoreLayoutExporter {
             let backupDir = controlMapDir.appendingPathComponent(".backup", isDirectory: true)
             try? FileManager.default.createDirectory(at: backupDir,
                                                      withIntermediateDirectories: true)
-            try? existing.write(to: backupDir.appendingPathComponent(name),
-                                options: .atomic)
+            // **第179轮**：原来这里是 `try? existing.write(...)` —— 备份没写成也继续往下走，
+            // 下一行会覆盖旧布局，**旧内容永久丢失**，而用户以为"有备份"。改成失败至少留日志。
+            do {
+                try existing.write(to: backupDir.appendingPathComponent(name), options: .atomic)
+            } catch {
+                NSLog("[ZL2] 布局备份写失败（旧布局即将被覆盖，无法恢复）：%@", String(describing: error))
+            }
         }
 
         try data.write(to: url, options: .atomic)

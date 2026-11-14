@@ -492,7 +492,12 @@ enum CoreBridge {
         biomeBlendRadius:1
         mipmapLevels:0
         """
-        try? content.write(toFile: path, atomically: true, encoding: .utf8)
+        // **第179轮**：写失败只会让性能配置没生效（不影响功能），但留条日志便于排查。
+        do {
+            try content.write(toFile: path, atomically: true, encoding: .utf8)
+        } catch {
+            NSLog("[ZL2] options.txt 写失败（性能配置没生效）：%@", String(describing: error))
+        }
     }
 
     /// 只知道版本 id 时（比如下载列表里的条目）也能判 Java 版本。
