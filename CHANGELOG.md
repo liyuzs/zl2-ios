@@ -63,6 +63,11 @@
 
 ### 已知问题 / 新增
 
+- **`range` 字段存在 100 多轮但写入路径从不 clamp**：`ZLSettings` 有 **25 项**设了 `range: ClosedRange<Int>?`，但 `store.set(_:_: Int)` 是裸的 `defaults.set(value, forKey:)`——**完全不 clamp**，`range` 只被 slider 的 min/max 用来限制滑杆位置。而分辨率两项（唯一的自由数字输入）**range 还是 nil**：能填 `0`（渲染尺寸 0）/ 负数 / `99999999`（分配巨大缓冲）。已给 `set(Int)` 加统一 clamp（将来新增 int 项自动受保护）+ 分辨率两项补 `range: 0...7680`（0 保留为"跟随 resolutionRule"）。
+- **`Int(digits) ?? 0` 会替用户填值**：输入框删空或只输一个 `-` 时存成 0，而 0 在分辨率里语义完全不同 → 改成解析不出来就**不覆盖**。
+- **新增 `_check-number-range.js`**：用 `number(...)` 自由输入的项必须有 `range`，注入验证能精确报出。
+- **踩了个缩进坑**：第一版补丁的 `anchor` 没带缩进，`includes` 匹配到子串导致插入的 4 行缩进全错（12/4/4/0 混在一起），`_check-indentation` 报出来了——这类错**括号检查查不出**。
+
 - **按"还有谁在做同一件事"扫出三个漏网的下载校验**：`VersionInstaller`/`ModrinthAPI` 第40轮就加了 PK 魔数，但这三个没有——①`ZLYggdrasil.downloadSkin` 只判 `data.count > 100`（HTML 错误页被存成 `skin.png`）②`ZLYggdrasil.ensureDownloaded` 只判 `>100_000`（**>100KB 的错误页会被存成 `authlib-injector.jar` → `isReady` 为 true → `-javaagent` 指向无效 jar → JVM 启动直接失败**，与第31轮 patchjna 同类）③`LoaderInstaller` 无校验且 `failedLibs` 不会记（write 成功了）。已分别加 PNG 魔数 / ZIP 魔数 / PK 魔数；`LoaderInstaller` 顺带加了 `ZLLoaderInstallerError.badContent`（并补 `errorDescription` 分支，**漏了会编译失败**）。
 - **新增 `_check-download-magic.js`**：文件里同时有"下载"和"写盘"就必须有内容校验痕迹。`MojangAPI` 在 ALLOW（通用流式下载器，内容类型不定，但**有更强的保障**：非 2xx 抛错 + 下载截断检测 `received < expectedSize` + `.part` 临时文件 + 原子替换）。
 - **注入验证暴露我自己的漏洞**：第一版注入仍报 ✓，因为 `MAGIC` 匹配到**注释里的 `0x50`**——与第143轮"注释算引用"同一个坑。加剥注释后可精确抓到。
