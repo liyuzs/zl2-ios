@@ -40,6 +40,24 @@ function collectSet(name) {
   }
   return out;
 }
+// ---- 四个置灰集合里登记的 key，**必须真实存在于 ZLSettings**（第158轮补）----
+// 同一形状的坑：`_check-dead-routes` 的 ALLOW 里留过已删 case 的登记（terracotta），
+// 会让人以为那个东西还存在。四个集合里的 key 也一样 —— 删了设置项却没删置灰登记，
+// 会让人以为「这个项存在、只是被置灰」。
+const ALL_SET_NAMES = ['platformOnly', 'notWired', 'renderOnly', 'launcherLook'];
+const staleSetKeys = [];
+for (const n of ALL_SET_NAMES) {
+  for (const k of collectSet(n)) {
+    if (!defs.includes(k)) staleSetKeys.push(n + '.' + k);
+  }
+}
+if (staleSetKeys.length > 0) {
+  console.log('⚠ 这些置灰登记已经过时（ZLSettings 里没这个 key）：');
+  for (const k of staleSetKeys) console.log('  · ' + k);
+  console.log('  删掉它们 —— 多余的登记会让人以为那个设置项还存在、只是被置灰。');
+  process.exit(1);
+}
+
 const disabled = new Set(['platformOnly', 'notWired', 'renderOnly', 'launcherLook'].flatMap(collectSet));
 const usable = defs.filter(k => !disabled.has(k));
 
