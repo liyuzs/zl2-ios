@@ -574,7 +574,7 @@ struct AssetsScreen: View {
             Button {
                 Task { await installProject(h) }
             } label: {
-                Image(systemName: "arrow.down.circle.fill")
+                Image(systemName: "arrow.down.circle.fill").accessibilityLabel("下载并安装整合包")
                     .font(.system(size: 24)).foregroundStyle(ZLTheme.primary)
             }
             .buttonStyle(.plain)

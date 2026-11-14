@@ -203,7 +203,7 @@ struct ResourceManagerScreen: View {
                     .buttonStyle(.plain)
 
                     Button { deleteTarget = item } label: {
-                        Image(systemName: "trash").font(.system(size: 12))
+                        Image(systemName: "trash").font(.system(size: 12)).accessibilityLabel("删除")
                             .foregroundStyle(ZLTheme.danger).frame(width: 24, height: 24)
                     }
                     .buttonStyle(.plain)

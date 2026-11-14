@@ -157,7 +157,7 @@ struct GameDirsScreen: View {
                     .clipShape(Capsule())
                 Spacer()
                 Button { store.reload() } label: {
-                    Image(systemName: "arrow.clockwise")
+                    Image(systemName: "arrow.clockwise").accessibilityLabel("刷新")
                         .font(.system(size: 12))
                         .foregroundStyle(ZLTheme.textSecond)
                         .frame(width: 34, height: 30)
@@ -662,7 +662,7 @@ struct VersionActionSheet: View {
                     .foregroundStyle(ZLTheme.textPrimary)
                 Spacer()
                 Button { isPresented = false } label: {
-                    Image(systemName: "xmark").foregroundStyle(ZLTheme.textSecond)
+                    Image(systemName: "xmark").foregroundStyle(ZLTheme.textSecond).accessibilityLabel("关闭")
                 }
                 .buttonStyle(.plain)
             }

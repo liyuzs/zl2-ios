@@ -223,7 +223,7 @@ struct ZLTaskMenu: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(ZLTheme.primaryDeep).frame(width: 34)
                         Button { center.cancel(t.id) } label: {
-                            Image(systemName: "xmark.circle.fill")
+                            Image(systemName: "xmark.circle.fill").accessibilityLabel("取消任务")
                                 .font(.system(size: 14))
                                 .foregroundStyle(ZLTheme.textSecond)
                         }

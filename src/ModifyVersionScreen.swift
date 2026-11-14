@@ -56,7 +56,7 @@ struct ModifyVersionScreen: View {
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundStyle(ZLTheme.primaryDeep)
                                 Button { showMCList = true } label: {
-                                    Image(systemName: "chevron.right").font(.system(size: 11))
+                                    Image(systemName: "chevron.right").font(.system(size: 11)).accessibilityLabel("选择游戏版本")
                                         .foregroundStyle(ZLTheme.textSecond)
                                 }
                                 .buttonStyle(.plain)

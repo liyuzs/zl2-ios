@@ -430,7 +430,7 @@ struct SearchIDScreen: View {
                     Button {
                         Task { await search() }
                     } label: {
-                        Image(systemName: "magnifyingglass")
+                        Image(systemName: "magnifyingglass").accessibilityLabel("搜索")
                             .foregroundStyle(ZLTheme.textOnGold)
                             .frame(width: 44, height: 40)
                             .background(ZLTheme.primary)

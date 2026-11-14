@@ -968,7 +968,7 @@ struct SettingsScreen: View {
                     Button {
                         store.reset(def)
                     } label: {
-                        Image(systemName: "arrow.counterclockwise")
+                        Image(systemName: "arrow.counterclockwise").accessibilityLabel("恢复默认设置")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(ZLTheme.textSecond)
                     }

@@ -296,14 +296,14 @@ struct SavesManagerScreen: View {
 
             HStack(spacing: 2) {
                 Button { detail = w } label: {
-                    Image(systemName: "info.circle").font(.system(size: 13))
+                    Image(systemName: "info.circle").font(.system(size: 13)).accessibilityLabel("查看存档详情")
                         .foregroundStyle(ZLTheme.textSecond)
                         .frame(width: 26, height: 26)
                 }
                 .buttonStyle(.plain)
 
                 Button { deleteTarget = w } label: {
-                    Image(systemName: "trash").font(.system(size: 12))
+                    Image(systemName: "trash").font(.system(size: 12)).accessibilityLabel("删除存档")
                         .foregroundStyle(ZLTheme.danger)
                         .frame(width: 26, height: 26)
                 }

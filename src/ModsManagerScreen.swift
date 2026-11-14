@@ -277,14 +277,14 @@ struct ModsManagerScreen: View {
 
                 HStack(spacing: 2) {
                     Button { detail = m } label: {
-                        Image(systemName: "info.circle").font(.system(size: 13))
+                        Image(systemName: "info.circle").font(.system(size: 13)).accessibilityLabel("查看模组详情")
                             .foregroundStyle(ZLTheme.textSecond)
                             .frame(width: 24, height: 24)
                     }
                     .buttonStyle(.plain)
 
                     Button { deleteTarget = m } label: {
-                        Image(systemName: "trash").font(.system(size: 12))
+                        Image(systemName: "trash").font(.system(size: 12)).accessibilityLabel("删除模组")
                             .foregroundStyle(ZLTheme.danger)
                             .frame(width: 24, height: 24)
                     }

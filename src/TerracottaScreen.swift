@@ -219,7 +219,7 @@ struct TerracottaScreen: View {
                                     Text(myRoomCode).font(.system(size: 10, design: .monospaced))
                                         .foregroundStyle(ZLTheme.primaryDeep)
                                     Button { UIPasteboard.general.string = myRoomCode } label: {
-                                        Image(systemName: "doc.on.doc").font(.system(size: 9))
+                                        Image(systemName: "doc.on.doc").font(.system(size: 9)).accessibilityLabel("复制房间码")
                                             .foregroundStyle(ZLTheme.primaryDeep)
                                     }
                                     .buttonStyle(.plain)

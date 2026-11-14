@@ -171,7 +171,7 @@ struct RootView: View {
                                 ZLHaptic.light()
                                 withAnimation(ZLSpring.page) { showUpdateTip = false }
                             } label: {
-                                Image(systemName: "xmark")
+                                Image(systemName: "xmark").accessibilityLabel("关闭")
                                     .font(.system(size: 10, weight: .semibold))
                                     .padding(4)
                             }

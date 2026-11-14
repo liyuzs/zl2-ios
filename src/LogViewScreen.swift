@@ -130,7 +130,7 @@ struct LogViewScreen: View {
             Button {
                 load(scroll: true)
             } label: {
-                Image(systemName: "arrow.clockwise")
+                Image(systemName: "arrow.clockwise").accessibilityLabel("重新加载日志")
                     .font(.system(size: 13))
                     .foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 34, height: 34)

@@ -172,7 +172,7 @@ struct DownloadScreen: View {
                 ZLHaptic.light()
                 onOpenSearchID()
             } label: {
-                Image(systemName: "number")
+                Image(systemName: "number").accessibilityLabel("按版本号搜索")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 40, height: 40)
@@ -185,7 +185,7 @@ struct DownloadScreen: View {
                 ZLHaptic.light()
                 Task { await loadManifest(force: true) }
             } label: {
-                Image(systemName: "arrow.clockwise")
+                Image(systemName: "arrow.clockwise").accessibilityLabel("刷新列表")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(ZLTheme.textPrimary)
                     .frame(width: 44, height: 40)
@@ -304,7 +304,7 @@ struct DownloadScreen: View {
                             ZLHaptic.light()
                             onOpenAddons(v.id)
                         } label: {
-                            Image(systemName: "wrench.and.screwdriver.fill")
+                            Image(systemName: "wrench.and.screwdriver.fill").accessibilityLabel("安装加载器")
                                 .font(.system(size: 16))
                                 .foregroundStyle(ZLTheme.textSecond)
                                 .frame(width: 40, height: 40)

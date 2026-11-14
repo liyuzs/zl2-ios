@@ -1091,7 +1091,7 @@ struct ControlEditorScreen: View {
                 layerIndex = index
                 sheet = .layer
             } label: {
-                Image(systemName: "gearshape.fill")
+                Image(systemName: "gearshape.fill").accessibilityLabel("控件层设置")
                     .font(.system(size: 11))
                     .foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 26, height: 30)
@@ -2247,7 +2247,7 @@ struct ControlStylePanel: View {
                 Button {
                     onResetVault()
                 } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath")
+                    Image(systemName: "arrow.triangle.2.circlepath").accessibilityLabel("重置收藏柜")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(ZLTheme.textSecond)
                         .frame(width: 30, height: 30)
