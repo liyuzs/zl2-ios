@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **`ZLSettingDef` 的 `type` 和 `group` 都是 0 次读取**（115 项都声明了，代码一次没读）。`type` 没被读意味着"控件用错类型"没人管——`.int` 的项用 `toggle` 会存成 `Bool`，而 `CoreBridge` 用 `as? Int` 读 → **静默失效**（第151轮那个"分辨率 asInt 读不到"就是这类）。已把 `type` 当**契约**做成 `_check-type-control.js`：`.bool`→toggle · `.int`→slider/number/animateSpeed/blur/keyCode · `.string`→text/picker · `.enumValue`→picker/menu/darkMode。实测 **74 个设置项 · 72 处配对全部匹配**（现有代码是对的，但没有任何东西在守着它）；注入验证（bool 项改用 slider）能精确报出。
+- **`group` 保留但注明"代码不读"**：纯文档（render 15 / game 11 / control 29 / gamepad 10 / launcher 44 / other 6），设置页用自己的 `ZLSettingRow` 数组不按组展示。
+- `range` 字段补注释：说明"写入路径会 clamp"、"slider / animateSpeed / blurRow 都用它当上下限"。
+
 - **`range` 字段存在 100 多轮但写入路径从不 clamp**：`ZLSettings` 有 **25 项**设了 `range: ClosedRange<Int>?`，但 `store.set(_:_: Int)` 是裸的 `defaults.set(value, forKey:)`——**完全不 clamp**，`range` 只被 slider 的 min/max 用来限制滑杆位置。而分辨率两项（唯一的自由数字输入）**range 还是 nil**：能填 `0`（渲染尺寸 0）/ 负数 / `99999999`（分配巨大缓冲）。已给 `set(Int)` 加统一 clamp（将来新增 int 项自动受保护）+ 分辨率两项补 `range: 0...7680`（0 保留为"跟随 resolutionRule"）。
 - **`Int(digits) ?? 0` 会替用户填值**：输入框删空或只输一个 `-` 时存成 0，而 0 在分辨率里语义完全不同 → 改成解析不出来就**不覆盖**。
 - **新增 `_check-number-range.js`**：用 `number(...)` 自由输入的项必须有 `range`，注入验证能精确报出。
