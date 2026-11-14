@@ -10,23 +10,45 @@
 //   ③ 收集对这些类型的调用点，抽出实参标签序列
 //   ④ 参数个数对不上（有默认值/尾随闭包）就跳过，只比对个数相同的
 //
-// 只看工程内自己的类型（CoreBridge / ZLRenderers / CoreLayoutExporter /
-// VersionRepository / ZLPreflight / ZLDiagnostics / MinecraftPing 等），
-// 系统 API 不查 —— 那需要真正的类型系统。
+// **覆盖范围：工程内全部类型**（第120轮从"12 个白名单"扩到全部）。
+// 起因：第119轮往 GameMenuScreen.listRow 里加 enabled: 时插错了位置（会编译失败），
+// 而这条检查当时只盯 12 个类型，listRow 不在里面 —— 它报了"全部对得上"。
+// 扩到全工程后比对了 289 个调用点，误报 0（前提是解析器先跳过字符串字面量）。
+// 系统 API 仍不查 —— 那需要真正的类型系统。
+//
+// **查不到什么（第120轮实测，别高估它）**：
+// ① **不查裸调用**。`GameMenuScreen` 内部的 `listRow(...)`、`infoRow(...)` 这类不带类型前缀的调用
+//    抓不到 —— 而这恰好是第119轮那个「enabled: 插到 options: 前面」的位置。
+//    试过扩：裸调用 1736 处里误报 9 处，全因实参里的三元 `? :` 被当成标签分隔符；
+//    加"冒号前必须是单个标识符"的过滤后误报反涨到 94（把合法标签也过滤掉了）。
+//    要正确区分"标签冒号"与"表达式里的冒号"，需要真正的语法分析 —— 静态解析到此为止。
+// ② 不查系统 API 与跨文件重载（同名方法在多个类型里时，只要有一个声明匹配就放过）。
+//
+// 所以：**这一层的价值是"静态调用的标签与顺序全对"**，不是"所有调用都验过"。
+// 剩下的靠 swift-lint（括号）+ 人工回读改动的调用点。
 
 const fs = require('fs');
 const path = require('path');
 const { SRC } = require('./_paths');
-const WATCH_TYPES = [
-  'CoreBridge', 'ZLRenderers', 'CoreLayoutExporter', 'VersionRepository',
-  'ZLPreflight', 'ZLDiagnostics', 'MinecraftPing', 'ZLFriendlyError',
-  'ServerStore', 'VersionInstaller', 'ZLLoaderInstaller', 'ZLAuthlibInjector',
-];
+// 工程内全部类型（含 struct / enum / class / actor / extension 目标）。
+// 不再维护白名单 —— 白名单总会漏掉新写的类型（第119轮就是这么漏的）。
+let WATCH_TYPES = [];
 
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.swift'))
   .map(f => ({ name: f, raw: fs.readFileSync(path.join(SRC, f), 'utf8') }));
 
 const flat = files.map(f => ({ name: f.name, text: f.raw.replace(/\s+/g, ' ') }));
+
+// 收集工程内所有类型名（在压平后的文本里扫，正则更可靠）
+{
+  const seen = new Set();
+  for (const f of flat) {
+    let m;
+    const re = /\b(?:extension|enum|struct|class|actor)\s+([A-Za-z_]\w*)/g;
+    while ((m = re.exec(f.text)) !== null) seen.add(m[1]);
+  }
+  WATCH_TYPES = [...seen];
+}
 
 // ---- 平衡括号取参数字符串 ----
 function argsAt(s, openIdx) {
@@ -48,7 +70,13 @@ function argsAt(s, openIdx) {
 function splitTopLevel(args) {
   const parts = [];
   let depth = 0, cur = '';
-  for (const ch of args) {
+  let inStr = false;
+  for (let i = 0; i < args.length; i++) {
+    const ch = args[i];
+    // 字符串字面量里的逗号与括号都不算结构（第120轮）：
+    // ZLClipboard.copy("\(s.address),label: ...") 的逗号曾把实参切错，产生假报。
+    if (ch === '"' && args[i - 1] !== '\\') { inStr = !inStr; cur += ch; continue; }
+    if (inStr) { cur += ch; continue; }
     if ('([{<'.includes(ch)) depth++;
     else if (')]}>'.includes(ch)) depth--;
     if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; }
@@ -62,9 +90,11 @@ function splitTopLevel(args) {
 // 关键：`meta ?? [:]` 里的冒号在方括号内，**不是**标签分隔符 ——
 // 一开始用 indexOf(':') 就把它当标签了，产生假报。
 function topLevelColon(s) {
-  let depth = 0;
+  let depth = 0, inStr = false;
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
+    if (c === '"' && s[i - 1] !== '\\') { inStr = !inStr; continue; }
+    if (inStr) continue;              // 字符串里的冒号不是标签分隔符
     if ('([{<'.includes(c)) depth++;
     else if (')]}>'.includes(c)) depth--;
     else if (c === ':' && depth === 0) return i;
