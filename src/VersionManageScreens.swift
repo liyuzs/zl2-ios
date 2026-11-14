@@ -654,6 +654,8 @@ struct VersionActionSheet: View {
     @State private var showRename = false
     @State private var newName = ""
     @State private var showDeleteConfirm = false
+    /// 改名失败的原因（名字已存在 / 输入为空…）。显示在 sheet 里，别静默失败。
+    @State private var renameError: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -672,6 +674,18 @@ struct VersionActionSheet: View {
                 actionRow("复制版本", "doc.on.doc", "复制所有文件到新版本") { onCopy() }
                 actionRow("重命名版本", "pencil", "修改显示名称") { showRename = true }
                 actionRow("删除版本", "trash", "谨慎操作，不可撤销", danger: true) { showDeleteConfirm = true }
+                if let e = renameError {
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(ZLTheme.danger)
+                        Text(e).font(.system(size: 11))
+                            .foregroundStyle(ZLTheme.danger)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 4)
+                }
             }
             .padding(.horizontal, ZLTheme.screenPadding)
             .padding(.bottom, ZLTheme.screenPadding)
@@ -680,7 +694,7 @@ struct VersionActionSheet: View {
         .alert("重命名版本", isPresented: $showRename) {
             TextField("新名称", text: $newName)
             Button("取消", role: .cancel) { }
-            Button("确定") { onRename(); isPresented = false }
+            Button("确定") { performRename() }
         } message: {
             Text("此名称的版本不能已存在")
         }
@@ -689,6 +703,32 @@ struct VersionActionSheet: View {
             Button("删除", role: .destructive) { onDelete(); isPresented = false }
         } message: {
             Text("将删除 \(versionName) 的全部文件，无法恢复。")
+        }
+    }
+
+    /// 真正执行改名。
+    ///
+    /// 第144轮修：原来"确定"只调 `onRename()`（调用方只做刷新），**`newName` 从未被使用** ——
+    /// 用户输入新名字、点确定、版本名不变且无任何提示。
+    /// 现在改名在这里执行，调用方的 `onRename` 保持"刷新列表"的语义。
+    private func performRename() {
+        let target = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !target.isEmpty else {
+            renameError = "请输入新名称"
+            return
+        }
+        guard target != versionName else {
+            renameError = "新名称和原名一样"
+            return
+        }
+        do {
+            try VersionRepository.shared.renameVersion(versionName, to: target)
+            renameError = nil
+            onRename()              // 通知调用方刷新列表
+            isPresented = false
+        } catch {
+            // 名字已存在 / 文件操作失败 —— 显示原因，sheet 不关
+            renameError = ZLFriendlyError.text(error)
         }
     }
 

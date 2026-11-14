@@ -39,11 +39,7 @@ const FRAMEWORK_MARKERS = [
 
 // 明确保留（功能未接入但有意留着），登记理由
 const ALLOW = {
-  // 第143轮发现：276 行的完整页面（改名 / 换 MC / 换加载器），但**从未接线**
-  // （不在 AppRoute 里，也没有任何导航到它）。它是"写好了没挂载"的真功能，
-  // 不是死代码 —— 下一轮要决定：接上一个入口，或删掉。先占位避免一改就红。
-  'ModifyVersionScreen': '真功能未接线，待决定（接线或删）',
-  'MCVersionPicker': '同上，ModifyVersionScreen 的私有子视图',
+
   ZLEasyTierPacketTunnelProvider: '远程联机（Terracotta）未接入，NE 扩展类先留着',
   EasyTierBridge:                 '同上',
   SwitchGameDirIntent:            '快捷指令意图，等 AppIntents 配置齐了再接',
