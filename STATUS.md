@@ -145,7 +145,7 @@ git push   # 本地分支 master → 线上 main
    因为将来真有人把它接上入口时，最容易忘的就是"底下还没通"，而用户会看到一个"能点但连不上"的界面。
    **不是"页面没实现"**。第75轮发现过 7 个不可达页面：`ServerListScreen` / `SearchIDScreen` 已接上入口，
    `ExportScreen` / `CrashLogScreen` / `SelectGameVersionScreen` 已删除，`TerracottaScreen`（359 行假页面）第132轮删除，
-   另清掉 6 个冗余死路由（详见 `_check-dead-routes.js` 的 ALLOW）。
+   其余不可达页面与冗余死路由已清理 —— **现在 `_check-dead-routes.js` 里只剩 `.room` 一个登记**（跑一次看它的输出就知道，别信这里写的数字）。
 5. **部分三列布局在手机竖屏上偏挤** —— 如「下载-模组/资源」页（左栏 92pt + 筛选栏 ≤210pt + 结果列表自适应）、「游戏目录」页（左栏 ≤258pt），在 375pt 宽的手机上结果区会偏窄。app 最初按 iPad 设计；**没有视觉反馈的情况下不做盲改**，已把必然溢出的固定宽度（≥280pt）全部改成 `maxWidth`。
 6. **`patchjna_agent.jar` 与 `libjnidispatch.dylib` 没放** —— 它们只服务 Forge/NeoForge，而 iOS 不支持 Forge（详见 `docs/缺失组件-Java启动器jar.md`）
 7. **没有桌面小组件** —— 项目里有 `ZLSharedStore`（App Group 写入 `widget.version` / `widget.count` / `widget.lastPlayed`），首页每次刷新版本列表时都会写；但**没有 Widget 扩展 target**，所以现在没有任何东西读它。这是为将来加小组件留的骨架，不是已实现的功能。
