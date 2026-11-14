@@ -24,6 +24,8 @@ struct HomeScreen: View {
     /// 版本描述（如「Fabric · 1.20.1」）。从版本 JSON 真实读取，读不到就不显示 ——
     /// 原来这里是硬编码的 `Text("1.20.1 · Fabric 0.19.2")`，装什么版本都显示那一行（第141轮）。
     @State private var versionDisplayMeta: String?
+    /// 累计启动次数（UserDefaults 的 finishedGame）。只在 > 0 时显示 —— "已启动 0 次"是负反馈。
+    @State private var launchCount = 0
     // 彩蛋：连点标题
     @State private var titleTaps = 0
     @State private var eggText: String?
@@ -321,11 +323,22 @@ struct HomeScreen: View {
                         .lineLimit(1)
                         .onTapGesture { versionTap() }
                     // 真实版本描述（原先是硬编码的 "1.20.1 · Fabric 0.19.2"）
+                    // 第156轮接上：CoreBridge.gameLaunchCount 早就存在（注释写着"供 UI 显示"），
+                    // 但一直没人用。对用户是个正反馈 —— 第一次成功启动后会看到"已启动 1 次"。
+                    // **横排**：首页是固定布局（没有 ScrollView），不能多占纵向空间。
                     if let meta = versionDisplayMeta {
-                        Text(meta)
-                            .font(.system(size: 12))
-                            .foregroundStyle(ZLTheme.textSecond)
-                            .lineLimit(1)
+                        HStack(spacing: 5) {
+                            Text(meta)
+                                .font(.system(size: 12))
+                                .foregroundStyle(ZLTheme.textSecond)
+                                .lineLimit(1)
+                            if launchCount > 0 {
+                                Text("· 已启动 \(launchCount) 次")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(ZLTheme.textSecond.opacity(0.75))
+                                    .lineLimit(1)
+                            }
+                        }
                     }
                 }
                 Spacer(minLength: 4)
@@ -440,6 +453,7 @@ struct HomeScreen: View {
                           installedCount: list.count,
                           lastPlayed: UserDefaults.standard.object(forKey: "lastLaunchDate") as? Date)
 
+        launchCount = CoreBridge.gameLaunchCount
         guard !list.isEmpty else {
             selectedVersion = "还没有安装版本"
             versionDisplayMeta = nil
