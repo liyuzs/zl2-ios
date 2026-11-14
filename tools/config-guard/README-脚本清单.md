@@ -13,7 +13,7 @@
 
 ```powershell
 cd C:\Users\21793\.dsh\config-guard
-.\_run-all.ps1                  # 跑 35 个快速检查（约 9 秒）
+.\_run-all.ps1                  # 跑一轮快速检查
 .\_run-all.ps1 -IncludeSimulate # 连 CI 装配模拟一起（50 项，约 13 秒）
 .\_run-all.ps1 -Quiet           # 只输出失败的
 ```
