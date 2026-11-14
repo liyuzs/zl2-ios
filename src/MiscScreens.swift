@@ -313,6 +313,26 @@ struct MultiplayerRoomScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             ZLTopBar(title: "陶瓦联机", active: .multiplayer, onBack: onBack, onHome: onHome)
+            // **第189轮**：这个界面**当前没有任何入口**（`AppRoute.room` 存在、`ZL2App` 也接了
+            // `case .room:`，但全项目没有任何地方 `path.append(.room)`）。
+            // 而且它依赖的 EasyTier 隧道需要 **Network Extension**（本项目没做，见 EasyTierTunnel 里的 TODO）。
+            //
+            // 这条提示是给它"将来被接上入口"那天准备的：那时候用户会真的走进来，
+            // 而如果底下的隧道不通，他会看到一个"能点但连不上"的界面 —— 比空白更糟。
+            // 所以先在这里说清楚状态，而不是等用户自己发现。
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(ZLTheme.warning)
+                Text("这个功能还没做完 —— 隧道组件需要 Network Extension，当前版本里连不通。下面的按钮先别指望。")
+                    .font(.system(size: 11))
+                    .foregroundStyle(ZLTheme.textSecond)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, ZLTheme.screenPadding)
+            .padding(.vertical, 10)
+
             HStack(spacing: ZLTheme.cardGap) {
                 ZLCard {
                     VStack(alignment: .leading, spacing: 14) {
