@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **错误提示在中文系统上全部失效**：`ZLFriendlyError.text` 的 9 条映射全靠 `localizedDescription` 做文本匹配（`lower.contains("timed out")`），而它在**中文系统上已经是中文**（"请求超时。"）→ 永不匹配 → 全部落兜底，用户看到「请求超时。（错误码 -1001）」而不是「网络超时，请检查网络后重试」。已改成**先按错误码判断**（`NSURLErrorDomain` + `URLError.Code` 7 个 case；`NSCocoaErrorDomain` + code 3 个 case），原有 20 条文本匹配保留作补充。这解释了为什么第51轮加的"三类错误建议"一直没真正生效。
+- **新增 `_check-error-locale.js`**：①函数里必须有错误码判断 ②错误码判断必须在**第一个文本匹配之前**（否则文本分支先吃掉）。注入验证能把文本匹配提前的情况精确报出。
+- 顺带审计：全仓 19 处 `localizedDescription`，除这一处其余都是"拼进提示/日志"不做逻辑判断，合理。
+
 - **"重命名版本"是个活的假功能**：`VersionActionSheet` 里 `TextField("新名称", text: $newName)` 收集了输入，但"确定"调的是**无参数的 `onRename()`** —— **`newName` 从未被读取**；两个可达入口（`VersionContentScreen` / `VersionListScreen`）的 `onRename` 都只做刷新。**用户点重命名、输入新名字、点确定、版本名不变且无任何提示**。已在 `VersionActionSheet` 内真正执行改名（`performRename()`：空名/同名两个 guard + `renameVersion` + 错误显示），调用方 `onRename` 保持"刷新列表"语义。
 - **删 `ModifyVersionScreen.swift`（276 行）**：它的四项功能里"改名"是真实现但已被正主覆盖，"换 MC / 换加载器"是**假的**（只在结果文本里说"将改为 X"，不改任何东西），而它本身从未接线。
 
