@@ -315,6 +315,15 @@ struct ServerListScreen: View {
         showEdit = true
     }
 
+    /// 逐个刷新所有服务器的状态。
+    ///
+    /// **刻意串行，别改成并发**（第129轮确认过）：
+    /// · 串行慢但不打网络风暴：20 个服务器 × 5 秒超时 ≈ 100 秒最坏情况，好在每行有自己的
+    ///   loading 骨架条，用户能看到"还在跑"；
+    /// · 而 `withTaskGroup` 的子任务**不继承 MainActor**，`ping(_:)` 里会改
+    ///   `loading` / `pings` / `failed` 这些 `@State` —— 并发化就变成"后台线程改 UI 状态"，
+    ///   正是第127轮专门审计过的那类问题（偶发不刷新、紫色运行时警告）。
+    /// 真要提速，正确做法是把网络请求并行、结果收集完再一次性回主线程写状态。
     private func pingAll() async {
         for s in servers { await ping(s) }
     }
