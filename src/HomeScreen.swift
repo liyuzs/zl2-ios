@@ -155,9 +155,17 @@ struct HomeScreen: View {
             if !didGreet {
                 didGreet = true
                 // 节日优先，其次深夜
+                //
+                // **第202轮**：原来这里**只处理了节日** —— 注释写着"深夜"，代码里却没有。
+                // 补上 `ZLCuteGreeting.lateNightGreeting`（它只在 23:00–05:00 说话，
+                // 白天返回 nil，所以不会每次启动都弹一句"下午好"）。
                 if let f = ZLFestival.greeting {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                         showEgg(f, duration: 3.4)
+                    }
+                } else if let late = ZLCuteGreeting.lateNightGreeting {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        showEgg(late, duration: 3.2)
                     }
                 }
             }

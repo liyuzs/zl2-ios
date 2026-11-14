@@ -413,6 +413,19 @@ enum ZLCuteGreeting {
         default:      return "夜深了"
         }
     }
+
+    /// **第202轮补**：只在**深夜 / 凌晨**返回一句问候，白天返回 nil。
+    ///
+    /// 为什么需要这个：`HomeScreen` 里那句「深夜第一次进来自动打个招呼」的注释写了很久，
+    /// 但代码只处理了节日（`ZLFestival.greeting`）—— **承诺了没实现**。
+    /// 直接复用 `now` 不行：它在白天也会返回「下午好」，那用户每次启动都会看到一句问候，会觉得吵。
+    /// 所以这里只在 23:00–05:00 之间说话。
+    static var lateNightGreeting: String? {
+        let h = Calendar.current.component(.hour, from: Date())
+        // 深夜 23 点后，或凌晨 5 点前
+        guard h >= 23 || h < 5 else { return nil }
+        return h >= 23 ? "夜深了，玩一会儿就早点睡 🌙" : "这么早就来了 ☀️ 先喝点水"
+    }
 }
 
 // MARK: - 可爱彩蛋 4：加载时的小提示
