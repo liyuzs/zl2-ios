@@ -60,7 +60,6 @@ enum AppRoute: Hashable {
     case serverList
     case downloadAddons(String)
     case license
-    case terracotta
     case modsManager(String)
     case savesManager(String)
     case resourceManager(String, Int)   // versionID, kind raw index
@@ -351,8 +350,6 @@ struct RootView: View {
                         })
                 case .license:
                     LicenseScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
-                case .terracotta:
-                    TerracottaScreen(onBack: { path.removeLast() }, onHome: { path.removeAll() })
                 case .modsManager(let vid):
                     ModsManagerScreen(versionID: vid,
                                       onBack: { path.removeLast() },
