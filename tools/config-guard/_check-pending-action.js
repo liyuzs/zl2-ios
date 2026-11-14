@@ -10,6 +10,17 @@
 //   2. `consumeRoute` 里必须读 `zl.pendingRouteAt` 并做过期判断
 //   3. 除 `ZLPendingAction.setRoute` 之外，任何地方都不许直接 `set(...forKey: "zl.pendingRoute")`
 //   4. RootView 必须同时有 `.task` 和 `scenePhase` 消费（冷启动 + 回到前台）
+//
+// **局限**（不查什么）：
+//   · **只查结构，不查行为**（上面第 4 行自己就写了）。具体不查的：① `consumeRoute()` 里的分支逻辑对不对
+//     ② 过期时间定 **2 分钟**合不合理 ③ `setRoute` 写的字符串**有没有对应的消费分支**
+//     —— ③ 那个由 `_check-pending-routes` 管（第161轮就是它抓到 `"settings"` 没消费分支，真 bug）。
+//   · **只认这 4 条结构**。如果将来换成 `onOpenURL` + `CFBundleURLSchemes` 那一套机制，
+//     这 4 条全都不适用，**而检查会继续报 ✓**（"机制换了"这件事本身没人提醒）。
+//   · **守不住"写入方被绕过"**：判据 3 只查 `set(...forKey: "zl.pendingRoute")` 这一种写法。
+//     写成 `setValue(_:forKey:)` 或别的 UserDefaults API，看不见。
+//   · **"`attemptAutoLaunch` 至少两处调用"是硬编码的 2** —— 合法重构变成一处或三处时，
+//     判据会误报或漏报。它是"当时那条时序 bug 的形状"，不是不变量。
 
 const fs = require('fs');
 const path = require('path');
