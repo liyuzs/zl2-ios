@@ -63,6 +63,11 @@
 
 ### 已知问题 / 新增
 
+- **补全 `ZLFriendlyError` 的错误码映射（7 → 14 个 case）**：第145轮改成"错误码优先"后只覆盖 7 个码。补上最常落兜底的 7 个 —— `.badServerResponse`（4xx/5xx，最常见）· `.cannotDecodeRawData`/`.cannotDecodeContentData`/`.cannotParseResponse`（**正是"下载源返回 HTML 错误页"那个场景**）· `.fileDoesNotExist`/`.noPermissionsToReadFile`（**这两个在 `NSURLErrorDomain` 里**，原来那三条 `NSCocoaErrorDomain` 的文件 case 抓不到）· `.resourceUnavailable` · `.dataNotAllowed` · `.userAuthenticationRequired`。
+- **删 `CoreLaunchError.missingRuntime`**：全仓 0 处 —— 从没被抛出也没被匹配，死 case 会让人误以为"缺运行时"有专门处理。
+- 顺带审计（按第145轮清单）：11 处 `+ "/"` 拼路径在 **iOS 上安全**（分隔符固定）；`String(describing:)` / `.description` 做判断 **0 处**。
+- **待做**：枚举里"从没被构造/匹配的 case"也是死代码，`_check-dead-types` 目前只查顶层类型不查 case。
+
 - **错误提示在中文系统上全部失效**：`ZLFriendlyError.text` 的 9 条映射全靠 `localizedDescription` 做文本匹配（`lower.contains("timed out")`），而它在**中文系统上已经是中文**（"请求超时。"）→ 永不匹配 → 全部落兜底，用户看到「请求超时。（错误码 -1001）」而不是「网络超时，请检查网络后重试」。已改成**先按错误码判断**（`NSURLErrorDomain` + `URLError.Code` 7 个 case；`NSCocoaErrorDomain` + code 3 个 case），原有 20 条文本匹配保留作补充。这解释了为什么第51轮加的"三类错误建议"一直没真正生效。
 - **新增 `_check-error-locale.js`**：①函数里必须有错误码判断 ②错误码判断必须在**第一个文本匹配之前**（否则文本分支先吃掉）。注入验证能把文本匹配提前的情况精确报出。
 - 顺带审计：全仓 19 处 `localizedDescription`，除这一处其余都是"拼进提示/日志"不做逻辑判断，合理。
