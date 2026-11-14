@@ -97,6 +97,7 @@ $checks = @(
     @('_check-delivery-docs.js',    'js',  '交付包文档 ↔ 仓库（不许孤本/漏同步）'),
     @('_check-doc-config-sync.js','js', '文档配置属性与 project.yml 一致'),
     @('_check-doc-hardcoded-counts.js','js', '文档不写会变的数量'),
+    @('_check-code-hardcoded-counts.js', 'js', '代码文案不写死数量'),
     @('_check-delivery-index.js',  'js',  '交付包入口说明 ↔ 文件清单')
 )
 

@@ -299,7 +299,7 @@ struct DownloadScreen: View {
                             .foregroundStyle(ZLTheme.warning)
                         // 第169轮改：原来写"（显示内置示例）"，但那 7 个是**真版本**（能装），
                         // "示例"会让人以为不能用。改成说清"内置常用版本 + 联网可看全部"。
-                        Text("清单获取失败：\(e)\n下面是内置的 7 个常用版本（都能装），联网后可看全部")
+                        Text("清单获取失败：\(e)\n下面是内置的 \(versions.count) 个常用版本（都能装），联网后可看全部")
                             .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
                             // HStack 里宽度受限：没有 fixedSize 的话 `\n` 会被压成一行、还可能被截断
                             .fixedSize(horizontal: false, vertical: true)

@@ -6,6 +6,13 @@
 import SwiftUI
 
 struct AssetInfoScreen: View {
+    /// 版本列表最多显示多少行。
+    ///
+    /// **第187轮**：这个 40 原来在三个地方各写了一遍 —— `prefix(40)`、`> 40`、
+    /// 以及文案「仅显示前 40 个版本」。改一处忘另外两处就会出现"列表只显示 30 条但提示说 40"这种不一致。
+    /// 现在提取成常量，文案也用插值。
+    private static let maxVersionRows = 40
+
     let hit: ModrinthHit
     let kind: AssetKind
     var onBack: () -> Void = {}
@@ -304,11 +311,11 @@ struct AssetInfoScreen: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                 } else {
-                    ForEach(Array(filteredVersions.prefix(40)), id: \.id) { v in
+                    ForEach(Array(filteredVersions.prefix(Self.maxVersionRows)), id: \.id) { v in
                         versionRow(v)
                     }
-                    if filteredVersions.count > 40 {
-                        Text("仅显示前 40 个版本，可用筛选缩小范围")
+                    if filteredVersions.count > Self.maxVersionRows {
+                        Text("仅显示前 \(Self.maxVersionRows) 个版本，可用筛选缩小范围")
                             .font(.system(size: 10))
                             .foregroundStyle(ZLTheme.textSecond)
                     }
