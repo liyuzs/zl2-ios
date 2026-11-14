@@ -82,6 +82,23 @@ if (repoNames) {
   for (const f of extraInRepo) problems.push(`仓库副本里有 ${f}，本机已不存在（仓库该清理）`);
 }
 
+// ---- F. 内容必须字节一致（第147轮补） ----
+// 判据 D 只比**文件名集合**。实测：`_check-dead-types.js` 改了没同步
+// （工作副本 166 行 / 仓库副本 157 行），而这条检查报 ✓ ——
+// "不许漏同步"实际只做到了"名字没漏"。
+const contentDrift = [];
+if (repoNames) {
+  for (const f of onDisk) {
+    if (!repoNames.includes(f)) continue;
+    try {
+      const a = fs.readFileSync(path.join(GUARD, f));
+      const b = fs.readFileSync(path.join(REPO_COPY, f));
+      if (!a.equals(b)) contentDrift.push(f);
+    } catch { /* 读不到留给判据 D 报 */ }
+  }
+  for (const f of contentDrift) problems.push(`${f}：本机与仓库副本**内容不同**（改了没同步）`);
+}
+
 // ---- E. 不许写死仓库绝对路径（第96轮加：曾有 53 个脚本把仓库路径写死在常量里，入仓却不便携） ----
 // 允许的只有 _paths.js / _paths.ps1 —— 它们是**唯一**该知道默认位置的地方。
 // 豁免：_paths.* 是唯一该知道默认位置的地方；本文件自己是**检测器**，
@@ -94,7 +111,7 @@ for (const f of onDisk) {
     problems.push(`${f} 里写死了仓库绝对路径 D:\\ios-zl2 —— 应改用 _paths（否则换机器就跑不了）`);
   }
 }
-console.log(`磁盘 ${onDisk.length} 个脚本 · 清单提到 ${mentioned.size} 个 · 仓库副本 ${repoNames ? repoNames.length : 0} 个`);
+console.log(`磁盘 ${onDisk.length} 个脚本 · 清单提到 ${mentioned.size} 个 · 仓库副本 ${repoNames ? repoNames.length : 0} 个 · 内容不一致 ${contentDrift.length} 个`);
 console.log('');
 
 if (problems.length === 0) {

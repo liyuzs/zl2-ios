@@ -7,6 +7,15 @@
 // 真正的死代码是：**连自己文件里都没人用** —— 标识符在整个 src 里只出现 1 次（就是声明本身）。
 // （第143轮起：统计前会剥掉整行注释 —— 否则注释里提一次就被当成"有人用"）
 // （第143轮起：ObjC 的 `NSClassFromString(@"X")` 也算引用 —— 否则 ZLOverlayHost 这类会被误删）
+//
+// **为什么不做"枚举 case 级"检查（第147轮试过，放弃了）**：
+//   Swift 里 `case` 同时是"枚举 case 定义"和"模式匹配"关键字（`switch case` / `if case` / `guard case`），
+//   从源码文本里区分两者需要真正的语法分析。实测两版判据：
+//     · v1（全枚举体扫 case）→ 16 处里 14 处误报（把 `switch ns.code { case NSFile... }` 当成枚举 case）
+//     · v2（只扫"定义区"= 第一个非 case 声明之前）→ 仍误报 7/18（空枚举 `enum ZLRenderers { static let ... }`）
+//   误报率 87% / 39% 的检查都会让人以为"这里有真问题"，比没有更糟（第127轮那条）。
+//   **现状**：case 级死代码靠人工发现。已知案例：`CoreLaunchError.missingRuntime`（第146轮）、
+//   `ModrinthProjectType.datapack`（第147轮）—— 两个都已删。
 // 这样筛出来 17 个，其中：
 //   · `ZLKeycode`（102 行 101 个键码常量）+ 同文件的 `ZLKeySpec` 整套 —— 整个文件零引用 → 已删
 //   · `ZLWaveShape` —— 第67轮删掉 `ZLWaveLine` 之后就被落下了
