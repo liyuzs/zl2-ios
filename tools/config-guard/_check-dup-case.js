@@ -78,6 +78,13 @@ for (const f of files) {
 console.log(`扫了 ${enumCount} 个 enum，共 ${caseCount} 个 case`);
 console.log(`重复的：${problems.length} 处\n`);
 
+// **第196轮**：零匹配保护 —— 一个 enum 都没扫到时，输出和"全部合规"长得一样。
+const __guardCount = enumCount + caseCount;
+if (__guardCount === 0) {
+  console.log('⚠ 一个 enum / case 都没扫到 —— 判据可能失效了');
+  process.exit(1);
+}
+
 if (problems.length === 0) {
   console.log('✓ 没有 enum 内重复 case');
   process.exit(0);

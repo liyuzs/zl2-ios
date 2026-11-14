@@ -19,6 +19,7 @@ const { SRC } = require('./_paths');
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.swift'));
 
 const problems = [];
+let __typeBlocks = 0;   // **第196轮**：判据实际识别了多少个类型块（分母）
 
 for (const f of files) {
   const lines = fs.readFileSync(path.join(SRC, f), 'utf8').split(/\r?\n/);
@@ -35,6 +36,7 @@ for (const f of files) {
     const tm = line.match(/^(?:@\w+\s+)*(?:public\s+|internal\s+|private\s+|fileprivate\s+)?(?:final\s+)?(struct|class|enum|extension)\s+(\w+)/);
     if (tm && line.includes('{')) {
       const indent = raw.match(/^ */)[0].length;
+      __typeBlocks++;
       stack.push({ name: tm[1] + ' ' + tm[2], decls: new Map(), indent });
     }
 
@@ -88,8 +90,15 @@ const __roughTypes = files.reduce((n, f) => {
   return n + (s.match(/^(?:public |internal |private |fileprivate |final )*(?:struct|class|enum)\s+\w+/gm) || []).length;
 }, 0);
 
-console.log(`扫了 ${files.length} 个文件 · 粗数顶层类型 ${__roughTypes} 个（不含 extension / @MainActor；判据识别的个数应与它接近）`);
+console.log(`扫了 ${files.length} 个文件 · 粗数顶层类型 ${__roughTypes} 个（不含 extension / 嵌套）`);
+console.log(`判据实际识别的类型块：${__typeBlocks} 个（**含 extension 与嵌套**，所以比粗数多 —— 两个口径不是一回事，只要都 > 0 就说明判据活着）`);
 console.log(`同一类型内重复声明的：${problems.length} 处\n`);
+
+// **第196轮**：零匹配保护 —— 与上面的"粗数 305 个"对账；差太多就说明判据失效。
+if (__typeBlocks === 0) {
+  console.log('⚠ 一个类型块都没识别到 —— 判据可能失效了');
+  process.exit(1);
+}
 
 if (problems.length === 0) {
   console.log('✓ 没有同一类型内的重复声明');

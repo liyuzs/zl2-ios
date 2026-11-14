@@ -45,6 +45,7 @@ const ALLOW = [
 ];
 
 const hits = [];
+let textCount = 0;   // 扫到多少条用户可见文案（分母）
 
 for (const f of files) {
   const lines = fs.readFileSync(path.join(SRC, f), 'utf8').split(/\r?\n/);
@@ -52,6 +53,7 @@ for (const f of files) {
     if (line.trim().startsWith('//')) return;
     for (const m of line.matchAll(RE)) {
       const text = m[1];
+      textCount++;   // **第196轮**：数一下扫到了多少条用户可见文案（分母）
       // **把插值挖掉，只查剩下的字面量部分**（第187轮修正）：
       // 原来"整串含 \( 就跳过"，结果 `"清单获取失败：\(e)\n下面是内置的 7 个常用版本"`
       // 整串被跳过 —— 但那个 "7 个" 明明是写死的。
@@ -64,10 +66,18 @@ for (const f of files) {
   });
 }
 
-console.log(`用户可见文案里"硬编码数量"：${hits.length} 处\n`);
+// **第196轮**：原来只报「0 处」，**没报分母** —— 如果一条文案都没匹配到，
+// 输出和"全部合规"长得一模一样（第186轮那个病：分母是"扫了几个文件"这种输入规模，
+// 而不是被测对象数）。现在报"扫了多少条文案"，判据失效时能立刻看出来。
+console.log(`扫了 ${files.length} 个文件，匹配到 ${textCount} 条用户可见文案（Text/Label/Button/…）`);
+console.log(`其中写死数量的：${hits.length} 处\n`);
 
 if (hits.length === 0) {
   console.log('✓ 没有硬编码在文案里的会变数量');
+  if (textCount === 0) {
+    console.log('⚠ 但一条文案都没匹配到 —— 判据可能失效了（检查一下 RE 正则）');
+    process.exit(1);
+  }
   process.exit(0);
 }
 

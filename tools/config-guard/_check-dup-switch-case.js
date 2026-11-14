@@ -70,6 +70,12 @@ for (const [key, items] of bySwitch) {
 console.log(`归到 switch 的 \`.name\` 引用：${caseRefs} 处（分布在 ${bySwitch.size} 个 switch）`);
 console.log(`重复的：${problems.length} 处\n`);
 
+// **第196轮**：零匹配保护。
+if (caseRefs === 0) {
+  console.log('⚠ 一处 `.name` case 引用都没归到 switch —— 判据可能失效了');
+  process.exit(1);
+}
+
 if (problems.length === 0) {
   console.log('✓ 没有同一个 switch 内重复的 case');
   process.exit(0);
