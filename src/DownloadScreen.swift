@@ -25,6 +25,8 @@ struct DownloadScreen: View {
     @State private var loadError: String?
     @State private var installing: String?
     @State private var installMsg = ""
+    /// 装完之后是否显示"下一步"引导（第169轮：首页的三步引导只给零版本看，装完就消失了）
+    @State private var showInstallNextStep = false
     @State private var installFrac = 0.0
     @State private var installed: Set<String> = []
 
@@ -33,6 +35,11 @@ struct DownloadScreen: View {
     private let filters = ["正式版", "快照版", "愚人节版", "远古版"]
 
     /// 离线兜底列表：只用真实存在的版本，网络恢复后会被真实清单覆盖
+    /// **离线清单**：网络拿不到版本列表时用这 7 个兜底。
+    ///
+    /// 第169轮核实：这些 id 和日期**都是真的**（1.20.1 → 2023-06-12、1.19.2 → 2022-08-05 都对得上），
+    /// 所以用户选它们是能真装上的 —— 不是假数据，只是**不全**（联网后才能看到全部）。
+    /// **维护提醒**：MC 出新正式版后，这里的第一条会显得旧。加新版本时记得同步日期。
     private let versions: [DLVersion] = [
         .init(id: "1.21.5",  type: "正式版", date: "2025 年 03 月 25 日"),
         .init(id: "1.21.4",  type: "正式版", date: "2024 年 12 月 03 日"),
@@ -93,6 +100,7 @@ struct DownloadScreen: View {
         installing = id
         installFrac = 0
         installMsg = "开始安装 \(id)"
+        showInstallNextStep = false   // 新一轮安装开始，先把上一次的成功引导收掉
         do {
             let installer = VersionInstaller()
             try await installer.install(versionID: id) { p in
@@ -102,10 +110,16 @@ struct DownloadScreen: View {
                 }
             }
             installed.insert(id)
+            // 第169轮：原来只说"安装完成"—— 而首页的三步引导（下载版本 → 选 Fabric → 启动）
+            // 只在"一个版本都没有"时显示，装完第 1 步卡片就消失了，后两步没了指引。
+            // 所以完成后额外给一行"下一步"（见下面 list 里的 showInstallNextStep）。
+            // 注意：installMsg 在 HStack 里和百分比同行，**必须保持短**，长文案放独立行。
             installMsg = "\(id) 安装完成"
+            showInstallNextStep = true
             installFrac = 1
         } catch {
             installMsg = "安装失败：\(ZLFriendlyError.text(error))。已经下好的文件不用重下，再点一次「安装」会接着装。"
+            showInstallNextStep = false   // 失败了就别给"接下来去启动"的引导
         }
         installing = nil
     }
@@ -258,6 +272,15 @@ struct DownloadScreen: View {
                             .font(.system(size: 10))
                             .foregroundStyle(ZLTheme.textSecond.opacity(0.8))
                             .fixedSize(horizontal: false, vertical: true)
+                        // **第169轮**：装完把"下一步"说清 —— 首页的三步引导只给"零版本"的用户看，
+                        // 装完第 1 步它就消失了。所以这里接手：能玩原版了，想加模组再去装 Fabric。
+                        // 独立成行 + fixedSize（HStack 里放不下这么长的句子）。
+                        if showInstallNextStep {
+                            Text("接下来：回首页点「启动游戏」就能玩原版。想加模组 / 光影的话，在这个版本上再装一个 Fabric 加载器。")
+                                .font(.system(size: 10))
+                                .foregroundStyle(ZLTheme.primaryDeep.opacity(0.9))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     .padding(12)
                     .background(ZLTheme.surface)
@@ -274,8 +297,12 @@ struct DownloadScreen: View {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(ZLTheme.warning)
-                        Text("清单获取失败：\(e)（显示内置示例）")
+                        // 第169轮改：原来写"（显示内置示例）"，但那 7 个是**真版本**（能装），
+                        // "示例"会让人以为不能用。改成说清"内置常用版本 + 联网可看全部"。
+                        Text("清单获取失败：\(e)\n下面是内置的 7 个常用版本（都能装），联网后可看全部")
                             .font(.system(size: 12)).foregroundStyle(ZLTheme.textSecond)
+                            // HStack 里宽度受限：没有 fixedSize 的话 `\n` 会被压成一行、还可能被截断
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
