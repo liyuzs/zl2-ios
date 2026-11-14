@@ -82,7 +82,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-download-magic.js` | "下载后写盘"必须校验内容（魔数或哈希）。第150轮补三个漏网的：`ZLYggdrasil.downloadSkin`（PNG 只判 >100 字节）· `ZLYggdrasil.ensureDownloaded`（authlib jar 只判 >100KB，HTML 错误页会被存成 jar → `-javaagent` 指向无效 jar → JVM 起不来）· `LoaderInstaller`（库 jar 直接写盘）。`MojangAPI` 在 ALLOW（通用流式下载器，有更强的 size 截断检测） |
 | `_check-decode-recovery.js` | 解码失败必须备份：4 个持久化文件有 `try? 解码` 就必须调 `ZLRecovery.preserveRawData`；全仓兜底扫"从 UserDefaults 取 data 再 try? 解码但没备份"的写法（判据前先剥注释，否则助手文件自己的注释会误报） |
 | `_check-install-docs.js` | 三份安装文档一致性：都必须提 JIT 与 StikDebug；只在一份里出现的工具名（孤例）会被报出来 |
-| `_check-section-refs.js` | **"第N节"引用必须带标题**。第231轮发现 `从这里开始.md` 第二句就写「下面第五节有表」，而**第四节**才是文件表 —— 编号会随插入/删除而漂，**没人会去数**。第232轮把 6 处都补成「第四节「…」」，这条检查守"别退回去"。**局限**：只判"旁边有没有 `「`"，**不判那个标题是不是对的那一节**；只扫交付包 5 份文档；±30 字符内有两个引用时会互相借用标题 |
+| `_check-section-refs.js` | **"第N节"引用必须带标题**。第231轮发现 `从这里开始.md` 第二句就写「下面第五节有表」，而**第四节**才是文件表 —— 编号会随插入/删除而漂，**没人会去数**。第232轮把 6 处都补成「第四节「…」」，这条检查守"别退回去"。**局限**：只判"旁边有没有 `「`"，**不判那个标题是不是对的那一节**；只扫交付包 5 份文档 |
 | `_check-capability-claims.js` | **面向朋友的两份文档，每条能力边界都要说到**。第211轮发现项目里有**三份"能力清单"**（`从这里开始.md` / `给朋友的安装指南.md` / `STATUS.md`），而安装指南的「已知不行」**缺了 3 条**（MC 1.11- / 分享进来 / 外置认证是离线身份）—— 后两条正是朋友最容易误判的。判据：5 条边界 × 2 份文档 = 10 处。**行首必须是 `|` / `·` / `-`**（表格行或列表项），`>` 开头的说明注释不算 |
 | `_check-layout-keys.js` | 布局导出键 ↔ 核心读取：`d["键"]=` 里每个键都要在 core 源码里出现；核心不认的必须登记理由（现有 4 个：textSize / joystickColor / joystickSize / pressedBgColor） |
 | `_check-destructive-confirm.js` | 数据安全：`role: .destructive` 的按钮不得直接调用执行 `removeItem` 的函数，必须由确认弹窗接手 |
