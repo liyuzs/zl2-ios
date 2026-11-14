@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **修真 bug：长按图标点「设置」不会跳页**——`ZL2App:34` 写 `setRoute("settings")`，但 `handlePendingAction()` 的转换表只有 `download`/`versionList`/`multiplayer`，`default: break` **静默丢弃**。用户点了 App 会打开但**停在首页、不跳设置页、无任何提示**。已补 `case "settings"`，并把 `default: break` 改成 `default:` + `NSLog`（未知路由至少留日志）。
+- **新增 `_check-pending-routes.js`**："字符串当凭据"的第六类，**双向**校验：写侧 `setRoute("xxx")` ↔ 读侧 `switch route` 的 case。注入验证能精确报出「写了但没人消费」。
+- **链路现在是查四段**：①声明（project.yml 160轮）②处理（case 160轮）③**路由字符串↔消费分支（本轮）**④用户看到结果。
+
 - **新增 `_check-shortcut-types.js`**：`project.yml` 的 `UIApplicationShortcutItemType` 必须都有对应的 `case`——**跨文件类型（YAML ↔ Swift）**的第五类"字符串当凭据"校验。失效形态：加了快捷项忘了写 case → 长按图标点了**没反应**，`completionHandler(false)` 静默失败。实测 3 个全匹配；注入验证能精确报出。
 - **审计快捷项链路（全通）**：URL scheme 无声明无处理（一致，不是 bug）· 三个 shortcut type 配置↔代码全匹配 · 三条消费链完整（`consumeRoute` ← ZL2App:119 · `consumeLaunchFlag` ← :127 · `consumeAutoLaunchPending` ← HomeScreen:439）。
 - **顺带记下一段有价值的注释**：`ZLPendingAction.markAutoLaunchPending` 上方解释了为什么从"Notification + 0.8 秒猜"改成"带 2 分钟时效的标志"——0.8 秒不够时首页的 `guard !selectedVersion.isEmpty` 直接 return，**通知是一次性的、启动意图就丢了**，用户会说"用 Siri 启动游戏没反应"。这是「没有报错的 bug」被主动发现并修好的案例。
