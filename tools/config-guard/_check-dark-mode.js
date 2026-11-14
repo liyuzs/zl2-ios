@@ -8,6 +8,16 @@
 //   · 甚至还有 `primaryDark` / `backgroundDark` / `surfaceDark` / `onSurfaceDark`
 //     四个深色访问器 —— 但**全项目零调用**
 //   · `ThemeManager.darkMode` 只被赋值、没人读
+//
+// **局限**（不查什么）：
+//   · **只查结构，不查观感**：色板有没有切 Dark、RootView 有没有同步、Light/Dark 键成不成对 ——
+//     但**查不到"切了之后好不好看"**（对比度够不够、某处硬编码在深色下看不看得清）。
+//   · **32 处硬编码 `.white`/`.black` 没有被任何检查守着** —— 它们逐个人工看过（都是深色胶囊上的白字），
+//     但将来新增一处"深色背景上的黑字"，本检查看不见。
+//   · **只认 `ZLPalette.color(_:_:)` 这一个收口点**。如果有人绕过它直接读 `ZLPalette.raw[...]`，
+//     深色不生效，而本检查照样报 ✓。
+//   · 系统外观同步只查 `RootView` 有没有那两行 —— **查不到它是否被上游的 `preferredColorScheme` 钉死**
+//     （第 85 轮就是这么被一行 `.preferredColorScheme(.light)` 抵消掉的，功能全废检查全绿）。
 // 结果：用户开深色模式，界面颜色一点不变（只有系统控件变了）。
 //
 // 修法（一处改动覆盖全部）：`ZLPalette.color` 内部在 darkMode 时把 `...Light` 换成 `...Dark`，

@@ -1,6 +1,15 @@
 // 检查 SettingsScreen 里 picker(...) 调用的参数个数
 // picker 签名: picker(_ key: String, _ title: String, _ summary: String?, options: [ZLOption])
 // 无标签参数必须是 3 个，加 options: 一个。多一个少一个都编译不过。
+//
+// **局限**（不查什么）：
+//   · **只查 `SettingsScreen.swift` 一个文件**。如果 `picker(` 被移到别处、或将来把设置页拆开，
+//     本检查看不见那些调用（分母会悄悄变小，而它仍然报 ✓）。
+//   · **只数个数，不查类型与顺序** —— `picker(key, title, ...)` 把两个 String 调反了，个数对得上照样过。
+//     这一类理论上由 `_check-call-labels` 管，但它按**标签**比对，而这里的参数全是 `_`（无标签），比不出来。
+//   · **只认 `picker(` 字面调用**。写成 `.picker(...)` 方法链、或把参数存进数组再展开（`picker(args[0], ...)`），
+//     看不见。
+//   · 判据是"个数"，所以**它守不住 picker 签名本身的变化** —— 签名改了要人去改这两行常量。
 
 const path = require('path');
 const PATHS = require('./_paths');

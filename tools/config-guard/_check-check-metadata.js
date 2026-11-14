@@ -19,7 +19,8 @@ const { GUARD } = require('./_paths');
 // 改小之前确认过：是**真的补了**，不是判据变宽 —— 那三条现在能被 **局限** 命中。
 // **第214轮：26 → 25**（给 `_check-hardcoded-stats` 补了局限，含"多行字符串查不到"这个真实缺口）
 // **第215轮：25 → 22**（给 `_check-imports` / `_check-layout-keys` / `_check-workflow` 各补了局限）
-const BASELINE = 22;
+// **第216轮：22 → 19**（_check-dark-mode / _check-delivery-index / _check-picker）
+const BASELINE = 19;
 
 // 必须写成**标题形式**，裸词不算：
 //   · 裸的「局限」二字会被测试探针的注释（"故意没写局限"）误命中 —— 第108轮同款坑。
