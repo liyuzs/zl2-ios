@@ -8,7 +8,6 @@ enum ModrinthProjectType: String {
     case modpack = "modpack"
     case resourcepack = "resourcepack"
     case shader = "shader"
-    case datapack = "datapack"
 
     static func from(_ kind: AssetKind) -> ModrinthProjectType? {
         switch kind {
