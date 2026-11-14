@@ -74,6 +74,16 @@ struct LaunchScreen: View {
                         .font(.system(size: 10))
                         .foregroundStyle(ZLTheme.textSecond.opacity(0.65))
                         .transition(.opacity)
+                    // **第168轮：首次启动要给出耗时预期**。
+                    // 第一次要解压 JRE、校验库，可能几分钟。没有这句提示，用户会以为卡死而强制退出 —
+                    // 那这次启动就白费了（而且会留下"这 App 不能用"的印象）。
+                    // 只在没成功启动过时显示（`finishedGame == 0`），后续启动快，不需要占位。
+                    if CoreBridge.gameLaunchCount == 0 {
+                        Text("第一次启动要解压运行环境、校验文件，可能要几分钟 —— 别退出，等它跑完")
+                            .font(.system(size: 10))
+                            .foregroundStyle(ZLTheme.warning.opacity(0.9))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
             Spacer()
