@@ -41,8 +41,11 @@ enum ZLSettings {
         .init(key: "graphicsApi", type: .enumValue, defaultValue: "GraphicsApi.DEFAULT_OPENGL", range: nil, group: "render"),
         .init(key: "resolutionRatio", type: .int, defaultValue: "100", range: 25...300, group: "render"),
         .init(key: "resolutionRule", type: .enumValue, defaultValue: "ResolutionRule.PERCENTAGE", range: nil, group: "render"),
-        .init(key: "customResolutionWidth", type: .int, defaultValue: "0", range: nil, group: "render"),
-        .init(key: "customResolutionHeight", type: .int, defaultValue: "0", range: nil, group: "render"),
+        // 第151轮：原来 range 是 nil，用户能把宽高填成 0 / 负数 / 99999999 ——
+        // 传给 JVM 就是"渲染尺寸 0"或"分配巨大缓冲"。上限定 7680（8K 宽），
+        // **0 是合法的**（表示"跟随 resolutionRule"，由百分比那条决定）。
+        .init(key: "customResolutionWidth", type: .int, defaultValue: "0", range: 0...7680, group: "render"),
+        .init(key: "customResolutionHeight", type: .int, defaultValue: "0", range: 0...7680, group: "render"),
         .init(key: "gameFullScreen", type: .bool, defaultValue: "true", range: nil, group: "render"),
         .init(key: "sustainedPerformance", type: .bool, defaultValue: "false", range: nil, group: "render"),
         .init(key: "requestMaxRefreshRate", type: .bool, defaultValue: "true", range: nil, group: "render"),

@@ -43,7 +43,11 @@ final class ZLSettingsStore: ObservableObject {
     }
 
     func set(_ def: ZLSettingDef, _ value: Int) {
-        defaults.set(value, forKey: def.key)
+        // 第151轮：`range` 字段原来只被 slider 的 min/max 用过，**写入路径没人管** ——
+        // 于是数字输入框能存 0 / 负数 / 99999999。这里统一 clamp，
+        // 将来新增的 int 项也自动受保护（range 为 nil 的原样写入）。
+        let v = def.range.map { min(max(value, $0.lowerBound), $0.upperBound) } ?? value
+        defaults.set(v, forKey: def.key)
         revision += 1
     }
 
@@ -1081,7 +1085,11 @@ struct SettingsScreen: View {
                 if numeric {
                     // 数字项必须存成 Int，否则 CoreBridge 用 as? Int 读不到（分辨率就是这么失效的）
                     let digits = v.filter { $0.isNumber || $0 == "-" }
-                    store.set(def, Int(digits) ?? 0)
+                    // 第151轮：`Int(digits) ?? 0` 会把"用户把内容删空 / 只输入了一个 -"这种情况
+                    // **存成 0**，等于替用户填了个值（而 0 在分辨率里是"跟随规则"，语义完全不同）。
+                    // 改成：解析不出来就**不覆盖**，让用户继续输。
+                    guard let n = Int(digits) else { return }
+                    store.set(def, n)
                 } else {
                     store.set(def, v)
                 }
