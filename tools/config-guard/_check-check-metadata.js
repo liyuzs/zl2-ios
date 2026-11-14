@@ -25,7 +25,8 @@ const { GUARD } = require('./_paths');
 // **第220轮：13 → 11**（补了三个，但其中一个原本就算'写了' —— 基线按实跑结果定，不按减法算）
 // **第221轮：11 → 8**（_check-hstack-budget / _check-delivery-docs / _check-script-inventory）
 // **第222轮：8 → 5**（_check-install-docs / _check-settings-audit / _check-runtime-assets）
-const BASELINE = 5;
+// **第223轮：5 → 0 —— 局限欠账清零**。从此任何新检查不写局限就会直接报错（纯回归拦截，没有允许额度）。
+const BASELINE = 0;
 
 // 必须写成**标题形式**，裸词不算：
 //   · 裸的「局限」二字会被测试探针的注释（"故意没写局限"）误命中 —— 第108轮同款坑。

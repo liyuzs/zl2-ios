@@ -7,6 +7,14 @@
 //
 // 判据：每个文件里"无标签的图标按钮"数量，不得超过基线。基线存在同目录
 // `_a11y-baseline.json`，需要主动下调（改好了就更新基线，数字会跟着降）。
+//
+// **局限**（不查什么）：
+//   · **只判"有没有名字"，判不了"名字对不对"** —— 标签写成「按钮」也能过。
+//   · **只认三种"有名字"的方式**（`accessibilityLabel` / `Text(` / `Button("标题")`）。
+//     用 `Label("…", systemImage:)`、`.accessibilityElement(children:)`、`.accessibilityValue` 的看不见（会误报）。
+//   · **判不了读屏实际念什么**：组合视图的朗读顺序、`.accessibilityHint` 有没有、动效是否干扰，全不在范围。
+//   · **基线已清空（`{}`），所以现在是纯回归拦截** —— "0 处"只说明"没有纯图标又无名字的按钮"，
+//     **不说明整个 App 无障碍合格**（accessibilityHint 仍然 0 处）。
 const fs = require('fs');
 const path = require('path');
 

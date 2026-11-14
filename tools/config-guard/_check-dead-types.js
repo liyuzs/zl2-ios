@@ -43,6 +43,15 @@
 //   · `class Xxx: NSObject, UIApplicationDelegate` —— 应用代理
 //   · `: SceneDelegate` / `: UIWindowSceneDelegate`
 // 第85轮差点把 `ZL2StyleApp`（@main）和 `CraftLauncherShortcuts` 当死代码删掉。
+//
+// **局限**（不查什么）—— 这一条尤其要看，因为"零引用"永远不等于"没在用"：
+//   · **只查顶层类型**。文件级（类型互引让各自 count > 1）、枚举 case 级、字段级、方法级**都不在这条检查里**。
+//   · **跨语言动态引用只补了一半**：扫了 core 的 `.m` 里的 `NSClassFromString`，但**没扫 `.h`**，
+//     也没扫 plist / xib / storyboard 里的类名字符串。
+//   · **@objc + `performSelector` 的方法级引用抓不到**（第154轮试了三版放弃）——
+//     `activateLayerByPseudoKey:` 在 src 里 0 处调用，而 `SurfaceViewController.m` 天天在调。
+//   · **第143轮差点因此删掉 `ZLOverlayHost`**（FPS 悬浮层）。删任何"零引用"类型前，
+//     **必须再 grep 一遍 core 的动态调用**。
 
 const fs = require('fs');
 const path = require('path');
