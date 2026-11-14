@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **按"还有谁在做同一件事"扫出三个漏网的下载校验**：`VersionInstaller`/`ModrinthAPI` 第40轮就加了 PK 魔数，但这三个没有——①`ZLYggdrasil.downloadSkin` 只判 `data.count > 100`（HTML 错误页被存成 `skin.png`）②`ZLYggdrasil.ensureDownloaded` 只判 `>100_000`（**>100KB 的错误页会被存成 `authlib-injector.jar` → `isReady` 为 true → `-javaagent` 指向无效 jar → JVM 启动直接失败**，与第31轮 patchjna 同类）③`LoaderInstaller` 无校验且 `failedLibs` 不会记（write 成功了）。已分别加 PNG 魔数 / ZIP 魔数 / PK 魔数；`LoaderInstaller` 顺带加了 `ZLLoaderInstallerError.badContent`（并补 `errorDescription` 分支，**漏了会编译失败**）。
+- **新增 `_check-download-magic.js`**：文件里同时有"下载"和"写盘"就必须有内容校验痕迹。`MojangAPI` 在 ALLOW（通用流式下载器，内容类型不定，但**有更强的保障**：非 2xx 抛错 + 下载截断检测 `received < expectedSize` + `.part` 临时文件 + 原子替换）。
+- **注入验证暴露我自己的漏洞**：第一版注入仍报 ✓，因为 `MAGIC` 匹配到**注释里的 `0x50`**——与第143轮"注释算引用"同一个坑。加剥注释后可精确抓到。
+
 - **两处"用户以为成功、实际失败"的静默吞错**：①`emptyTrash` 的 `for i in items { try? fm.removeItem(at: i) }`——"清空回收站"是**永久删除**，文件被占用时静默跳过，用户以为空间释放了；`guard let ... else { return }` 读不到目录时也不说话。现在会报「几个、哪几个、它们还在回收站里」。②`LoaderInstaller` 的库下载用**空 `catch`** + `done += 1`（成败都加）+ 返回 `libraryCount: libs.count`（**计划数**），调用方显示「已安装 X（N 个库）」——**缺库也照样说装好了**，而缺库的 Fabric 加载器启动必然 `ClassNotFoundException`。现在 `failedLibs` 记录失败项、文案说「可能起不来，建议重装」、状态标 `.failed`。这与第40轮修的 `VersionInstaller.failedLibs` 同类，当时 `LoaderInstaller` 漏了。
 - **空 catch 审计（错误处理的第三个角度）**：3 处 —— `ControlLayoutModel` ×2 是第12轮确认的 Codable 容错解码（合理）+ `LoaderInstaller`（本轮已修）。现在 0 处可疑。
 - 顺带：全仓 211 处 `try?` 里跟进"改变数据"操作的 66 处，62 处"完全静默"但逐个看过都合理（`createDirectory` 幂等、临时目录清理）。
