@@ -33,6 +33,7 @@ $checks = @(
     @('_check-error-hints.js',      'js',  '失败提示必须带 advice'),
     @('_check-error-locale.js',    'js',  '错误翻译先按错误码'),
     @('_check-guide-claims.js',    'js',  '文案教的操作必须有实现'),
+    @('_check-share-claim.js',    'js',  '分享文案要有 CFBundleDocumentTypes'),
     @('_check-call-labels.js',      'js',  '参数标签对撞（会编译失败）'),
     @('_check-duplicates.js',       'js',  '顶层类型重复声明（会编译失败）'),
     @('_audit-ui-affordance.js',    'js',  '假交互（绑了控件没人读）'),

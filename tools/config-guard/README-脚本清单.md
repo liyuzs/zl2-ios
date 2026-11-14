@@ -37,6 +37,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-error-hints.js` | 面向用户的失败提示必须带「怎么办」：`ZLPreflight` / `ZLDiagnostics` 里每条 `level: .fail` / `.warn` 的 `ZLDiagItem` 都要有非空 `advice:`（界面会把它显示在红字下方） |
 | `_check-error-locale.js` | 错误翻译必须**优先按错误码**判断（`NSURLErrorDomain` / `URLError.Code`），`localizedDescription` 的文本匹配只能作补充。第145轮发现 `ZLFriendlyError` 原来全靠文本匹配，而中文系统上它已经是中文（"请求超时。"）→ **9 条映射全部失效**，用户看到"请求超时。（错误码 -1001）" |
 | `_check-guide-claims.js` | 引导/提示里**教的操作必须有实现**：一张「说法 → 代码证据」表（长按卡片提起、长按空白新建、预览、收藏柜、新建控件层…），文案提到但代码里找不到就报。⚠️ 只覆盖表内条目，不是完备证明 |
+| `_check-share-claim.js` | 文案里承诺"从其他 App 分享/用其他应用打开"，`project.yml` 就必须有 `CFBundleDocumentTypes`。第166轮：`FileManagerScreen` 教用户"从其他 App 把文件分享到 CraftLauncher 里"，但**没声明也没 onOpenURL 接收** → 对方 App 的「用其他应用打开」里根本看不到它。已改文案 + 记 STATUS 第10条 |
 | `_check-duplicates.js` | 顶层类型重复声明（Invalid redeclaration）。按花括号深度只查顶层，嵌套的 `CodingKeys` / `Kind` 不误报 |
 | `_audit-ui-affordance.js` | 假交互：绑了控件却没人读的 `@State`、常量+空 set 的 Binding |
 | `_check-orphan-views.js` | 写了没挂载：`struct X: View` 在整个 src 里只出现 1 次（从没被实例化） |

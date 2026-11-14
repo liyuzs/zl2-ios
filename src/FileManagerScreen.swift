@@ -271,7 +271,10 @@ struct FileManagerScreen: View {
         ZLEmptyState(
             icon: "folder",
             title: "这个文件夹是空的",
-            detail: "点右上角「⋯」新建文件夹，\n或者从其他 App 把文件分享到 CraftLauncher 里",
+            // 第166轮：原来写"从其他 App 把文件分享到 CraftLauncher 里"——
+            // 但项目**没有 `CFBundleDocumentTypes`**、也没有 `onOpenURL` 接收，
+            // 所以那条路走不通（只有「文件」App 拖进来才可行）。改成准确说法。
+            detail: "点右上角「⋯」新建文件夹，\n或者用「文件」App 把文件拖进 CraftLauncher 文件夹",
             actionTitle: "新建文件夹",
             action: { showNewFolder = true })
     }

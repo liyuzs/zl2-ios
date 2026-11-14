@@ -152,6 +152,10 @@ git push   # 本地分支 master → 线上 main
    依赖「核心把 root 换成 `SurfaceViewController` 时 UIKit 会重新查询方向」这个行为 —— **真机没验证过**。
    如果游戏画面被裁切/拉伸，就是这个假设不成立，需要补 `windowScene.requestGeometryUpdate`。
    （iPad 仍保持横屏，不受影响。）
+10. **"从其他 App 直接分享文件进来"未实现** —— 没声明 `CFBundleDocumentTypes`、也没有 `onOpenURL` 接收，
+    所以对方 App 的「用其他应用打开」里不出现 CraftLauncher。
+    **能用的路**：`UIFileSharingEnabled` 已开，用「文件」App 把文件拖进 CraftLauncher 的 Documents 文件夹 ✓
+    （文件管理器空状态里的提示已按这个事实改过，不再教做不到的操作。）
 
 ---
 
