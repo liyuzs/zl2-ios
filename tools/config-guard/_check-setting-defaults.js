@@ -14,6 +14,10 @@
 //
 // 不试图检查"所有默认值写法"（变量太多、误报会很多），只锁这一种已知会拧的写法。
 
+// **局限**
+// · 只锁一种已知会拧的情形：helper 体内出现 `UserDefaults` 或自带默认值（绕过 `ZLSettings` 的 `defaultValue`）。
+// · **不试图检查所有默认值写法** —— 那样误报太多（第86轮试过）。
+// · **失效条件**：如果读取统一收进 `ZLSettingsStore` 的方法里、页面不再自己写 helper，这条就没有对象可查了（会一直通过）。
 const fs = require('fs');
 const path = require('path');
 const { SRC } = require('./_paths');

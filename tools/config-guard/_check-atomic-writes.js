@@ -14,6 +14,10 @@
 // 判据：`.write(to:` 语句附近（含跨行的参数）没有 `atomic` / `atomically` 就报。
 // 临时目录/暂存目录里的写入可以不原子（本来就是要丢弃的），用路径关键字排除。
 
+// **局限**
+// · 只认 `.write(to:` 与 `atomically: true` 两种写法。改用 `FileHandle` / `FileManager.createFile` / 第三方写入，它看不见。
+// · TEMP_HINTS 是**路径特征词**白名单（`temporaryDirectory` / `cachesDirectory` / `/tmp/` 等）。新增一个"临时目录"的写法而没登记，会被误报成"缺原子写"。
+// · **失效条件**：如果项目把写文件统一收进一个 helper（不再散落 `.write(to:`），这条检查会对所有调用失明 —— 那时要改成检查那个 helper。
 const fs = require('fs');
 const path = require('path');
 const { SRC } = require('./_paths');

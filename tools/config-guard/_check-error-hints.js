@@ -12,6 +12,10 @@
 //
 // 教训：**先看结构，再谈缺失** —— 别把"我没找到"当成"不存在"。
 
+// **局限**
+// · 只要求 `ZLPreflight` / `ZLDiagnostics` 里每条 `.fail` / `.warn` 的 `ZLDiagItem` 有非空 `advice:`。
+// · **查不到"advice 写得有没有用"** —— 满足"非空"就算过，写"重试一下"这种废话它也通过。
+// · **失效条件**：如果以后把诊断项改成别的结构（不再用 `ZLDiagItem`），它会对新结构完全失明。
 const fs = require('fs');
 const path = require('path');
 

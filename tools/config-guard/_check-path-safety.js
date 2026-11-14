@@ -15,6 +15,10 @@
 //   2. 处理远端数据的文件里，用变量拼路径时必须经过 ZLPathSafety
 //   3. 已知安全的例外要显式登记（当前只有 UUID 临时文件名一处）
 
+// **局限**
+// · 只认 `appendingPathComponent` / `safeComponent` 这类**具体 API**。如果改用 `URL(fileURLWithPath:).appendingPathComponent` 的变体、或自己拼字符串路径，它看不见。
+// · 只判"有没有过 ZLPathSafety"（结构），判不了"过了之后是否用对"（语义）。
+// · **失效条件**：项目要是引入新的路径拼接方式（比如 `appending(component:)`），需要同步更新它的 API 名单。
 const fs = require('fs');
 const path = require('path');
 const { SRC } = require('./_paths');

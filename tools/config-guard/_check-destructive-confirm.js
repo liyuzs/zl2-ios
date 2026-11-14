@@ -13,6 +13,10 @@
 //
 // 不检查 moveItem（移到回收站/临时目录是可恢复的）。
 
+// **局限**
+// · 只判"同一文件里，`role: .destructive` 的按钮是否直接调用了含 `removeItem` 的函数"。跨文件的删除（A 文件按钮调 B 文件的删除函数）看不见。
+// · 只认 `removeItem`。改用 `FileManager.trashItem`（可恢复）不必报；但若有人用 `unlink` / POSIX 调用删文件，它看不见。
+// · **失效条件**：把删除操作封装成 service 层后，按钮与删除函数不再同文件，这条会全部通过 —— 那时判据要改成"沿调用链追"。
 const fs = require('fs');
 const path = require('path');
 const { SRC } = require('./_paths');
