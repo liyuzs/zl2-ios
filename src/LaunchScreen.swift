@@ -30,7 +30,10 @@ struct LaunchScreen: View {
         case check  = "环境自检"
         case boot   = "初始化核心"
         case launch = "启动 JVM"
-        case done   = "已交给核心"
+        // **第193轮**：原来是「已交给核心」—— 用户会想"交给谁了？"。
+        // 从用户视角它意味着"启动器不管了，正在进游戏"，所以改成这句。
+        // （技术含义没变：核心接手后启动器就不再推进这个 stage 了。）
+        case done   = "正在进入游戏"
     }
 
     var body: some View {
