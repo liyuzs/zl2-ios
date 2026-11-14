@@ -293,6 +293,9 @@ enum CoreBridge {
             )
         }
         // Amethyst 的 launchJVM 内部会弹对话框、操作 UI，必须在主线程调用
+        // **第165轮：切横屏**。游戏是横屏的，启动器是竖屏（见 project.yml 的方向配置）。
+        // 必须在进 launchJVM 之前设 —— 它会占住主线程跑 GLFW 事件循环，那之后再改就晚了。
+        ZLAppDelegate.orientationLock = .landscapeRight
         let code: Int32 = await withCheckedContinuation { cont in
             DispatchQueue.main.async {
                 let r = launchJVM(Self.currentUsername(), metadata as NSDictionary,
@@ -300,6 +303,9 @@ enum CoreBridge {
                 cont.resume(returning: r)
             }
         }
+        // 游戏退出（launchJVM 返回）后切回竖屏 —— 否则回到启动器还是横的。
+        // 放在 throw 之前，保证启动失败时也恢复。
+        ZLAppDelegate.orientationLock = .portrait
         if code != 0 { throw CoreLaunchError.launchReturned(code) }
         // 启动成功 → 累计一次（ZL2 的 finishedGame 计数，用于赞助提示）
         recordGameLaunch()
@@ -337,12 +343,18 @@ enum CoreBridge {
                 "运行 jar 需要 Java 17，但包里只有：\(have.isEmpty ? "一套都没有" : have.joined(separator: "、"))"
             )
         }
+        // **第165轮：切横屏**。游戏是横屏的，启动器是竖屏（见 project.yml 的方向配置）。
+        // 必须在进 launchJVM 之前设 —— 它会占住主线程跑 GLFW 事件循环，那之后再改就晚了。
+        ZLAppDelegate.orientationLock = .landscapeRight
         let code: Int32 = await withCheckedContinuation { cont in
             DispatchQueue.main.async {
                 let r = launchJVM(Self.currentUsername(), jarPath as NSString, Int32(width), Int32(height), 17)
                 cont.resume(returning: r)
             }
         }
+        // 游戏退出（launchJVM 返回）后切回竖屏 —— 否则回到启动器还是横的。
+        // 放在 throw 之前，保证启动失败时也恢复。
+        ZLAppDelegate.orientationLock = .portrait
         if code != 0 { throw CoreLaunchError.launchReturned(code) }
         // 启动成功 → 累计一次（ZL2 的 finishedGame 计数，用于赞助提示）
         recordGameLaunch()

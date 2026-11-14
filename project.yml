@@ -61,6 +61,10 @@ targets:
         # 允许用户通过「文件」App 把整合包 / 模组放进 Documents，再用文件选择器导入
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
+        # 局域网联机：`LanDiscovery.swift` 用 BSD socket + IP_ADD_MEMBERSHIP 加入组播组
+        # 224.0.2.60（Minecraft 的局域网发现地址），iOS 14+ 访问局域网会弹系统权限提示。
+        # 不声明也能用（弹的是系统默认文案），声明了能说清"为什么要访问本地网络"。
+        NSLocalNetworkUsageDescription: 用于发现和加入局域网世界 —— 在「多人游戏」里扫描同一 WiFi 下其他设备开的 Minecraft 房间。
         # 启动画面：用和 App 首屏一致的深色，避免白屏闪一下
         UILaunchScreen:
           UIColorName: LaunchBackground
@@ -77,7 +81,13 @@ targets:
           - UIApplicationShortcutItemType: com.liyuzs.craftlauncher.settings
             UIApplicationShortcutItemTitle: 设置
             UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeSettings
+        # 方向：
+        #   · **iPhone 允许竖屏** —— 启动器界面（首页/下载/设置/文件管理）都是 VStack 竖排设计，
+        #     只给横屏的话用户得横着拿手机操作。游戏内由 `ZLAppDelegate.orientationLock`
+        #     在 launchJVM 期间切到横屏（SurfaceViewController 是 root，所以必须全局控制）。
+        #   · **iPad 保持横屏** —— 最初就是按 iPad 横屏设计的，三列布局需要宽度。
         UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UISupportedInterfaceOrientations~ipad:

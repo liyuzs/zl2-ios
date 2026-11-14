@@ -58,6 +58,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-settings-entry.js` | 可用设置项是否有**UI 入口**（与 `_check-settings-wiring` 互补：那个查代码层消费，这个查用户能不能改）。第148轮实测：30 项 = 21 UI 控件 + 4 自动写入 + 1 手势 + 4 内部记账 + **没入口 0** |
 | `_check-orphan-keys.js` | UserDefaults 的键必须是 ZL2 设置项或已登记的**内部键**。第158轮：`applyUserSettings()` 用硬编码键名读设置，**拼错就永远读到 nil，设置不生效且无任何提示**。实测 0 孤儿；注入验证能把 `jvmArgs`→`jvmArgz` 精确抓出 |
 | `_check-shortcut-types.js` | `project.yml` 的 `UIApplicationShortcutItemType` 必须都有对应的 `case`（**跨文件类型：YAML ↔ Swift**）。第160轮实测 3 个全匹配；失效形态是"在 project.yml 加了快捷项但忘了写 case → 长按图标点了**没反应**，`completionHandler(false)` 静默失败" |
+| `_check-orientation.js` | 声明了竖屏就必须有"游戏时切横屏"的逻辑，且切横屏/切回竖屏次数配对。第165轮：启动器竖屏、游戏横屏，靠 `ZLAppDelegate.orientationLock` 在 `launchJVM` 前后切换；守住"有人删了切换逻辑但忘了改声明" |
 | `_check-pending-routes.js` | `setRoute("xxx")` 写进去的路由名必须都有消费分支（第161轮：`"settings"` 没有 → 长按图标「设置」App 会开但**不跳页**，`default: break` 静默丢弃）。**双向字符串凭据**：写侧 `setRoute` ↔ 读侧 `switch route` 的 case |
 | `_check-silent-default.js` | **字符串 switch** 的 `default` 不许静默（`break`/`return`/空）。字符串 switch **没有编译器穷尽检查**，`default: break` 会把"漏掉的 case"变成"什么都没发生"——第161轮的 bug 就是这个形态（`setRoute("settings")` 没分支 → 长按「设置」不跳页）。枚举 switch 的 `default` 是正常写法，不报 |
 | `_check-number-range.js` | 用 `number(...)` 自由输入的设置项**必须有 `range`**。第151轮发现 `range` 字段只被 slider 的 min/max 用过，写入路径 `store.set(_:_: Int)` **完全不 clamp** → 分辨率宽高能存 0 / 负数 / 99999999（传给 JVM 是"渲染尺寸 0"或"分配巨大缓冲"）。已给 `set(Int)` 加统一 clamp + 分辨率两项补 `range: 0...7680` |

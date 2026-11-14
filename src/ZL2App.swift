@@ -18,8 +18,24 @@ struct ZL2StyleApp: App {
     }
 }
 
-/// 只负责接系统级入口：图标快捷菜单、Siri 指令落点
+/// 只负责接系统级入口：图标快捷菜单、Siri 指令落点、**屏幕方向**
 final class ZLAppDelegate: NSObject, UIApplicationDelegate {
+    /// 当前允许的方向。
+    ///
+    /// **为什么方向要全局控制**（第165轮）：核心启动游戏时会把 `SurfaceViewController`
+    /// 换成 window 的 root（`input_bridge_v3.m:448` 就是这么取 root 的），
+    /// 所以不能靠某个 VC 的 `supportedInterfaceOrientations` —— UIKit 只会问 delegate。
+    ///
+    /// 启动器界面（首页/下载/设置/文件管理）都是 `VStack` 竖排设计 → 默认竖屏；
+    /// 游戏是横屏的（MC 本身横屏）→ `CoreBridge` 在进 `launchJVM` 之前切到 `.landscapeRight`，
+    /// 游戏退出（`launchJVM` 返回）后再切回 `.portrait`。
+    static var orientationLock: UIInterfaceOrientationMask = .portrait
+
+    func application(_ application: UIApplication,
+                     supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        Self.orientationLock
+    }
+
     func application(_ application: UIApplication,
                      performActionFor shortcutItem: UIApplicationShortcutItem,
                      completionHandler: @escaping (Bool) -> Void) {

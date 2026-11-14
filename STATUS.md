@@ -147,6 +147,11 @@ git push   # 本地分支 master → 线上 main
 6. **`patchjna_agent.jar` 与 `libjnidispatch.dylib` 没放** —— 它们只服务 Forge/NeoForge，而 iOS 不支持 Forge（详见 `docs/缺失组件-Java启动器jar.md`）
 7. **没有桌面小组件** —— 项目里有 `ZLSharedStore`（App Group 写入 `widget.version` / `widget.count` / `widget.lastPlayed`），首页每次刷新版本列表时都会写；但**没有 Widget 扩展 target**，所以现在没有任何东西读它。这是为将来加小组件留的骨架，不是已实现的功能。
 8. **MC 1.11 及更早不支持** —— 需要 Java 8，包里只带 17/21/25；下载页已把这类版本标灰并禁用
+9. **屏幕方向待真机验证** —— 第165轮改了方向配置：**iPhone 允许竖屏**（启动器界面是 `VStack` 竖排设计，
+   只给横屏的话用户得横着拿手机操作），游戏内由 `ZLAppDelegate.orientationLock` 在 `launchJVM` 前后切横屏。
+   依赖「核心把 root 换成 `SurfaceViewController` 时 UIKit 会重新查询方向」这个行为 —— **真机没验证过**。
+   如果游戏画面被裁切/拉伸，就是这个假设不成立，需要补 `windowScene.requestGeometryUpdate`。
+   （iPad 仍保持横屏，不受影响。）
 
 ---
 
