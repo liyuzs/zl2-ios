@@ -43,7 +43,7 @@ enum AccountType: String, Codable, CaseIterable, Sendable {
 /// 一个已登录账户。
 ///
 /// - `uuid` 是 Minecraft 风格的 32 位小写无横线字符串（如 `b50ad385829d3141a2167e7d7539ba7f`），
-///   需要带横线的标准形态时用 `uuidDashed`。
+///   需要带横线的形态时按 `8-4-4-4-12` 插入 `-`（曾有个 `uuidDashed` 计算属性，第154轮删了 —— 没人用）。
 struct Account: Codable, Identifiable, Equatable, Sendable {
     /// 本地标识，和游戏内 UUID 无关
     var id: UUID
@@ -78,14 +78,6 @@ struct Account: Codable, Identifiable, Equatable, Sendable {
                 accessToken: accessToken)
     }
 
-    /// 带横线的标准 UUID 字符串（展示 / 日志用）
-    var uuidDashed: String { AccountUUID.dashed(fromCompact: uuid) }
-
-    /// 是否已过期之类的判断留给具体认证服务，这里只表示有没有 token
-    var hasValidToken: Bool {
-        guard let token = accessToken else { return false }
-        return !token.isEmpty
-    }
 }
 
 // MARK: - UUID 字符串格式互转

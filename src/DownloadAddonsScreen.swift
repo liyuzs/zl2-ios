@@ -26,7 +26,6 @@ struct ZLAddonSelection {
     var loader: ZLLoaderKind = .vanilla
     var loaderVersion: String = ""
     var apiVersion: String = ""        // Fabric API / Quilt API
-    var optifine: String = ""          // OptiFine 版本
     var customName: String = ""
 }
 
@@ -241,7 +240,8 @@ struct DownloadAddonsScreen: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("OptiFine").font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(ZLTheme.textPrimary)
-                            Text("需要手动下载并放到 mods 目录（iOS 无法自动安装）")
+                            Text("需用 OptiFine 官方安装器改 jar，iOS 上无法自动完成；")
+                            Text("它通常还要 Forge，而本启动器暂不支持 Forge/NeoForge。")
                                 .font(.system(size: 9))
                                 .foregroundStyle(ZLTheme.textSecond)
                         }

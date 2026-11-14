@@ -863,8 +863,6 @@ struct ZLLayer: Codable, Equatable, Identifiable, Sendable {
                   joystickButtons: c.zl(.joystickButtons, []))
     }
 
-    var totalWidgets: Int { normalButtons.count + textBoxes.count + joystickButtons.count }
-
     static func new(name: String) -> ZLLayer { ZLLayer(name: name) }
 }
 
@@ -955,59 +953,6 @@ struct ZLControlLayout: Codable, Equatable, Identifiable, Sendable {
 
     static var empty: ZLControlLayout {
         ZLControlLayout(info: ZLLayoutInfo(name: "新的控制布局"))
-    }
-
-    /// 默认布局（键盘常用键 + WASD + 摇杆）
-    static var defaultLayout: ZLControlLayout {
-        var layout = ZLControlLayout.empty
-        var layer = ZLLayer(name: "默认", uuid: UUID().uuidString)
-
-        let keyboardKeys: [(String, String, Int, Int)] = [
-            ("ESC", "GLFW_KEY_ESCAPE", 600, 300),
-            ("F3", "GLFW_KEY_F3", 1400, 300),
-            ("F5", "GLFW_KEY_F5", 2200, 300),
-            ("Tab", "GLFW_KEY_TAB", 3000, 300),
-            ("Ctrl", "GLFW_KEY_LEFT_CONTROL", 3800, 300),
-            ("Alt", "GLFW_KEY_LEFT_ALT", 4600, 300),
-            // 原来是 GLFW_KEY_UNKNOWN —— 它等于「无按键」（键码 0），
-            // 导出时会被跳过，按钮按下去什么都不会发生。
-            // 换成核心的虚拟键盘键（SPECIALBTN_KEYBOARD，键码 -1），
-            // 按它才会弹出输入法，和核心自己生成的默认布局一致。
-            ("输入法", "SPECIALBTN_KEYBOARD", 5400, 300)
-        ]
-        let wasd: [(String, String, Int, Int)] = [
-            ("W", "GLFW_KEY_W", 1600, 6500),
-            ("A", "GLFW_KEY_A", 900, 7200),
-            ("S", "GLFW_KEY_S", 1600, 7200),
-            ("D", "GLFW_KEY_D", 2300, 7200)
-        ]
-        let actions: [(String, String, Int, Int)] = [
-            ("跳", "GLFW_KEY_SPACE", 8800, 6800),
-            ("蹲", "GLFW_KEY_LEFT_SHIFT", 7500, 7800),
-            ("背包", "GLFW_KEY_E", 9000, 5600)
-        ]
-
-        for (label, key, x, y) in keyboardKeys + wasd + actions {
-            let button = ZLNormalButton(
-                text: ZLTranslatableString(label),
-                uuid: UUID().uuidString,
-                position: ZLButtonPosition(x: x, y: y),
-                buttonSize: ZLButtonSize(widthPercentage: 700, heightPercentage: 500,
-                                         widthReference: .screenWidth, heightReference: .screenHeight),
-                clickEvents: [.key(key)]
-            )
-            layer.normalButtons.append(button)
-        }
-
-        var stick = ZLJoystick(uuid: UUID().uuidString,
-                               position: ZLButtonPosition(x: 4200, y: 7800),
-                               sizePercentage: 2500)
-        stick.directionEvents = ZLJoystickDefaults.directionEvents
-        stick.lockEvents = ZLJoystickDefaults.lockEvents
-        layer.joystickButtons.append(stick)
-
-        layout.layers = [layer]
-        return layout
     }
 
     /// 导出为 ZL2 兼容 JSON

@@ -62,6 +62,7 @@ struct CraftLauncherShortcuts: AppShortcutsProvider {
     // 所以这里**不能**写数组字面量 [ ]、元素之间也**不能**写逗号 ——
     // 直接并列写多个 AppShortcut(...) 就行，builder 会自动合并成数组。
     // （之前误以为缺方括号，加了 [ ] 反而报 "cannot convert [AppShortcut] to AppShortcut"）
+    /// `AppShortcutsProvider` 的**协议要求** —— 删了快捷指令就失效（不是死代码）。
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: LaunchGameIntent(),
