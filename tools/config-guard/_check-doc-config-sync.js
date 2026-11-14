@@ -23,7 +23,19 @@ const GUIDE = path.join(DELIVERY, '给朋友的安装指南.md');
 if (!fs.existsSync(GUIDE)) { console.log('· 交付包里没有安装指南，跳过'); process.exit(0); }
 
 const yml = fs.readFileSync(path.join(REPO, 'project.yml'), 'utf8');
-const doc = fs.readFileSync(GUIDE, 'utf8');
+
+// **第209轮**：不只扫安装指南 —— **HANDOFF（交接文档）里也有一张配置表**
+// （`| 包名 | `com.liyuzs.craftlauncher` |` / `| 最低系统 | iOS 16.0 |`），格式完全一样。
+// 它之前不在扫描范围里，所以那两处**一直没被这条检查保护**。
+// HANDOFF 文件名带日期，用通配匹配。
+//
+// **第209轮修**：第一次写成从 `DELIVERY` 找 `HANDOFF-*.md` —— 但 HANDOFF 在**仓库根目录**
+// （交付包里它叫 `交接文档-当前.md`），所以一个都没匹配到、检查静默通过。
+// 改为从 `REPO` 找。**这就是"没报可能是它根本没在看"的又一例**。
+const DOCS = [{ name: '给朋友的安装指南.md', text: fs.readFileSync(GUIDE, 'utf8') }];
+for (const f of fs.readdirSync(REPO).filter(x => /^HANDOFF-.*\.md$/.test(x))) {
+  DOCS.push({ name: f, text: fs.readFileSync(path.join(REPO, f), 'utf8') });
+}
 
 // ---- project.yml 的事实 ----
 const dm = yml.match(/deploymentTarget:\s*\n\s*iOS:\s*"([\d.]+)"/) || yml.match(/IPHONEOS_DEPLOYMENT_TARGET:\s*"([\d.]+)"/);
@@ -43,29 +55,31 @@ console.log('');
 
 const problems = [];
 
-// ---- ① 最低系统 ----
-const docSys = doc.match(/\|\s*最低系统\s*\|\s*\**iOS\s*([\d.]+)\**/);
-if (docSys && deployTarget && docSys[1] !== deployTarget) {
-  problems.push(`最低系统：文档写 iOS ${docSys[1]}，project.yml 是 ${deployTarget}`);
-}
+for (const { name, text: doc } of DOCS) {
+  // ---- ① 最低系统 ----
+  const docSys = doc.match(/\|\s*最低系统\s*\|\s*\**iOS\s*([\d.]+)\**/);
+  if (docSys && deployTarget && docSys[1] !== deployTarget) {
+    problems.push(`[${name}] 最低系统：文档写 iOS ${docSys[1]}，project.yml 是 ${deployTarget}`);
+  }
 
-// ---- ② 包名 ----
-const docBundle = doc.match(/\|\s*包名\s*\|\s*`([^`]+)`/);
-if (docBundle && bundleID && docBundle[1] !== bundleID) {
-  problems.push(`包名：文档写 ${docBundle[1]}，project.yml 是 ${bundleID}`);
-}
+  // ---- ② 包名 ----
+  const docBundle = doc.match(/\|\s*包名\s*\|\s*`([^`]+)`/);
+  if (docBundle && bundleID && docBundle[1] !== bundleID) {
+    problems.push(`[${name}] 包名：文档写 ${docBundle[1]}，project.yml 是 ${bundleID}`);
+  }
 
-// ---- ③ 方向 ----
-const docDir = doc.match(/\|\s*方向\s*\|\s*([^|\n]+)\|/);
-if (docDir) {
-  const saysPortrait = /竖屏/.test(docDir[1]);
-  if (saysPortrait !== hasPortrait) {
-    problems.push(`方向：文档说"${docDir[1].trim()}"，而 project.yml 里 iPhone ${hasPortrait ? '允许' : '不允许'}竖屏`);
+  // ---- ③ 方向 ----
+  const docDir = doc.match(/\|\s*方向\s*\|\s*([^|\n]+)\|/);
+  if (docDir) {
+    const saysPortrait = /竖屏/.test(docDir[1]);
+    if (saysPortrait !== hasPortrait) {
+      problems.push(`[${name}] 方向：文档说"${docDir[1].trim()}"，而 project.yml 里 iPhone ${hasPortrait ? '允许' : '不允许'}竖屏`);
+    }
   }
 }
 
 if (problems.length === 0) {
-  console.log('✓ 安装指南里的配置属性（最低系统 / 包名 / 方向）与 project.yml 一致');
+  console.log(`✓ ${DOCS.map(d => d.name).join(' / ')} 里的配置属性（最低系统 / 包名 / 方向）与 project.yml 一致`);
   process.exit(0);
 }
 
