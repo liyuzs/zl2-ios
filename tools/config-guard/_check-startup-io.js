@@ -10,6 +10,16 @@
 //
 // **为什么需要这条检查**：本地没有真机、没法测首屏耗时，只能静态守住这个"默认值"。
 // 一旦有人把默认改成 true、或绕过参数直接调 `directorySize`，这条会报。
+//
+// **局限**（不查什么）：
+//   · **只查 `listVersions` 这一个函数**。别的"默认路径做昂贵事"它看不见 ——
+//     比如 `VersionRepository.sizeBytes` 在别处被间接调用、或 `GameDirectoryStore` 列实例时算大小。
+//   · **只认 `directorySize` 一个昂贵操作**。JSON 解码、读文件、正则等别的贵操作不在范围
+//     （那些归 `_check-hotpath-cost`，但它只看渲染期/onChange/ForEach，**不看 `onAppear`**）。
+//   · **判据是"窗口内有没有 `includeSize` 门控"**（第194轮加固成前 2 行 + 本行 + 后 1 行）。
+//     如果门控写成更远的形态（提前 return、或把 Bool 参数换成枚举/配置对象），会误报或漏报。
+//   · **它守的是"默认值"，不是"实际耗时"**。就算默认 false，用户在版本列表里主动打开"显示大小"那一屏
+//     仍然会卡 —— **真机耗时从未测过，这条检查给不了任何性能保证**。
 const fs = require('fs');
 const path = require('path');
 

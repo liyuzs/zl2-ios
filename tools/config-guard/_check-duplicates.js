@@ -11,6 +11,15 @@
 //
 // 实现：先把注释和字符串字面量抹掉（否则里面的花括号会算错深度），
 // 再逐字符走，深度 0 处的 `struct/class/enum/actor/protocol Name` 才算顶层。
+//
+// **局限**（不查什么）：
+//   · **只查花括号深度 0 的顶层声明**。嵌套类型重名**不在范围**（两个不同外层里各有 `Kind` 是合法的）。
+//   · **只查 `struct/class/enum/actor/protocol`**：`typealias`、`extension`（合法可重复）、
+//     `func`（允许重载）、`var`/`let`（同一类型内的归 `_check-dup-decl`）都不查。
+//   · **`private` 同名是合法的** —— Swift 里两个文件各自 `private struct Foo` 不冲突，
+//     而本检查按"整个 src 的顶层名"算，**会误报**。目前项目里没出现，但它是真风险。
+//   · **"抹掉注释和字符串"这步失效的话，深度全错** → 报出来的东西可能完全是假的。
+//     所以第196轮补的分母（"判据实际识别了多少个类型块"）是这条检查的命门，别删。
 
 const fs = require('fs');
 const path = require('path');

@@ -21,7 +21,8 @@ const { GUARD } = require('./_paths');
 // **第215轮：25 → 22**（给 `_check-imports` / `_check-layout-keys` / `_check-workflow` 各补了局限）
 // **第216轮：22 → 19**（_check-dark-mode / _check-delivery-index / _check-picker）
 // **第217轮：19 → 16**（_check-settings-wiring / _check-trademark-strings / _check-pending-action）
-const BASELINE = 16;
+// **第218轮：16 → 13**（_check-startup-io / _check-ci-contract / _check-duplicates）
+const BASELINE = 13;
 
 // 必须写成**标题形式**，裸词不算：
 //   · 裸的「局限」二字会被测试探针的注释（"故意没写局限"）误命中 —— 第108轮同款坑。
