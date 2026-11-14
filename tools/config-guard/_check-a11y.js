@@ -24,6 +24,10 @@ const BASELINE = path.join(__dirname, '_a11y-baseline.json');
 //          不再用固定行窗口 —— 文字可能在图标**上方**（TerracottaScreen 的
 //          `Text("分享联机核心日志") + Spacer + chevron.right` 就是这样）。
 function countUnlabeledIconButtons(src) {
+  // 返回 { unlabeled, icons, inButton } —— 后两个是分母：
+  //   icons    = 含 Image(systemName:) 的行数
+  //   inButton = 其中真的落在 Button label 块里的数量
+  // 若 inButton 为 0（Button 块识别失效），"无标签按钮 0 处"是空真，必须报错。
   const lines = src.split('\n');
 
   // 给一个行号，找它所属 Button 的 label 块文本（找不到返回 null）
@@ -58,24 +62,30 @@ function countUnlabeledIconButtons(src) {
     return null;
   };
 
-  let n = 0;
+  let n = 0, icons = 0, inButton = 0;
   for (let i = 0; i < lines.length; i++) {
     if (!/Image\(systemName:\s*"/.test(lines[i])) continue;
+    icons++;
     const blk = labelBlockOf(i);
     if (!blk) continue;            // 不在任何 Button 里（装饰性图标）
+    inButton++;
     if (blk.titled) continue;      // Button("标题") 自带名字
     if (/accessibilityLabel/.test(blk.body)) continue;
     if (/Text\s*\(/.test(blk.body)) continue;
     n++;
   }
-  return n;
+  return { unlabeled: n, icons, inButton };
 }
 
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.swift'));
 const current = {};
+let totalIcons = 0;        // 含 Image(systemName:) 的行数（全部）
+let totalInButton = 0;     // 其中落在 Button label 块里的
 for (const f of files) {
-  const c = countUnlabeledIconButtons(fs.readFileSync(path.join(SRC, f), 'utf8'));
-  if (c > 0) current[f] = c;
+  const r = countUnlabeledIconButtons(fs.readFileSync(path.join(SRC, f), 'utf8'));
+  totalIcons += r.icons;
+  totalInButton += r.inButton;
+  if (r.unlabeled > 0) current[f] = r.unlabeled;
 }
 
 const total = Object.values(current).reduce((a, b) => a + b, 0);
@@ -97,6 +107,13 @@ for (const [f, c] of Object.entries(current)) {
   }
 }
 
+console.log(`扫了 ${files.length} 个文件：${totalIcons} 个 Image(systemName:)，其中 ${totalInButton} 个在 Button 里`);
+// 零匹配即失败：inButton 为 0 说明 Button 块识别失效，"无标签 0 处"是空真
+if (totalInButton === 0) {
+  console.log('⚠ 没有一个带图标的 Button 被识别出来 —— 判据可能已过时');
+  console.log('  这不是"没问题"，是"没看到东西"。请核对 labelBlockOf 与 Button 的写法。');
+  process.exit(1);
+}
 console.log(`无标签图标按钮：当前 ${total} 处，基线 ${Object.values(baseline).reduce((a, b) => a + b, 0)} 处`);
 console.log('');
 

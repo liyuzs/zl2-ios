@@ -115,6 +115,12 @@ for (const name of files) {
 }
 
 console.log(`含 removeItem + destructive 按钮的文件：${checkedFiles} 个`);
+// 零匹配即失败：一个这样的文件都没扫到，说明判据已和代码对不上
+if (checkedFiles === 0) {
+  console.log('⚠ 一个「同时含 removeItem 与 role: .destructive」的文件都没匹配到 —— 判据可能已过时');
+  console.log('  这不是"没问题"，是"没看到东西"。请核对两者的写法。');
+  process.exit(1);
+}
 console.log('');
 
 if (problems.length === 0) {
