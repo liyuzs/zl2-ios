@@ -54,6 +54,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-readme-claims.js` | README 里能机器验证的声明（内存比例 / 视距 / GC 参数 / 支持版本区间）必须与代码实现一致 |
 | `_check-settings-audit.js` | 设置项审计文档 ↔ 代码集合：`docs/设置项审计.md` 总览表三个数字与 `设置项接线进度.md` 的「现在 N 项」，必须等于 `ZLSettings` 115 项对撞 `ZLUnsupportedSettings` 的结果 |
 | `_check-settings-wiring.js` | 设置项落地归属：115 项里"可用"的 30 项，每项必须有归属（核心桥接 / Swift 消费 / 内部状态位白名单）。第135轮实测 10 桥接 + 16 消费 + 4 内部位，0 项无归属。**这条替代了 `_audit-stores.js` 的方向**——后者抓字面量键，而设置实际走 `ZLSettingsStore.set` 的**动态键**，抓不到 |
+| `_check-settings-entry.js` | 可用设置项是否有**UI 入口**（与 `_check-settings-wiring` 互补：那个查代码层消费，这个查用户能不能改）。第148轮实测：30 项 = 21 UI 控件 + 4 自动写入 + 1 手势 + 4 内部记账 + **没入口 0** |
 | `_check-setting-defaults.js` | 设置项默认值只有一处来源：全仓不许出现 `defaultWhenUnset`；`boolValue/intValue/stringValue(_ key:)` 必须委托给 `store.xxx(`（由 ZLSettings 的 `defaultValue` 兜底） |
 | `_check-path-safety.js` | 路径拼接安全：处理远端数据/用户输入的 5 个文件里，用变量拼路径的那一行必须用到 `ZLPathSafety` 校验后的变量（或内联调用）；已知安全例外登记理由 |
 | `_check-decode-recovery.js` | 解码失败必须备份：4 个持久化文件有 `try? 解码` 就必须调 `ZLRecovery.preserveRawData`；全仓兜底扫"从 UserDefaults 取 data 再 try? 解码但没备份"的写法（判据前先剥注释，否则助手文件自己的注释会误报） |

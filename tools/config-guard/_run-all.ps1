@@ -48,6 +48,7 @@ $checks = @(
     @('_check-readme-claims.js',    'js',  'README 声明 ↔ 代码实现'),
     @('_check-settings-audit.js',   'js',  '设置项审计文档 ↔ 代码集合'),
     @('_check-settings-wiring.js', 'js',  '设置项落地归属'),
+    @('_check-settings-entry.js',  'js',  '设置项都有 UI 入口'),
     @('_check-setting-defaults.js','js',  '设置项默认值只在一处声明'),
     @('_check-path-safety.js',      'js',  '路径拼接安全（防目录穿越）'),
     @('_check-decode-recovery.js',  'js',  '解码失败必须备份原始数据'),
