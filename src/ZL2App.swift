@@ -653,7 +653,7 @@ struct MultiplayerScreen: View {
     }
 }
 
-// MARK: - 关于（真机：致谢列表 + 已加载插件）
+// MARK: - 关于（真机：致谢列表 + 开源许可入口）
 struct AboutScreen: View {
     private let credits: [(String, String)] = [
         ("bangbang93", "BMCLAPI 镜像源"),
@@ -692,23 +692,6 @@ struct AboutScreen: View {
                                     .foregroundStyle(ZLTheme.textSecond)
                             }
                             .padding(.vertical, 2)
-                        }
-                    }
-                }
-
-                ZLCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("已加载的插件").font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(ZLTheme.textPrimary)
-                        HStack(spacing: 10) {
-                            Image(systemName: "puzzlepiece.extension.fill")
-                                .foregroundStyle(ZLTheme.primary)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("MobileGlues").font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(ZLTheme.textPrimary)
-                                Text("com.pi.phux.mobileglues · 1.3.4")
-                                    .font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
-                            }
                         }
                     }
                 }
