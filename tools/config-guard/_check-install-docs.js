@@ -49,7 +49,8 @@ for (const d of DOCS) {
 
 let fail = 0;
 
-console.log('=== 1. 每份文档都要提到 JIT ===');
+// **第210轮**：先说清查了几份文档 —— 否则"通过"的输出里看不出范围（第209轮那条）。
+console.log(`=== 1. 每份文档都要提到 JIT ===（共 ${DOCS.length} 份）`);
 for (const { doc, text } of present) {
   if (/JIT/.test(text)) {
     console.log(`  ✓ ${doc}`);

@@ -72,10 +72,15 @@ checkDir(FW, 'Frameworks');
 checkDir(LIBS, 'libs');
 
 // JRE 大版本号
+//
+// **第210轮**：加计数 —— 之前"通过"的输出里只有「核对许可页 ↔ …」一句，
+// 看不出它到底核对了几个条目（第209轮那条：通过时要能看到"它看了什么"）。
+let checked = 0;
 try {
   const tars = fs.readdirSync(JRE).filter(f => /^jre(\d+)-/.test(f));
   for (const t of tars) {
     const v = t.match(/^jre(\d+)-/)[1];
+    checked += 1;
     if (!page.includes(v)) problems.push(`jre/ 里有 Java ${v}，但许可页的 OpenJDK 条目没提到 ${v}`);
   }
 } catch {}
@@ -83,12 +88,13 @@ try {
 // 反向：页面列了但磁盘没有的（只查最明显的几个名字）
 for (const gone of ['MobileGlues']) {
   if (!page.includes(gone)) continue;
+  checked += 1;
   const exists = fs.existsSync(path.join(REPO, 'core', 'resources', 'Frameworks'))
     && fs.readdirSync(path.join(REPO, 'core', 'resources', 'Frameworks')).some(f => new RegExp(gone, 'i').test(f));
   if (!exists) problems.push(`许可页列了 ${gone}，但仓库里找不到它的任何文件 —— 要么补文件，要么删条目`);
 }
 
-console.log('核对许可页 ↔ Frameworks / libs / jre');
+console.log(`核对许可页 ↔ Frameworks / libs / jre：核对了 ${checked} 个条目`);
 console.log('');
 
 if (problems.length === 0) {
