@@ -204,6 +204,33 @@ git diff -w --stat           # 忽略空白后还剩什么？为空 = 纯粹是�
 **把它挂在提交前那一步**：`git add` 之后、`git commit` 之前跑一次 `git diff --stat --cached`。
 两秒钟的事，比事后回滚便宜得多。
 
+### 验证换行符本身也有坑 —— 三种测法，两种会骗你
+
+第 233 轮为了确认一个文件的换行符，**试了三种方法、拿到两个相反结论**：
+
+| 方法 | 报的 | 为什么错 |
+|---|---|---|
+| `git show HEAD:path \| Out-String` 之后数 `\r\n` | CRLF=195 | **PowerShell 的管道会按行重组输出，自己加了 CRLF** —— 数的是 PowerShell 的输出，不是文件 |
+| `[System.IO.File]::ReadAllText()` + 正则 | CRLF=0 | 可能对，但和上一条相反，**而我不知道信哪个** |
+| **`fs.readFileSync(p).toString('binary')` + `bin.includes('\r\n')`** | **CRLF=0** ✓ | **不解析、不转码、不按行分割，只比对字节** |
+
+**判据**：**问一句"我这个测量工具，会不会改变它测量的东西？"**
+
+| 想测 | 别用 | 用 |
+|---|---|---|
+| 换行符 / 编码 / BOM | 任何"按行输出"的管道、`ReadAllText` + 正则 | **读原始字节**（`binary`）|
+| 文件真实大小 | `Get-Content` 数行 | `fs.statSync().size` |
+| 命令真实退出码 | `cmd \| Select-Object -First N` | `$LASTEXITCODE` / `spawnSync().status` |
+| 输出完整内容 | `Select -First` / `head` / `tail` | 读完整 stdout |
+
+**会"格式化"的工具，格式化本身就是它的解释。**
+· 第 196 轮：观察工具会**截断**证据（`Select -First 4` 切掉第 5 行）
+· 第 233 轮：观察工具会**改写**证据（管道把 LF 变成 CRLF）
+
+**截断至少还是原样的一部分；改写是凭空造出不存在的东西。**
+
+一句话：**想验字节，就别经过任何会"读句子"的工具。**
+
 ### 写"读全文 → 改 → 写回"的脚本时，显式保留换行符
 
 ```js
