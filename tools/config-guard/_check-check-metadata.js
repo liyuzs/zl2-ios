@@ -36,7 +36,8 @@ const BASELINE = 0;
 // 必须写成**标题形式**，裸词不算：
 //   · 裸的「局限」二字会被测试探针的注释（"故意没写局限"）误命中 —— 第108轮同款坑。
 //   · 所以只认：`**局限**` / `局限：` / `查不到什么` / `不覆盖` / `失效条件` / `只认哪些`
-const KEYWORDS = /\*\*局限\*\*|局限：|查不到什么|不覆盖|失效条件|只认哪些/;
+// **第225轮**：写法清单改从 _shared.js 拿 —— 别再各写一份（第213/224轮各踩一次）。
+const { LIMIT_MARKERS: KEYWORDS } = require('./_shared');
 const HEAD_LINES = 60;      // 局限段应该在文件头部
 
 const files = fs.readdirSync(GUARD).filter(f => /^_check-.*\.js$/.test(f)).sort();

@@ -105,6 +105,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-stale-allows.js` | **白名单指向已删除的文件**。第207轮发现 `_check-fixed-widths.js` 的白名单里有一条 `'TerracottaScreen.swift'` —— 而那个文件**第132轮就删了**。**不影响判据运行**（永远匹配不到），但**会误导下一个人**（"为什么允许 TerracottaScreen？"）。这是"检查网的自我维护"：第206轮说**例外要有理由**，这轮说**例外的对象要存在**。59 处 `.swift` 字面量 → 实测 0 处过时 |
 | `_check-check-metadata.js` | **检查自己的元数据**：每个 `_check-*.js` 的头部注释里必须写明「**局限**」（只认哪些写法、判不了什么、什么时候该来改它）。第135轮的教训是 `_audit-stores.js` 因代码改成动态键而悄悄失明、却一直报绿 110 多轮。存量用**基线冻结**（当前 29/40 未写，只许降不许升） |
 | `_paths.js` / `_paths.ps1` | **路径解析助手（不是检查）**：让脚本不写死 `D:\ios-zl2`。解析顺序：环境变量 `ZL2_REPO` → 从脚本位置向上找 `project.yml` → 本机默认值。JS 用 `require('./_paths')`，PS1 用 `. "$PSScriptRoot\_paths.ps1"` |
+| `_shared.js` | **共享常量（不是检查）**：目前放「局限段的 6 种写法」`LIMIT_MARKERS` 和「具体信号词」`LIMIT_SPECIFIC`。**抽出来的原因**：第 213 / 224 轮各踩一次"`_check-check-metadata` 认 6 种写法、临时审计脚本只认 2 种"——根因是同一份写法清单散在各处。要判"有没有局限段"的脚本 `require('./_shared')` 即可，加新写法改这里一处。 |
 | `_check-delivery-docs.js` | 交付包里的文档必须在仓库有来源（不许"孤本"），且副本内容必须与仓库一致（漏同步会报） |
 | `_check-doc-config-sync.js` | `给朋友的安装指南.md` 里的**配置属性**必须与 `project.yml` 一致（最低系统 ↔ `deploymentTarget` · 包名 ↔ `PRODUCT_BUNDLE_IDENTIFIER` · 方向 ↔ 有没有 `Portrait`）。`_check-delivery-docs` 只查"副本与仓库同步"，**不管内容对不对** —— 第165轮改了 iPhone 竖屏但指南还写"仅横屏"，就是它抓不到的 |
 | `_check-doc-hardcoded-counts.js` | 交付文档里不许写**承诺性的**会变数量（「N 项检查」「N 个自检脚本」「N 条已知问题」）—— 每次加检查/加脚本都会过时。**不查**源码规模统计（"115 个设置项"）、历史记录（"补过 20 处差异"）、具体事实（"1 个路由"）、体积（"约 93 MB"）。第180轮实测 0 处 |
