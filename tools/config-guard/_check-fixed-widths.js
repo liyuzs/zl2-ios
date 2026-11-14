@@ -19,8 +19,12 @@ const { SRC } = require('./_paths');
 const THRESHOLD = 280;
 
 // 这些文件是「不可达页面」或纯装饰，已知不修
+//
+// **第207轮**：原来这里有一条 `'TerracottaScreen.swift'`（注释是"整个页面不可达"）——
+// 但那个文件**第132轮就删了**（359 行假页面）。白名单指向一个不存在的文件，
+// 虽然不影响判据运行（它永远不会匹配），但会误导下一个人。
+// 已删。这类问题现在由 `_check-stale-allows.js` 守。
 const ALLOW = [
-  'TerracottaScreen.swift',   // 整个页面不可达（.terracotta 路由没人导航过去）
 ];
 
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.swift'));

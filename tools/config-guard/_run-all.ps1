@@ -95,6 +95,7 @@ $checks = @(
     @('_check-hardcoded-stats.js','js',  '界面文案不许写死规模数字'),
     @('_check-hardcoded-versions.js', 'js', '界面不许写死版本号'),
     @('_check-script-inventory.js', 'js',  '脚本清单 ↔ 磁盘（双向）'),
+    @('_check-stale-allows.js',    'js',  '白名单不许指向已删文件'),
     @('_check-check-metadata.js', 'js',  '检查要写明自己查不到什么'),
     @('_check-delivery-docs.js',    'js',  '交付包文档 ↔ 仓库（不许孤本/漏同步）'),
     @('_check-doc-config-sync.js','js', '文档配置属性与 project.yml 一致'),
