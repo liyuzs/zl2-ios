@@ -169,13 +169,6 @@ struct SearchScreen: View {
 // MARK: - 导出用的小工具
 
 private extension FileManager {
-    /// 把临时文件拷到另一个带名字的临时路径（forUploading 给的是随机名）
-    func copyItemToTemp(_ src: URL, named name: String) throws -> URL {
-        let dst = temporaryDirectory.appendingPathComponent(name)
-        try? removeItem(at: dst)
-        try copyItem(at: src, to: dst)
-        return dst
-    }
 }
 
 // MARK: - 首次引导

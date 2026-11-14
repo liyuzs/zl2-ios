@@ -284,14 +284,6 @@ enum MD5 {
         return (value << shift) | (value >> (32 - shift))
     }
 
-    /// 自检：与 RFC 1321 / python hashlib 的已知结果比对。
-    /// `MD5.selfCheck() == true` 说明补位、字节序和常量表都正确。
-    static func selfCheck() -> Bool {
-        hexDigest("") == "d41d8cd98f00b204e9800998ecf8427e"
-            && hexDigest("abc") == "900150983cd24fb0d6963f7d28e17f72"
-            && hexDigest("message digest") == "f96b697d7cb7938d525a2f31aaf161d0"
-            && hexDigest("OfflinePlayer:Notch") == "b50ad385829da141a2167e7d7539ba7f"
-    }
 }
 
 // MARK: - 离线账户工厂
@@ -341,10 +333,6 @@ struct OfflineAccountFactory {
         MD5.hexString(offlineUUIDBytes(forUsername: username))
     }
 
-    /// 标准带横线（8-4-4-4-12）
-    static func offlineUUID(forUsername username: String) -> String {
-        AccountUUID.dashed(fromCompact: offlineUUIDCompact(forUsername: username))
-    }
 }
 
 // MARK: - 账户服务协议
@@ -515,13 +503,9 @@ struct MicrosoftOAuthConfiguration: Codable, Sendable, Equatable {
 /// OAuth 拿到的令牌集合
 struct MicrosoftTokenSet: Codable, Sendable, Equatable {
     var accessToken: String
+    /// 第155轮：`expiresAt` 删了 —— 它唯一的读者 `isExpired()` 也从没被调用（微软登录只存 accessToken，
+    /// token 刷新那条路从没接通）。`refreshToken` 保留：它在 MicrosoftAuth:268 有赋值链，将来做刷新要用。
     var refreshToken: String?
-    var expiresAt: Date?
-
-    func isExpired(now: Date = Date()) -> Bool {
-        guard let expiresAt else { return false }
-        return now >= expiresAt
-    }
 }
 
 /// 微软账号最终映射出的 Minecraft 身份

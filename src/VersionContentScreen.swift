@@ -355,21 +355,6 @@ struct VersionContentScreen: View {
         }
     }
 
-    private func quickButton(_ title: String, _ target: VersionContentKind) -> some View {
-        Button { kind = target } label: {
-            VStack(spacing: 5) {
-                Image(systemName: target.icon).font(.system(size: 18))
-                    .foregroundStyle(ZLTheme.primary)
-                Text(title).font(.system(size: 10)).foregroundStyle(ZLTheme.textSecond)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 62)
-            .background(ZLTheme.surfaceAlt)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-
     // MARK: 模组列表（带开关与前置依赖）
     private var modList: some View {
         VStack(spacing: 10) {

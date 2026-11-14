@@ -96,13 +96,6 @@ final class VersionRepository {
         gameDir(for: versionID).appendingPathComponent("saves", isDirectory: true)
     }
 
-    /// 统计某版本目录下有多少个模组（含 .disabled）
-    func modCount(for versionID: String) -> Int {
-        let dir = modsDir(for: versionID)
-        let items = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
-        return items.filter { $0.pathExtension == "jar" || $0.lastPathComponent.hasSuffix(".jar.disabled") }.count
-    }
-
     init() {
         instanceName = UserDefaults.standard.string(forKey: "zl.game.instance") ?? "default"
         try? fm.createDirectory(at: versionsDir, withIntermediateDirectories: true)

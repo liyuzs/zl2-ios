@@ -193,11 +193,6 @@ enum EasyTierBridge {
         return -1
     }
 
-    /// 查询节点数
-    /// int easytier_ios_peer_count(uint64_t generation);
-    static func peerCount(generation: UInt64) -> Int32 {
-        return 0
-    }
 }
 
 // MARK: - 主 App 侧的隧道管理（通过 NETunnelProviderManager）
@@ -234,11 +229,6 @@ final class ZLTunnelManager {
         }
         try await m.saveToPreferences()
         try m.connection.startVPNTunnel()
-    }
-
-    /// 加入房间
-    func joinRoom(code: String) async throws {
-        try await createRoom(code: code)
     }
 
     /// 断开

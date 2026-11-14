@@ -26,7 +26,7 @@
 //     · **@objc 导出 + performSelector** —— ObjC 通过 `NSSelectorFromString` 调 Swift 方法
 //       （如 `activateLayerByPseudoKey:`，src 里 0 处调用但 core 天天用）
 //   三版之后仍有 22 个待人工核实，性价比不如人工。**现状**：方法级死代码靠人工发现。
-//   已手工确认的真死方法（待处理）：`VersionRepository.modCount` · `AccountService.selfCheck` /
+//   **第155轮已处理完**：手工核实 22 个，删了 20 个（含连锁：`ZLStaggerIn`、`MicrosoftTokenSet.expiresAt`）。
 //   `offlineUUID` / `isExpired` · `ZLLayerSwitcher.switchToLayer` 等。
 //   **现状**：case 级死代码靠人工发现。已知案例：`CoreLaunchError.missingRuntime`（第146轮）、
 //   `ModrinthProjectType.datapack`（第147轮）—— 两个都已删。

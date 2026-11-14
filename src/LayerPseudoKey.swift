@@ -71,16 +71,6 @@ enum LayerPseudoKey {
         return (action, index)
     }
 
-    /// 只取层序号（向后兼容）
-    static func decodeIndex(_ pseudo: Int) -> Int? {
-        decode(pseudo)?.index
-    }
-
-    /// 判断某个键码是不是伪键码
-    static func isPseudoKey(_ code: Int) -> Bool {
-        code <= threshold
-    }
-
     /// 从一个布局生成「伪键码 → 图层 uuid」映射
     ///
     /// 按 layers 数组顺序编号，同一布局内唯一。

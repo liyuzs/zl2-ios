@@ -107,11 +107,6 @@ public final class ZLLayerSwitcher: NSObject {
         return activateLayer(at: idx)
     }
 
-    /// 回到默认层（第 0 层）
-    @objc public static func resetToDefault() {
-        _ = activateLayer(at: 0)
-    }
-
     // MARK: ObjC 入口（核心按钮点击时调用）
 
     /// 由核心的 executebtn: 通过伪键码调用
@@ -141,10 +136,6 @@ public final class ZLLayerSwitcher: NSObject {
 
     /// 切到某层（独占）：只显示这一层
     @discardableResult
-    public static func switchToLayer(at index: Int) -> Bool {
-        activateLayer(at: index)
-    }
-
     /// 叠加显示某层：在「当前已显示的层」基础上再加一层
     ///
     /// 核心没有图层概念，所以做法是：重新导出一份

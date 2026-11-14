@@ -349,12 +349,6 @@ public struct VersionDetail: Codable, Identifiable, Hashable, Sendable {
             return allowed
         }
 
-        /// 用 `MojangAPI.Platform` 的当前平台信息判断（iOS 默认按 "linux" 处理）。
-        public func isAllowedForCurrentPlatform(features: [String: Bool] = [:]) -> Bool {
-            self.isAllowed(osName: MojangAPI.Platform.osName,
-                           arch: MojangAPI.Platform.arch,
-                           features: features)
-        }
     }
 
     /// 库的下载项：主 artifact + 平台分类器（natives）。
@@ -631,14 +625,6 @@ public extension VersionDetail {
     /// 服务端 jar。
     var serverDownload: Artifact? { self.downloads?.server }
 
-    /// 当前平台真正需要下载、且带主 artifact 的库（已按 rules 过滤）。
-    func applicableLibraries(osName: String = MojangAPI.Platform.osName,
-                             arch: String = MojangAPI.Platform.arch,
-                             features: [String: Bool] = [:]) -> [Library] {
-        self.libraryList.filter {
-            $0.artifact != nil && $0.isAllowed(osName: osName, arch: arch, features: features)
-        }
-    }
 }
 
 // MARK: - API

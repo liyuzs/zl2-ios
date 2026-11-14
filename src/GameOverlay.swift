@@ -261,11 +261,6 @@ final class GameFPSMonitor: ObservableObject {
         timer = nil
     }
 
-    /// 由渲染循环每帧调用一次（等价于安卓 CallbackBridge 的帧计数）
-    func recordFrame() {
-        frameCount += 1
-    }
-
     /// 直接注入一次采样（宿主已有原生帧率计数时使用）
     func feed(_ value: Int) {
         record(value)

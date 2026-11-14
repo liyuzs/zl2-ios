@@ -214,27 +214,7 @@ struct ZLSkeletonList: View {
 
 // MARK: - 列表项依次淡入
 
-struct ZLStaggerIn: ViewModifier {
-    var index: Int
-    var distance: CGFloat = 10
-    @State private var shown = false
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(shown ? 1 : 0)
-            .offset(y: shown ? 0 : distance)
-            .onAppear {
-                // 最多错开 12 项，避免长列表等太久
-                let delay = Double(min(index, 12)) * 0.035
-                withAnimation(.easeOut(duration: 0.28).delay(delay)) { shown = true }
-            }
-    }
-}
-
 extension View {
-    func staggerIn(_ index: Int, distance: CGFloat = 10) -> some View {
-        modifier(ZLStaggerIn(index: index, distance: distance))
-    }
 }
 
 // MARK: - 长按快捷菜单（版本卡片等）

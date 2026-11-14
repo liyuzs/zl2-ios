@@ -47,11 +47,6 @@ enum ZLRecovery {
         }
     }
 
-    /// 是否存在某个键的备份（用于在诊断/设置里提示"有可恢复的数据"）
-    static func hasBackup(for key: String) -> Bool {
-        UserDefaults.standard.data(forKey: prefix + key) != nil
-    }
-
     /// 取回备份的原始数据（供将来做恢复功能，或用户自己导出）
     static func backupData(for key: String) -> Data? {
         UserDefaults.standard.data(forKey: prefix + key)

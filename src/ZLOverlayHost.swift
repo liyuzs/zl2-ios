@@ -53,7 +53,4 @@ public final class ZLOverlayHost: NSObject {
 
     /// 更新布局（旋转时调用）
     @objc(relayoutIn:)
-    public static func relayout(in container: UIView) {
-        host?.view.frame = container.bounds
-    }
 }

@@ -313,12 +313,6 @@ extension GuideManager {
                   spot: GuideSpot(x: 0.955, y: 0.072, width: 0.09, height: 0.11, radius: 14))
     ]
 
-    /// 重置两套引导（调试用，下次进入对应页面会重新显示）
-    static func resetAll() {
-        let defaults = UserDefaults.standard
-        defaults.removeObject(forKey: "zl.guide.home.seen")
-        defaults.removeObject(forKey: "zl.guide.controlEditor.seen")
-    }
 }
 
 // MARK: - 接入辅助
