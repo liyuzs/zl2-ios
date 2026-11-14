@@ -10,6 +10,15 @@
 //
 // 少任何一个，表现都是「点了启动没反应」或闪退，而且报错藏在 JVM 的 stderr 里。
 // 这个脚本把这些路径从核心源码里抽出来，逐个检查仓库 / IPA 里有没有。
+//
+// **局限**（不查什么）：
+//   · **只认 `bundlePath` 拼接这一种写法**。核心若改用 `[[NSBundle mainBundle] pathForResource:ofType:]`
+//     或 `NSBundle.mainBundle.URLForResource`，它抓不到那些路径。
+//   · **靠读 CMakeLists 的 `add_library(... SHARED)` 名单排除"现场编译的库"**。写法一变
+//     （`add_library(x MODULE)`、或改用 `set(SOURCES ...)` 间接定义），排除失效 → **把现场编译的库误报成缺文件**。
+//   · **只对撞"仓库里有没有这个文件"**，不查**打好包之后 IPA 里有没有** —— 装配那一段归
+//     `_simulate-ci.ps1`（15 项断言）。
+//   · **判不了"路径对但指向了错的文件"**：文件在同名位置、内容却是别的东西（比如拿旧版 jar 顶替），完全看不出来。
 
 const fs = require('fs');
 const path = require('path');

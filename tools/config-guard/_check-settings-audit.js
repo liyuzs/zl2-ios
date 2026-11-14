@@ -10,6 +10,15 @@
 //
 // 权威来源永远是代码：`src/SettingsScreen.swift` 的 `ZLUnsupportedSettings`
 // 里 `platformOnly` / `notWired` 两个集合。这份检查把文档里的数字和代码对撞。
+//
+// **局限**（不查什么）：
+//   · **只校验数字，不校验清单**：文档里"可用 N 项"必须等于四集合算出来的；但**那 N 项具体是谁**
+//     （列对没有、漏没漏）它不查。
+//   · **四个集合靠正则解析**（跳过注释行 + 按括号深度取）。集合写法一变（换成数组、
+//     或从别的文件 import）就失明。
+//   · "集合覆盖守卫"只认 `static let xxx: Set<String>` 这一种字面形式 —— 换个声明方式它就不拦了。
+//   · **生成器与检查必须成对**：`_gen-settings-audit.js` 负责"落后了能追上"，本检查只负责"报出落后"。
+//     只跑检查不跑生成器，数字永远不会自动变对。
 
 const PATHS = require('./_paths');
 const fs = require('fs');
