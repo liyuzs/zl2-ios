@@ -40,6 +40,7 @@ $checks = @(
     @('_audit-ui-affordance.js',    'js',  '假交互（绑了控件没人读）'),
     @('_check-orphan-views.js',     'js',  'View 写了没挂载'),
     @('_check-dead-types.js',       'js',  '零使用的顶层类型（死代码）'),
+    @('_check-dead-params.js',    'js',  '死参数（签名有、函数体没用）'),
     @('_check-dead-routes.js',      'js',  '路由声明了但没人导航'),
     @('_check-pending-action.js',   'js',  '快捷指令待处理动作（写入/消费/时效）'),
     @('_check-fixed-widths.js',     'js',  '固定宽度 ≥280 必然溢出手机竖屏'),

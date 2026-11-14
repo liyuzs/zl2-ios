@@ -57,19 +57,19 @@ struct LogViewScreen: View {
         .navigationBarHidden(true)
         .task {
             scanFiles()
-            load(scroll: true)
+            load()
         }
         .onReceive(timer) { _ in
             guard autoRefresh else { return }
             if fileChanged {
                 scanFiles()
-                load(scroll: autoScroll)
+                load()
             }
         }
         // ⌘R（iPad 键盘）立即重新读取日志
         .onReceive(NotificationCenter.default.publisher(for: .zlRefreshRequested)) { _ in
             scanFiles()
-            load(scroll: autoScroll)
+            load()
         }
     }
 
@@ -84,7 +84,7 @@ struct LogViewScreen: View {
                         ForEach(group.1) { f in
                             Button {
                                 selected = f.url
-                                load(scroll: true)
+                                load()
                             } label: {
                                 if selected == f.url {
                                     Label(f.name, systemImage: "checkmark")
@@ -128,7 +128,7 @@ struct LogViewScreen: View {
             Spacer()
 
             Button {
-                load(scroll: true)
+                load()
             } label: {
                 Image(systemName: "arrow.clockwise").accessibilityLabel("重新加载日志")
                     .font(.system(size: 13))
@@ -338,7 +338,7 @@ struct LogViewScreen: View {
     /// 重新扫文件再读一次（重试用）
     private func rescanAndLoad() {
         scanFiles()
-        load(scroll: true)
+        load()
     }
 
     private func scanFiles() {
@@ -390,7 +390,7 @@ struct LogViewScreen: View {
         }
     }
 
-    private func load(scroll: Bool) {
+    private func load() {
         guard let url = selected else {
             // 没有日志文件不算错误，交给空状态说明下一步
             loadError = nil

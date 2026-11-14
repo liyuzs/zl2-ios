@@ -44,6 +44,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_audit-ui-affordance.js` | 假交互：绑了控件却没人读的 `@State`、常量+空 set 的 Binding |
 | `_check-orphan-views.js` | 写了没挂载：`struct X: View` 在整个 src 里只出现 1 次（从没被实例化） |
 | `_check-dead-types.js` | 零使用的顶层类型：标识符在整个 src 只出现 1 次（连自己文件都没用）。**排除框架隐式实例化的**（`@main` App / `AppShortcutsProvider` / `NEPacketTunnelProvider` / `UIApplicationDelegate` / SceneDelegate），否则会把 App 入口当死代码 |
+| `_check-dead-params.js` | **死参数**：`private`/`fileprivate func` 的某个参数在函数体里从没出现。**Swift 不对未使用的函数参数报警**（只对变量报），而 grep 函数名也看不出（调用点都在用）→ 只能读函数体。第205轮实测 316 个 func / 361 个参数 → 找到 1 个真死参数（`LogViewScreen.load(scroll:)` 的 `scroll`，滚动其实由 `autoScroll` 管） |
 | `_check-dead-routes.js` | 死路由：`AppRoute` 的 case 没有任何导航调用（append / onOpen / NavigationLink）。① 新增死路由判失败；② 已知的登记在 ALLOW；③ **对每个已知死路由，还会打印它的目的地上挂了什么**（修饰符 `xxx(...)` / 内部 `path.append` / `onOpen`）——因为挂在没人走的路由上的东西也永远不生效（第78轮实例：`.zlGuide(.controlEditor)` 编辑器首导挂错地方） |
 | `_check-pending-action.js` | 快捷指令待处理动作的结构完整性：唯一写入口 setRoute、consumeRoute 有过期判断、除 setRoute 外不许直接写 zl.pendingRoute、RootView 同时有冷启动与前台两条消费路径 |
 | `_check-fixed-widths.js` | 布局溢出：`.frame(width: N)` 里 N ≥ 280 必然超出手机竖屏（最窄 320pt − 两侧 18pt） |
