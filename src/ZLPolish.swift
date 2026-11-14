@@ -424,7 +424,10 @@ enum ZLCuteGreeting {
         let h = Calendar.current.component(.hour, from: Date())
         // 深夜 23 点后，或凌晨 5 点前
         guard h >= 23 || h < 5 else { return nil }
-        return h >= 23 ? "夜深了，玩一会儿就早点睡 🌙" : "这么早就来了 ☀️ 先喝点水"
+        // **第203轮**：深夜那句原来写「夜深了，玩一会儿就早点睡 🌙」——
+        // 但启动页那边 `Text("\(ZLCuteGreeting.now) · \(cuteTip)")` 在深夜也会显示「夜深了」，
+        // 于是用户连看两次同样的三个字。改成不重复的说法。
+        return h >= 23 ? "还不睡吗 🌙 玩一会儿就早点休息" : "这么早就来了 ☀️ 先喝点水"
     }
 }
 

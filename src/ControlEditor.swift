@@ -1,6 +1,16 @@
 // ZL2-iOS · 控制布局编辑器（完整版）
 // 对齐 ZL2：控件层 / 按钮·文本框·摇杆 / 外观样式与样式收藏柜 / 摇杆详细配置 /
 //          控件复制（当前层·指定层）/ 控件层属性 / 布局 JSON 导入导出
+//
+// **文件组织说明（第203轮记）**：这个文件有 33 个类型、约 2700 行，大致分两半 ——
+//   · L10–765：**布局数据模型**（`ControlKind` / `ControlItem` / `ControlLayer` /
+//     `ControlLayoutDoc` / `ControlAppearance` …，都是 `Codable`）
+//   · L766 之后：**界面**（`ControlEditorScreen` 799 行 + 6 个面板/Sheets）
+//
+// **为什么不拆**：同目录的 `ControlLayoutModel.swift`（874 行）**也是模型**（核心侧的数据结构），
+// 所以"模型"其实散在两个文件里。要拆的话得把这两处的模型归并、再改所有引用 ——
+// 而**没有 Mac 无法编译验证**，改动 2700 行里的一大半风险太大（第15轮那条"没有反馈的情况下不做盲改"）。
+// 所以这里只留说明：**读这个文件时，先看行号判断在哪一半**。
 import SwiftUI
 import Combine
 import UIKit
