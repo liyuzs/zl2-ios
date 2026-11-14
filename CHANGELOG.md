@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **清掉 Terracotta 残留属性（16 处 / 两文件）**：承接上轮删页面，`GameMenuScreen` 与 `GameOverlay` 里还留着 `enableTerracotta` 与 `onOpenTerracottaMenu` 两个属性 + 一个恒假 if 块 + 未使用的 `terracottaMenuTitle`。核实都是纯死代码（前者恒 false、后者从没被赋值）后删除。
+- **故意保留的三个设置项（并写明理由）**：`ZLSettings` / `SettingsScreen` 的 `enableTerracotta` / `enableTerracottaNodes` / `terracottaNodes` **不能删**——它们在设置页显示「尚未接入」，对用户是**有用的说明**，删了用户在设置里就完全看不到 Terracotta 这回事。已按第129轮的教训把这段理由写进 `notWired` 的注释，免得将来有人顺着"页面都删了"一起删掉。
+
 - **删掉 359 行的假联机页 `TerracottaScreen`（整文件 + 死路由）**：按"有反馈的假功能比空白危险"的判据扫出来的——「启用多人联机」Toggle 绑 `@State enabled`，无持久化、无消费者。核实：`.terracotta` 路由**无人导航**（第76轮已确认）、它定义的 3 个类型（`ZLRoomType`/`ZLRoomCode`/`ZLTerracottaState`）**文件外零引用**、Terracotta 需要 Network Extension（本项目基本不可能接入）。删前确认 `GameMenuScreen:279` 的入口是**双重死代码**（`enableTerracotta` 在 `notWired` 里置灰且默认 false；`onOpenTerracottaMenu` 恒 nil），不会造成死链。文件数 71 → **70**，AppRoute 23 → **22**。
   **为什么这次删而第42/76轮保留**：那时把假交互改成说明卡、按"自身声明为界面演示"留着；但一个 359 行的假联机页摆在那里，将来谁接上路由，用户会看到一整套拨了没反应的界面——留着"以后也许有用"的成本高于价值。
 
