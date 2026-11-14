@@ -22,7 +22,8 @@ const { GUARD } = require('./_paths');
 // **第216轮：22 → 19**（_check-dark-mode / _check-delivery-index / _check-picker）
 // **第217轮：19 → 16**（_check-settings-wiring / _check-trademark-strings / _check-pending-action）
 // **第218轮：16 → 13**（_check-startup-io / _check-ci-contract / _check-duplicates）
-const BASELINE = 13;
+// **第220轮：13 → 11**（补了三个，但其中一个原本就算'写了' —— 基线按实跑结果定，不按减法算）
+const BASELINE = 11;
 
 // 必须写成**标题形式**，裸词不算：
 //   · 裸的「局限」二字会被测试探针的注释（"故意没写局限"）误命中 —— 第108轮同款坑。
