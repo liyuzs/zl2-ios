@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **游戏内菜单里 4 个模块可调，但核心根本不读**：手柄 / 手势（含快捷栏）/ 陀螺仪三个 tab 共 **21 个偏好键**，实测①全部在 `ZLUnsupportedSettings.platformOnly`（设置页早已置灰写「iOS 不支持此能力」）②核心 `core/` **0 处真实读取**（`gamepadControl` 命中的 3 处是 `gamepadControlList` 文件名列表）③项目里没有 `GCController`/`GCKeyboard`，`CMMotionManager` 只被 `ZLGlass` 视差动效用过。于是出现「设置页说不支持、进游戏却能拨、拨完没反应」。已加 `inputExtrasWired = false` 统一置灰；陀螺仪段那句 `if !usable` 的官方说明因此**终于会显示**（原来 `usable = isGyroAvailable` 在真机恒 true，永远不显示）。
+- 踩坑记档：给 `listRow` 加 `enabled:` 时插在了 `options:` 前面（签名顺序是 `title, key, options, enabled`），而 `_check-call-labels` **只比对标签集合、不比对顺序**，所以没拦住 —— 这类错会编译失败，下一轮给这条检查补顺序校验。
+
 - **补上「缩进」这条盲区**：第116轮改代码时 `if` 缩进跑到第 0 列，而 `swift-lint` 报"括号配对正确"、58 项检查全绿——括号检查验的是配对不是排版。新增 `_check-indentation.js`（逐行跟踪大括号深度，缩进小于期望就报，大于不报）。判据第一版报 522 处，逐个看全是漏洞：`case`/`default:`/`@unknown default:` 与 `switch` 同列、行首 `]`/`)` 收尾、**多行字符串内容**（`ZLUpdate` 的崩溃报告模板 7 行文本）；修完第三次跑 0 处。注入第116轮那种错 → 精确报出 `ZLPathSafety.swift:91 实际 0 空格，期望 ≥4`。
 - 顺带核实本项目 **0 行 tab 缩进**（全空格），判据可直接按字符数算。
 
