@@ -106,11 +106,14 @@ enum AccountError: LocalizedError, Equatable {
     /// 用户名为空
     case emptyName
     /// 当前流程不支持该账户类型
-    case unsupportedAccountType(AccountType)
+    case unsupportedAccountType(AccountType)   // 未实现：当前三种账号类型都能处理，没有分支会抛它
     /// 需要 token 但没有
-    case missingAccessToken
+    case missingAccessToken                        // 未实现：当前没有「需要联网却没 token」的校验，所以不会抛它
     /// 持久化写入失败
-    case storageFailure(String)
+    /// 存储失败。**当前只在 persist 的日志里体现，没有向上抛** ——
+    /// 因为 `save()` 是同步无返回值接口，改签名会影响多处调用（第175轮确认）。
+    /// 留着这个 case 是为了将来把 save 改成可失败时直接用。
+    case storageFailure(String)                 // 未实现：persist 失败只记日志，没有向上抛
 
     var errorDescription: String? {
         switch self {
@@ -457,8 +460,14 @@ final class AccountStore: ObservableObject, AccountProviding {
     }
 
     private func persist() {
-        if let data = try? encoder.encode(accounts) {
+        // **第175轮**：原来是 `if let data = try? encoder.encode(accounts) { ... }` ——
+        // 编码失败被 `try?` 静默吞掉：账号存不进去，用户以为存上了，下次打开就没了。
+        // 改成 do/catch 至少留一条日志（没做成 throw 是因为 `save()` 是同步无返回值接口）。
+        do {
+            let data = try encoder.encode(accounts)
             defaults.set(data, forKey: Keys.accounts)
+        } catch {
+            NSLog("[ZL2] 账号列表编码失败，这次没存进去：%@", String(describing: error))
         }
         if let currentID {
             defaults.set(currentID.uuidString, forKey: Keys.current)

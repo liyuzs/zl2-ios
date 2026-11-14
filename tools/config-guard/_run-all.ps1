@@ -57,6 +57,7 @@ $checks = @(
     @('_check-orientation.js',    'js',  '方向声明与切换逻辑配对'),
     @('_check-pending-routes.js',  'js',  '待处理路由都有消费分支'),
     @('_check-silent-default.js',  'js',  '字符串 switch 的 default 要留日志'),
+    @('_check-error-case-created.js','js', '错误 case 必须能被抛出'),
     @('_check-number-range.js',  'js',  '数字输入项必须有 range'),
     @('_check-type-control.js',   'js',  '设置项类型与控件匹配'),
     @('_check-type-read.js',      'js',  'type 与读取方法匹配'),

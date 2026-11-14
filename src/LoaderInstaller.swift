@@ -19,16 +19,17 @@ enum ZLLoaderInstallerError: LocalizedError {
     /// 下载到的内容不是合法的 jar/zip（第150轮加：服务器可能返回网页错误页）
     case badContent(String)
     case profileFailed(String)
-    case mergeFailed(String)
-    case libraryFailed(String)
+    // 第175轮删掉两个死 case：`mergeFailed` / `libraryFailed` —— 从未被抛出。
+    // · "合并"实际走 `try JSONSerialization.data` + `out.write(to:)`（系统错误）
+    // · "库下载失败"走 `failedLibs` 收集（第149轮设计：不中断，最后一起报）
+    // 留着它们会让人以为"库下载失败会抛错"，而实际不会。
 
     var errorDescription: String? {
         switch self {
         case .badURL: return "URL 无效"
         case .badContent(let s): return "下载到的不是 jar（可能是网页错误页）：\(s)"
         case .profileFailed(let s): return "获取加载器配置失败：\(s)"
-        case .mergeFailed(let s): return "合并版本配置失败：\(s)"
-        case .libraryFailed(let s): return "下载加载器库失败：\(s)"
+
         }
     }
 }

@@ -39,6 +39,10 @@ for (const name of files) {
   const lines = text.split('\n');
 
   lines.forEach((line, i) => {
+    // **剥注释**（第175轮）：注释里提到 `.write(to:` 是在解释"这里为什么这么写"，
+    // 不是真的写操作。这已经是第三次被注释误伤（第143/150轮也踩过），所以默认剥掉。
+    const code = line.trim();
+    if (code.startsWith('//') || code.startsWith('///') || code.startsWith('*') || code.startsWith('/*')) return;
     if (!line.includes('.write(to:')) return;
     checked++;
 

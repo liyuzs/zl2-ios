@@ -43,14 +43,20 @@ struct CapeEntry: Sendable {
 
 enum MSAuthError: LocalizedError {
     case pending
-    case slowDown
+    // 第175轮删掉 `.slowDown` —— 它和 `.rateLimited`（"登录过于频繁，请稍后再试"）语义重复，
+    // 而 429 现在走的是 `.rateLimited`。两个都在只会让人不知道该用哪个。
     case expired
     case declined
     case notOwned
-    case xboxBanned
-    case xboxMinor
-    case xboxTerms
-    case xboxTimeLimit
+    // **第175轮标注**：下面这四个 case 的文案备好了，但**当前没有任何地方解析 Xbox 错误码**，
+    // 所以它们永远不会被抛出 —— 用户遇到"账号被封/未成年限制/未接受条款/时长用尽"时，
+    // 看到的仍是通用的「响应异常：xxx」。
+    // 保留而不是删掉：它们描述的是真实存在的情况，删了将来实现解析时还要重想文案。
+    // 要实现的话，入口在这里：解析 Xbox Live 认证失败响应里的 XErr 码（2148916xxx）。
+    case xboxBanned      // 未实现：当前没有解析 Xbox 错误码
+    case xboxMinor       // 未实现：同上
+    case xboxTerms       // 未实现：同上
+    case xboxTimeLimit   // 未实现：同上
     case rateLimited
     case ipBlocked
     case network(String)
@@ -59,7 +65,7 @@ enum MSAuthError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .pending: return "等待用户在网页完成登录…"
-        case .slowDown: return "请求过快，稍后重试"
+
         case .expired: return "设备码已过期，请重新获取"
         case .declined: return "用户取消了登录"
         case .notOwned: return "该账号未拥有 Minecraft"
