@@ -56,11 +56,9 @@ struct GameOverlay: View {
     private let sdlEnabled: Bool
     private let gyroscopeAvailable: Bool
     private let gamepadMappingConfigs: [String]
-    private let enableTerracotta: Bool
 
     private let onForceClose: (() -> Void)?
     private let onSwitchLog: (() -> Void)?
-    private let onOpenTerracottaMenu: (() -> Void)?
     private let onRefreshWindowSize: (() -> Void)?
     private let onInputMethod: (() -> Void)?
     private let onSendKeycode: (() -> Void)?
@@ -73,10 +71,8 @@ struct GameOverlay: View {
          sdlEnabled: Bool = false,
          gyroscopeAvailable: Bool = GameMenuScreen.systemGyroscopeAvailable,
          gamepadMappingConfigs: [String] = [],
-         enableTerracotta: Bool = false,
          onForceClose: (() -> Void)? = nil,
          onSwitchLog: (() -> Void)? = nil,
-         onOpenTerracottaMenu: (() -> Void)? = nil,
          onRefreshWindowSize: (() -> Void)? = nil,
          onInputMethod: (() -> Void)? = nil,
          onSendKeycode: (() -> Void)? = nil,
@@ -88,10 +84,8 @@ struct GameOverlay: View {
         self.sdlEnabled = sdlEnabled
         self.gyroscopeAvailable = gyroscopeAvailable
         self.gamepadMappingConfigs = gamepadMappingConfigs
-        self.enableTerracotta = enableTerracotta
         self.onForceClose = onForceClose
         self.onSwitchLog = onSwitchLog
-        self.onOpenTerracottaMenu = onOpenTerracottaMenu
         self.onRefreshWindowSize = onRefreshWindowSize
         self.onInputMethod = onInputMethod
         self.onSendKeycode = onSendKeycode
@@ -107,10 +101,8 @@ struct GameOverlay: View {
                                sdlEnabled: sdlEnabled,
                                gyroscopeAvailable: gyroscopeAvailable,
                                gamepadMappingConfigs: gamepadMappingConfigs,
-                               enableTerracotta: enableTerracotta,
                                onForceClose: onForceClose,
                                onSwitchLog: onSwitchLog,
-                               onOpenTerracottaMenu: onOpenTerracottaMenu,
                                onRefreshWindowSize: onRefreshWindowSize,
                                onInputMethod: onInputMethod,
                                onSendKeycode: onSendKeycode,

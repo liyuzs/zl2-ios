@@ -1308,7 +1308,11 @@ enum ZLUnsupportedSettings {
     /// iOS 应该支持，但核心还没接线 —— 属于待办，不是永久不支持
     static let notWired: Set<String> = [
         // controlLayout 已实现（CoreLayoutExporter + CoreBridge.syncControlLayoutIfNeeded）
-        "enableTerracotta",       // Terracotta 联机（需要 Network Extension）
+        // Terracotta 联机（需要 Network Extension）。
+        // **这三个键要留着**：第132轮删掉了 `TerracottaScreen`（359 行假页面）和 `.terracotta` 路由，
+        // 但设置在设置页显示「尚未接入」——对用户是**有用的说明**（"这个能力 iOS 上还不行"），
+        // 不是死代码。删了它，用户在设置里就完全看不到 Terracotta 这回事了。
+        "enableTerracotta",
         "enableTerracottaNodes",
         "terracottaNodes",
         // versionIsolation 从「已接线」移出来了，原因见下：

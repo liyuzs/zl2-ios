@@ -48,14 +48,10 @@ struct GameMenuScreen: View {
     private static let inputExtrasWired = false
     /// 安卓 `gamepadViewModel.getAllConfigKeys()`；iOS 未接入配置管理时为空数组。
     private let gamepadMappingConfigs: [String]
-    /// 安卓 `AllSettings.enableTerracotta`。
-    private let enableTerracotta: Bool
-
     // 以下回调对应 GameScreen.kt:757-781 传给 GameMenuSubscreen 的 lambda。
     // 传 nil 表示 iOS 端还没接入，按钮会给出明确提示而不是静默失败。
     private let onForceClose: (() -> Void)?
     private let onSwitchLog: (() -> Void)?
-    private let onOpenTerracottaMenu: (() -> Void)?
     private let onRefreshWindowSize: (() -> Void)?
     private let onInputMethod: (() -> Void)?
     private let onSendKeycode: (() -> Void)?
@@ -78,10 +74,8 @@ struct GameMenuScreen: View {
          sdlEnabled: Bool = false,
          gyroscopeAvailable: Bool = GameMenuScreen.systemGyroscopeAvailable,
          gamepadMappingConfigs: [String] = [],
-         enableTerracotta: Bool = false,
          onForceClose: (() -> Void)? = nil,
          onSwitchLog: (() -> Void)? = nil,
-         onOpenTerracottaMenu: (() -> Void)? = nil,
          onRefreshWindowSize: (() -> Void)? = nil,
          onInputMethod: (() -> Void)? = nil,
          onSendKeycode: (() -> Void)? = nil,
@@ -92,10 +86,8 @@ struct GameMenuScreen: View {
         self.sdlEnabled = sdlEnabled
         self.gyroscopeAvailable = gyroscopeAvailable
         self.gamepadMappingConfigs = gamepadMappingConfigs
-        self.enableTerracotta = enableTerracotta
         self.onForceClose = onForceClose
         self.onSwitchLog = onSwitchLog
-        self.onOpenTerracottaMenu = onOpenTerracottaMenu
         self.onRefreshWindowSize = onRefreshWindowSize
         self.onInputMethod = onInputMethod
         self.onSendKeycode = onSendKeycode
@@ -108,7 +100,6 @@ struct GameMenuScreen: View {
     static let systemGyroscopeAvailable: Bool = CMMotionManager().isGyroAvailable
 
     /// strings.xml（terracotta.xml）里的 terracotta_menu，ZLStrings 未收录
-    static let terracottaMenuTitle = "联机菜单"
 
     // MARK: - 主体
 
@@ -273,14 +264,6 @@ struct GameMenuScreen: View {
         // 日志输出
         textButton(ZLStrings.game_menu_option_switch_log) {
             perform(onSwitchLog)
-        }
-
-        // 开启多人联机时才会出现（GameMenuSubscreen.kt:249-265）
-        if enableTerracotta {
-            Color.clear.frame(height: 8)
-            textButton(GameMenuScreen.terracottaMenuTitle) {
-                perform(onOpenTerracottaMenu)
-            }
         }
 
         Color.clear.frame(height: 8)
