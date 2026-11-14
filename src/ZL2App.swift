@@ -117,11 +117,16 @@ struct RootView: View {
     /// 冷启动（`.task`）和回到前台（`scenePhase == .active`）都会调。
     private func handlePendingAction() {
         if let route = ZLPendingAction.consumeRoute() {
+            // 第161轮修：原来这张表漏了 "settings" —— 长按图标的「设置」写进去后被
+            // `default: break` 静默丢弃，用户点了 App 会开但不跳页。
             switch route {
             case "download": path.append(.download)
+            case "settings": path.append(.settings)
             case "versionList": path.append(.versionList)
             case "multiplayer": path.append(.multiplayer)
-            default: break
+            default:
+                // 不要再让它完全静默 —— 未知路由名至少留个日志，否则排查时无从下手。
+                NSLog("[ZL2] 未知的待处理路由：%@", route)
             }
         }
         if ZLPendingAction.consumeLaunchFlag() {
