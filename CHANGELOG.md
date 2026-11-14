@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **新增 `_check-type-read.js`：type 契约的"读侧"**。`_check-type-control`（152轮）查**写侧**（type ↔ UI 控件），这条查**读侧**（type ↔ `UserDefaults` 读法）。`integer()` 遇 String 给 0 · `bool()` 遇 "true" 给 false · `object() as? Int` 不符给 nil——**用户改了设置但完全不生效，无任何提示**。实测 **17 处全匹配**。
+- **过程修正判据两次**：第一版把 `object(forKey:)` 一律当"不匹配"→ 误报 3 处（`as? Bool ?? true` 是标准桥接、`== nil` 是存在性判断，都合法）；第二版改成"`object` 后面的 `as? X` 要和 type 匹配"→ 0 误报。双向注入验证都能精确报出。
+- **这是"判据挂保护强度"（162轮）的又一次应用**：`object` 本身不危险，危险的是"转成了错的类型"。
+
 - **新增 `_check-silent-default.js`：字符串 switch 的 `default` 不许静默**。字符串 switch **没有编译器穷尽检查**，`default: break` 会把"漏掉的 case"变成"什么都没发生"——第161轮的 bug 就是这个形态。三层区分：**字符串要报** · 枚举不报（强制穷尽 + "处理少数 case"是正常写法）· 数值不报（值域无界，default 必须有）。实测 **11 个字符串 switch，0 处静默**；注入验证（把 default 的 NSLog 换回 break）能精确报出。
 - **过程修正判据**：第一版只看 `default:` 那一行，把"`default:` 换行 + NSLog(...)"也当成静默 → 上一轮刚修的两处被误报。改成取 default 块的**完整内容**后归零。
 
