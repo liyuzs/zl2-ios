@@ -89,4 +89,29 @@ if (drifted.length === 0) {
   }
 }
 
-process.exit(orphans.length + drifted.length === 0 ? 0 : 1);
+// ---- 第172轮加的判据：IPA 过期了，文档就必须有警告 ----
+// 背景：`ZL2.ipa` 是 build-235（11/8），源码是 11/14，而文档说"这就是 App 本体" ——
+// 朋友会以为装着的是最新代码。IPA 只能靠 CI 重建（需要 token），所以它会长期落后，
+// 这时候**文档的警告就是唯一防线**。
+let ipaStale = null;
+try {
+  const ipaPath = path.join(DELIVERY, 'ZL2.ipa');
+  const zipPath = path.join(DELIVERY, 'zl2-ios-源码.zip');
+  const a = fs.statSync(ipaPath), b = fs.statSync(zipPath);
+  const days = (b.mtimeMs - a.mtimeMs) / 86400000;
+  if (days > 1) {
+    const doc = fs.readFileSync(path.join(DELIVERY, '从这里开始.md'), 'utf8');
+    // **只认 `build-数字`** —— 这是最独特的标记。
+    // 原来还认"旧包"，结果文档 L48 别处就写着「不覆盖旧包」→ 即使删掉 IPA 那行的警告也能匹配（判据失效）。
+    const warned = /build-\d+/.test(doc);
+    if (!warned) ipaStale = { days: Math.round(days) };
+  }
+} catch { /* 文件不在就跳过 —— 新交付包还没构建 IPA 时属于正常 */ }
+
+if (ipaStale) {
+  console.log(`⚠ ZL2.ipa 比源码旧 ${ipaStale.days} 天，而「从这里开始.md」里没有警告`);
+  console.log('  朋友会以为那是最新版。在这份文档里写清"这是旧包，要最新版得重新构建"。');
+  console.log('');
+}
+
+process.exit(orphans.length + drifted.length === 0 && !ipaStale ? 0 : 1);
