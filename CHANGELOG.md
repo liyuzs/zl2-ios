@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **新增 `_check-fallback-default.js`：兜底值必须等于声明的默认值**。`ZLSettingsStore` 读不到时会用 `defaultValue` 兜底 ✓，但 `CoreBridge` 等处**直接读 `UserDefaults`**、用自己的 `?? `——**两个值之间没有任何机制保证一致**；改了 `defaultValue` 忘了改 `??`，用户没设置过时拿到的就不是声明的默认值，**首启动行为静默变错**。实测 **11 处全一致**（是"碰巧一致"不是"有保障"）。四类判据：`string ?? "X"` / `integer()` 无 `??` / `bool()` 无 `??` / `as? Bool ?? X`。双向注入验证都能精确报出。
+- 这是"两端约定清点表"的第六类：type 读写两侧（152+163）· 键名↔定义表（158）· 路由字符串↔消费分支（161）· shortcut↔case（160）· SF Symbol↔真实存在（159）· **兜底值↔声明默认值（164）**。
+
 - **新增 `_check-type-read.js`：type 契约的"读侧"**。`_check-type-control`（152轮）查**写侧**（type ↔ UI 控件），这条查**读侧**（type ↔ `UserDefaults` 读法）。`integer()` 遇 String 给 0 · `bool()` 遇 "true" 给 false · `object() as? Int` 不符给 nil——**用户改了设置但完全不生效，无任何提示**。实测 **17 处全匹配**。
 - **过程修正判据两次**：第一版把 `object(forKey:)` 一律当"不匹配"→ 误报 3 处（`as? Bool ?? true` 是标准桥接、`== nil` 是存在性判断，都合法）；第二版改成"`object` 后面的 `as? X` 要和 type 匹配"→ 0 误报。双向注入验证都能精确报出。
 - **这是"判据挂保护强度"（162轮）的又一次应用**：`object` 本身不危险，危险的是"转成了错的类型"。
