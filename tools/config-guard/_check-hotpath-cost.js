@@ -15,7 +15,7 @@
 //   `.onReceive { }` / `.refreshable { }` / `.sheet { }` / `.alert { }` / `.confirmationDialog { }`
 //   闭包内部不判。`FileManagerScreen` 的属性页把递归算目录大小放在 `.task` 里，正是正确做法。
 //
-// **查不到什么**：只认下面这 5 类操作；别的昂贵写法（大数组 sort、字符串拼接、正则）
+// **局限**（查不到什么）：只认下面这 5 类操作；别的昂贵写法（大数组 sort、字符串拼接、正则）
 //   不判 —— 那需要真正的复杂度分析。
 const fs = require('fs');
 const path = require('path');
