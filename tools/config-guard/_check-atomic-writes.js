@@ -28,6 +28,11 @@ const { SRC } = require('./_paths');
 // 只放**路径特征词**，不要放短的通用词 ——
 // 用子串匹配时，'temp' 会命中 template / attempt / contemplate，'stage' 会命中 staging。
 // 第105轮受控实验证实：变量名叫 templateURL 或 attemptURL 时，非原子写会被放过。
+//
+// **第212轮：做过一次真实注入验证**（承第211轮"基线通过不是信息，只有注入能区分"）——
+// 把 `ControlModelBridge.swift:503` 的 `options: .atomic` 去掉 → 本检查**报出** ✓，
+// 还原后通过 ✓。所以这条**数据安全防线是活的**，不是"只跑过基线的绿灯"。
+// （基线：检查了 21 处 write(to:)）
 const TEMP_HINTS = ['temporaryDirectory', 'NSTemporaryDirectory', '/tmp/', '.tmp', 'trash', 'cachesDirectory'];
 
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.swift'));
