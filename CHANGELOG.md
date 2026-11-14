@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **首页每次 onAppear 都在主线程递归扫全部版本目录**：`listVersions()` 对每个版本目录调 `directorySize()`（`fm.enumerator` 递归遍历 jar + libraries 数百文件 + mods，逐个 stat），而 `sizeBytes` 全项目**只有版本列表一处显示**。改为 `listVersions(includeSize: Bool = false)`，只有 `VersionListScreen` 传 `true`；UI 里 `sizeBytes == 0` 不显示。新增 `_check-startup-io.js` 静态守住这个默认值（本地没真机，测不了耗时，只能守默认）：断言参数默认 false + `directorySize` 受其门控；注入改成 true 会报。
+- **`_run-all.ps1` 加清单结构自检**：第79/124轮各踩一次——插三元组时多留逗号 → `@(...),,` → 数组套数组 → 报 `Join-Path: 无法将 System.Object[] 转换为参数 ChildPath`，**错误信息离病根太远**。现在每项必须是长度 3 的数组，否则直接报出是哪一项并提示原因。
+
 - **把"单跑抽查"固化成工具 `_spot-check.ps1`**：第122轮发现 `_check-links.ps1` 假绿 26 轮（脚本里有 U+FEFF，PowerShell 报错不终止、退出码仍 0，而 `_run-all.ps1` 只看退出码）。人工单跑是一次性动作，不会重复发生，所以做成工具：**绕过执行器逐个单跑清单里的脚本**，判定比执行器严（退出码≠0 **或** 输出里有 ErrorRecord，任一成立即算问题）。
   用它验了一遍：**60 个脚本单跑全部干净**，说明第122轮那批 BOM 清理是彻底的。过程中它自己抓到两件事（新脚本未登记、清单改了但交付包没同步），都证明它在工作。它**不进**必跑清单（会起 60 个子进程拖慢每轮），已登记进 `README-脚本清单.md` 的"抽查工具"。
 - 反复踩的坑记档：用 `write` 写 `.ps1` 不带 BOM → PowerShell 5.1 按 GBK 解码中文，`干净通过` 变成 `骞插噣閫氳繃`、引号被吃掉、语法直接崩；`New-Object System.Text.UTF8Encoding($true)` 这次也没写出 BOM，最后用 node 手工拼 `EF BB BF` 才成。
