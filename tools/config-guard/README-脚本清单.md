@@ -28,6 +28,7 @@ cd C:\Users\21793\.dsh\config-guard
 | 脚本 | 查什么 |
 |---|---|
 | `swift-lint.js` | Swift 括号配对（字符串/注释感知） |
+| `_check-indentation.js` | 缩进体检：**块内却贴行首**这类排版错（第116轮踩过 —— `if` 缩进跑到第 0 列，而 swift-lint 只验括号配对、照样报绿）。已排除 `case`/`default:`/`@unknown default:`、`]`/`)` 收尾行、多行字符串内容 |
 | `_check-interpolation.js` | 字符串插值里拼错的变量名（编译错误，括号检查查不出） |
 | `_check-imports.js` | 用了某框架符号却没 import 对应框架（UIKit / CryptoKit / Compression / PhotosUI / AVFoundation） |
 | `_check-call-labels.js` | 调工程内类型的方法时参数标签与声明对不上（如 `requiredJavaVersion(for:)` vs `(_:)`）—— 没有编译器时的编译前置检查 |

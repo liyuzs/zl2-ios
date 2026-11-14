@@ -25,6 +25,7 @@ $g = 'C:\Users\21793\.dsh\config-guard'
 # 每项：名字, 类型（js/ps1）, 说明
 $checks = @(
     @('swift-lint.js',              'js',  'Swift 括号配对'),
+    @('_check-indentation.js',     'js',  '缩进：块内贴行首'),
     @('_check-interpolation.js',    'js',  '插值里拼错的变量名'),
     @('_check-imports.js',          'js',  '框架 import 缺失（会编译失败）'),
     @('_check-error-hints.js',      'js',  '失败提示必须带 advice'),
