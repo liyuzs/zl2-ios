@@ -57,6 +57,7 @@ $checks = @(
     @('_check-number-range.js',  'js',  '数字输入项必须有 range'),
     @('_check-type-control.js',   'js',  '设置项类型与控件匹配'),
     @('_check-type-read.js',      'js',  'type 与读取方法匹配'),
+    @('_check-fallback-default.js','js', '兜底值与声明默认值一致'),
     @('_check-setting-defaults.js','js',  '设置项默认值只在一处声明'),
     @('_check-path-safety.js',      'js',  '路径拼接安全（防目录穿越）'),
     @('_check-download-magic.js', 'js', '下载写盘须校验内容'),
