@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **首页那行版本描述是硬编码的**：`HomeScreen` 里写着 `Text("1.20.1 · Fabric 0.19.2")`——无论装什么版本都显示这一行（第43轮那类"假数据"的漏网之鱼，而且在首页最显眼处）。已新增 `VersionRepository.displayMeta(for:)` 从版本 JSON 真实读取（加载器版→`Fabric · 1.20.1`，纯原版→`原版 · 正式版`，读不到返回 nil 就不显示这行）；首页用 `@State` 存（**不能在 body 里读文件**——第125轮的 `_check-hotpath-cost` 实测拦住了这条思路）。
+- 顺带统一：`VersionListScreen.versionMeta` 与首页各写一份"读 JSON 拼描述"且输出格式不一致，现在都走 `displayMeta`，列表页保留自己的缓存层。
+
 - **扫出并修掉 2 处"名单里的文件读不到就静默跳过"**：按"监视对象消失"这个判据扫全部检查——6 个有写死文件名单，4 个没 `existsSync`。核实后 `_check-install-docs` 已正确（`missing` 计入 fail）、`_check-script-inventory` 的 `PATH_EXEMPT` 是豁免名单不用改；`_check-doc-stats`（`catch { continue; }` 静默跳过）与 `_check-path-safety`（GUARDED 少一个只减分母）要改。都加了"名单存在性"保护，报错文案统一说「**读不到就等于没查**」。
 - 附带发现：`path-safety` 的 `read()` 没有 try/catch，文件不存在会**抛异常崩掉**而不是走友好提示 → 改成循环里先 `fs.existsSync` 再读。
 
