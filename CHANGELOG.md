@@ -63,6 +63,9 @@
 
 ### 已知问题 / 新增
 
+- **删掉 359 行的假联机页 `TerracottaScreen`（整文件 + 死路由）**：按"有反馈的假功能比空白危险"的判据扫出来的——「启用多人联机」Toggle 绑 `@State enabled`，无持久化、无消费者。核实：`.terracotta` 路由**无人导航**（第76轮已确认）、它定义的 3 个类型（`ZLRoomType`/`ZLRoomCode`/`ZLTerracottaState`）**文件外零引用**、Terracotta 需要 Network Extension（本项目基本不可能接入）。删前确认 `GameMenuScreen:279` 的入口是**双重死代码**（`enableTerracotta` 在 `notWired` 里置灰且默认 false；`onOpenTerracottaMenu` 恒 nil），不会造成死链。文件数 71 → **70**，AppRoute 23 → **22**。
+  **为什么这次删而第42/76轮保留**：那时把假交互改成说明卡、按"自身声明为界面演示"留着；但一个 359 行的假联机页摆在那里，将来谁接上路由，用户会看到一整套拨了没反应的界面——留着"以后也许有用"的成本高于价值。
+
 - **删掉占着"控制布局"位置的假编辑器**：`AppRoute.controlEditor`（第76轮登记的死路由）指向的 `ControlsScreen` 是个简化假编辑器——7 个写死按键、拖动只改 `@State`、**"完成"只是 `editing.toggle()`、没有任何保存逻辑**；而真编辑器是 `ControlEditorScreen`（1700+ 行，能保存/导出到核心），入口在 `ControlManageScreen`。虽然死路由没人导航（用户到不了），但哪天有人把它接上就会进到拖完不保存的假编辑器。已删 `ControlsScreen` + `ControlKey`（73 行）+ 死路由与目的地分支，`AppRoute` 24 → **23**。
 - **手势审计结论**：全仓 7 处长按菜单 + 3 处左滑 + 1 处长按 + 2 处自定义拖动，**都是 iOS 惯例或已有提示**，没有"藏起来用户不知道"的交互。
 
