@@ -21,6 +21,7 @@
 //     只跑检查不跑生成器，数字永远不会自动变对。
 
 const PATHS = require('./_paths');
+const { readSettingsSets } = require('./_shared');
 const fs = require('fs');
 const path = require('path');
 

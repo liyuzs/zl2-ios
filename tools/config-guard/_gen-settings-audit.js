@@ -14,6 +14,7 @@
 // 所以流程是：改完集合 → 跑本脚本 → 跑检查。
 
 const PATHS = require('./_paths');
+const { readSettingsSets } = require('./_shared');
 const fs = require('fs');
 const path = require('path');
 
