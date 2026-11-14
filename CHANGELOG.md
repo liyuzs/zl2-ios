@@ -63,6 +63,10 @@
 
 ### 已知问题 / 新增
 
+- **接上 `CoreBridge.gameLaunchCount`**：它第141轮就被发现"存在但全仓没人用"（注释还写着「供 UI 显示」）。现在首页版本描述后面显示「· 已启动 N 次」——对用户是正反馈（第一次成功启动后会看到「已启动 1 次」）。**只在 N > 0 时显示**（"已启动 0 次"是负反馈）；**横排**放在描述后面（首页是固定布局没有 ScrollView，第一版写竖排会多占 13pt）；在 `.task` 路径里赋值、不在 body 里读（`_check-hotpath-cost` 通过）。
+- **审计：空状态的可操作性** —— 19 处 `ZLEmptyState`，**17 处自带按钮**，另 2 处用文字给了指引（「打开上面的开关」/ 任务中心的说明性文字），合理。
+- **审计：游戏内菜单 40 个键的消费者** —— 全部都有 src 侧读取（2-3 处），没有"没人读"的。
+
 - **手工核实 22 个疑似死方法，删 20 个（约 133 行）**：核实方式是"src 裸名次数 + **core 的 .m/.h 引用**"——`ZLOverlayHost.attach`/`detach` 在 core 有 1/2 处引用，**保留**。
 - **连锁清理**：`ZLStaggerIn`（ViewModifier，`.staggerIn()` 删了它就没人用）· `MicrosoftTokenSet.expiresAt`（唯一读者 `isExpired` 删了它就成了死字段）· 删 `isExpired` 留下的空行。`refreshToken` **保留**（`MicrosoftAuth:268` 有赋值链，将来做刷新要用）。
 - **三处"看起来该用但被替代"**：①`GameOverlay.recordFrame` → 被 `GameFPSMonitor`（从核心帧计数换算）替代，**FPS 有数据源** ②`MojangAPI.applicableLibraries` → 被 `VersionInstaller` 自己的过滤替代（**跳过 natives + SHA-1 校验**，但不按 `rules` 过滤——natives 已跳过，影响小）③**`MicrosoftAuth.refreshed` 没有替代** → 微软 token 1 小时后过期，**每次都要重新登录**（token 刷新从未接通，这是能力边界）。
