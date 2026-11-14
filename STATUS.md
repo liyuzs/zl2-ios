@@ -140,6 +140,8 @@ git push   # 本地分支 master → 线上 main
 2. **能不能启动未知** —— 启动链路已补齐 19 项致命缺陷，但 `UnsatisfiedLinkError` / 版本 JSON 处理 / 渲染管线只有真机日志能回答
 3. **UI 还原度** —— 对照录屏补过 20 处差异，26 个页面做了合并简化
 4. **1 个路由没有入口** —— `.room`（`MultiplayerRoomScreen` **已实现并接在路由里**，只是界面没有导航到它的按钮：远程联机需要 Network Extension，等付费开发者账号）。
+   **第189轮已在该界面顶部加警示**（「这个功能还没做完 —— 隧道组件需要 Network Extension，当前版本里连不通」）——
+   因为将来真有人把它接上入口时，最容易忘的就是"底下还没通"，而用户会看到一个"能点但连不上"的界面。
    **不是"页面没实现"**。第75轮发现过 7 个不可达页面：`ServerListScreen` / `SearchIDScreen` 已接上入口，
    `ExportScreen` / `CrashLogScreen` / `SelectGameVersionScreen` 已删除，`TerracottaScreen`（359 行假页面）第132轮删除，
    另清掉 6 个冗余死路由（详见 `_check-dead-routes.js` 的 ALLOW）。
@@ -156,6 +158,14 @@ git push   # 本地分支 master → 线上 main
     所以对方 App 的「用其他应用打开」里不出现 CraftLauncher。
     **能用的路**：`UIFileSharingEnabled` 已开，用「文件」App 把文件拖进 CraftLauncher 的 Documents 文件夹 ✓
     （文件管理器空状态里的提示已按这个事实改过，不再教做不到的操作。）
+11. **外置登录（皮肤站）只做了一半 —— 游戏内是离线身份，进不了正版验证的服务器**
+    · 会真的调 `/authserver/authenticate` 并**验证邮箱密码** ✓
+    · 但只取角色的 `id`/`name`，**丢弃了 accessToken**（拿不到 refresh token）
+    · 游戏内仍走 `addOffline` → **离线身份**，进不了需要正版验证的服务器
+    · **皮肤能显示**，靠 `authlib-injector`（`-javaagent:...=<server>` 反查皮肤站）
+    · 真要支持正版会话，得补 token 存储 + refresh（`Account` 已有 `accessToken`/`refreshToken` 字段，但没被用上）
+    （**第190轮已把这一点写进 UI**：登录成功的提示改成「皮肤会显示；但游戏内是离线身份，进不了需要正版验证的服务器」，
+    账号列表里的类型标签也从「外置认证」改成「外置认证（离线）」。）
 
 ---
 
