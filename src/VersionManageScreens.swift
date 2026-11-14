@@ -89,7 +89,10 @@ struct GameDirsScreen: View {
         ZLCard {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 8) {
-                    Image(systemName: "folder.fill.badge.person.crop")
+                    // 第159轮：原来是 `folder.fill.badge.person.crop` —— **SF Symbols 里没有这个名字**
+                    // （只有 `folder.badge.person.crop`，带 `.fill` 的 badge 变体不存在）。
+                    // `Image(systemName:)` 对无效名不报错、只渲染空白，所以这个图标一直空着。
+                    Image(systemName: "folder.badge.person.crop")
                         .font(.system(size: 17))
                         .foregroundStyle(ZLTheme.primary)
                     Text("当前游戏目录")

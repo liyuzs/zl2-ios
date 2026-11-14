@@ -42,6 +42,7 @@ $checks = @(
     @('_check-pending-action.js',   'js',  '快捷指令待处理动作（写入/消费/时效）'),
     @('_check-fixed-widths.js',     'js',  '固定宽度 ≥280 必然溢出手机竖屏'),
     @('_check-a11y.js',             'js',  '图标按钮无障碍（只许降）'),
+    @('_check-symbol-names.js',   'js',  'SF Symbol 名都在已验证清单'),
     @('_check-hstack-budget.js',   'js',  '一行内固定宽度之和'),
     @('_check-trademark-strings.js','js',  '界面自称 ZL2（违反 GPLv3 第7条）'),
     @('_check-license-page.js',     'js',  '许可页 ↔ 实际打包内容'),

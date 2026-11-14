@@ -47,6 +47,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-startup-io.js` | 首屏性能：断言 `listVersions` 默认 `includeSize: false`、且 `directorySize` 受它门控。第124轮发现首页 `onAppear` 会**递归扫全部版本目录算大小**（而大小只有版本列表一处显示）。本地没真机测不了耗时，只能静态守住默认值 |
 | `_check-hotpath-cost.js` | 高频位置开销，覆盖**三层**：①`body`/computed var（每次重绘）②`.onChange`（每次值变）③`ForEach`（每行）—— 里面不许出现 `listVersions` / `directorySize` / 目录枚举 / JSON 解码 / 读文件。**豁免** `.task`/`.onAppear`/`.sheet` 等副作用闭包内部（那是正确写法）。实测 228 渲染块 + 23 onChange + 98 ForEach，0 处 |
 | `_check-a11y.js` | 图标按钮无障碍：统计"Button 里只有 Image、又没有 accessibilityLabel"的数量，**只许降不许升**（基线在 `_a11y-baseline.json`）。第110轮补了顶栏 5 个 + 主界面 4 个导航入口的标签，其余 78 处记为已知欠账 |
+| `_check-symbol-names.js` | `Image(systemName:)` 的名字必须来自**已验证清单**。第159轮发现 `folder.fill.badge.person.crop` **不存在**（只有 `folder.badge.person.crop`）——"当前游戏目录"卡片的图标一直是**空白**的，因为 `Image(systemName:)` 对无效名**不报错、不崩溃、只渲染空白**。没有 SF Symbols 完整列表没法自动验证，所以用**基线冻结**：67 个逐个核实过的名字固化在脚本里，新增的要人工确认 |
 | `_check-hstack-budget.js` | 横向预算：同一 `HStack` **直接子层**多个固定宽度之和 ≥288pt（375pt 屏可用 339pt 的 85%）就报。⚠️ 只看内联块，写在 computed property 里的宽度追不到（已在文件头写明） |
 | `_check-dark-mode.js` | 深色模式链路：`ZLPalette.color` 必须会按 darkMode 把 `…Light` 换成 `…Dark`；RootView 必须把系统 colorScheme 同步给 ThemeManager；色板 Light/Dark 两组键必须成对 |
 | `_check-trademark-strings.js` | 命名合规：界面字符串不得把 App 自称 `ZL2` / `ZalithLauncher`（README 声明的 GPLv3 第 7 条）；上游署名、格式名、Bonjour 服务名等例外逐条登记理由 |
