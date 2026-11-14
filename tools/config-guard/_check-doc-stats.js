@@ -57,6 +57,19 @@ const actualScripts = (() => {
 // ---- 文档里的当前状态行 ----
 const MARKERS = ['代码规模', '代码：', '界面代码为原创重写', '文档：', '自动化检查', '分组导航'];
 const DOCS = ['README.md', 'STATUS.md'];
+// **第208轮**：把 `HANDOFF-*.md`（交接文档）也纳入。
+// 用通配是因为文件名带日期（`HANDOFF-20261108.md`），将来交接时会换名。
+//
+// **注意两个门槛，别误以为"加进来就管住了"**：
+//   ① 文件要在 `DOCS` 里
+//   ② **行要含 `MARKERS` 里某个词**（见下面 L94 的过滤）
+// HANDOFF 里那处「### Swift 侧（70 个文件）」**标题行不含 MARKERS** ——
+// 所以它**从来没被这条检查管过**，是第208轮人工发现并修掉的。
+// 加进来是为了：将来 HANDOFF 里如果出现「代码规模：…」这种行，会被管住。
+try {
+  const handoffs = fs.readdirSync(ROOT).filter(f => /^HANDOFF-.*\.md$/.test(f));
+  for (const h of handoffs) DOCS.push(h);
+} catch { /* 读不到就跳过，下面的"名单存在性"会管 */ }
 
 const problems = [];
 let checked = 0;
@@ -72,6 +85,9 @@ for (const doc of DOCS) {
   // 一行里可能同时有三个数字，逐个比对
   const CLAIMS = [
     { name: 'Swift 文件', re: /(\d+)\s*个\s*Swift/, actual: actualSwift },
+  // **第208轮**：还有一种写法是「Swift 侧（70 个文件）」—— 数量在括号里、单位是"个文件"，
+  // 原来的 `N 个 Swift` 匹配不到它，所以 HANDOFF 里那处过期了很久没人发现。
+  { name: 'Swift 侧文件数', re: /Swift\s*侧\s*[（(]\s*(\d+)\s*个文件/, actual: actualSwift },
     { name: '核心 .m',   re: /(\d+)\s*个\s*`?\.m`?/, actual: actualM },
     { name: 'jar',       re: /(\d+)\s*个\s*jar/, actual: actualJar },
     // 第94轮补：文档篇数（README 曾写 24 篇、STATUS 曾写 28 篇，实际 30 篇）
