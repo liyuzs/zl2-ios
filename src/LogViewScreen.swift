@@ -142,7 +142,7 @@ struct LogViewScreen: View {
             Button {
                 UIPasteboard.general.string = lines.joined(separator: "\n")
             } label: {
-                Image(systemName: "doc.on.doc")
+                Image(systemName: "doc.on.doc").accessibilityLabel("复制日志")
                     .font(.system(size: 13))
                     .foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 34, height: 34)

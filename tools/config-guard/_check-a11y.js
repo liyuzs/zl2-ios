@@ -31,6 +31,20 @@ function countUnlabeledIconButtons(src) {
     const down = lines.slice(i, i + 10).join('\n');
     if (/accessibilityLabel/.test(down)) continue;
     if (/Text\s*\(/.test(down)) continue;
+
+    // 第113轮补：`Button("标题") { }` / `Button(变量) { }` 这类**带标题参数**的按钮
+    // 本身就念得出名字（iOS 会拿标题当无障碍名）。要排除的只是
+    // `Button { }`（无参）与 `Button(role:/action:/label:)`（全是修饰参数）。
+    let btnTitle = false;
+    for (let k = i; k >= Math.max(0, i - 12); k--) {
+      const m = lines[k].match(/Button\s*\(([^)]*)/);
+      if (!m) continue;
+      const arg = m[1].trim();
+      btnTitle = arg.length > 0 && !/^(role|action|label)\s*:/.test(arg);
+      break;
+    }
+    if (btnTitle) continue;
+
     n++;
   }
   return n;

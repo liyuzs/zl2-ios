@@ -167,7 +167,7 @@ struct AssetsScreen: View {
                                               forKey: "zl.assets.favorites")
                     localItems = localItemsForCurrentKind()
                 } label: {
-                    Image(systemName: "heart.fill")
+                    Image(systemName: "heart.fill").accessibilityLabel("收藏")
                         .font(.system(size: 15)).foregroundStyle(ZLTheme.danger)
                 }
                 .buttonStyle(.plain)

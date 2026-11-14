@@ -328,6 +328,7 @@ struct HomeScreen: View {
                         .font(.system(size: 16))
                         .foregroundStyle(ZLTheme.textSecond)
                         .frame(width: 40, height: 40)
+                        .accessibilityLabel("版本设置")
                         .background(ZLTheme.surfaceAlt)
                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }

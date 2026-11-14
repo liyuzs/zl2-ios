@@ -55,6 +55,7 @@ struct JavaManageScreen: View {
                         .font(.system(size: 13))
                         .foregroundStyle(ZLTheme.textSecond)
                         .frame(width: 38, height: 38)
+                            .accessibilityLabel("重新扫描 Java")
                         .background(ZLTheme.surface)
                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }

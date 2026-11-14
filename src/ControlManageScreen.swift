@@ -140,7 +140,7 @@ struct ControlManageScreen: View {
                                     if selected == layout.id { selected = layouts.first?.id }
                                     save()
                                 } label: {
-                                    Image(systemName: "trash")
+                                    Image(systemName: "trash").accessibilityLabel("删除布局")
                                         .font(.system(size: 13)).foregroundStyle(ZLTheme.danger)
                                 }
                                 .buttonStyle(.plain)

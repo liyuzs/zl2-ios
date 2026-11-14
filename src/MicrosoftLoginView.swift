@@ -23,7 +23,7 @@ struct MicrosoftLoginView: View {
                     .foregroundStyle(ZLTheme.textPrimary)
                 Spacer()
                 Button { dismiss() } label: {
-                    Image(systemName: "xmark")
+                    Image(systemName: "xmark").accessibilityLabel("关闭登录页")
                         .foregroundStyle(ZLTheme.textSecond)
                         .frame(width: 34, height: 34)
                         .background(ZLTheme.surfaceAlt)

@@ -78,7 +78,7 @@ struct LaunchScreen: View {
             }
             Spacer()
             Button { isPresented = false } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel("关闭")
                     .foregroundStyle(ZLTheme.textSecond)
                     .frame(width: 36, height: 36)
                     .background(ZLTheme.surface)
