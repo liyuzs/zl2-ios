@@ -30,6 +30,15 @@ const path = require('path');
 const { REPO } = require('./_paths');
 
 const DELIVERY = 'D:\\ZL2-iOS交付包';
+
+// **交付包目录不存在时整条跳过**（CI / 只检出源码的环境）。
+// 这几条检查的对象是"交付包里那 13 个文件"，没有交付包的机器上它们无从下手 ——
+// 报失败或崩溃都是错的（第 257 轮 CI 因为这条挂了整步静态检查）。
+if (!fs.existsSync(DELIVERY)) {
+  console.log('· 交付包目录不存在（' + DELIVERY + '），跳过 —— 这条检查只在有交付包的机器上有意义');
+  process.exit(0);
+}
+
 const GUIDE_NAME = '从这里开始.md';
 const GUIDE_SRC = path.join(REPO, 'docs', '交付包说明-从这里开始.md');
 const GUIDE_DST = path.join(DELIVERY, GUIDE_NAME);
