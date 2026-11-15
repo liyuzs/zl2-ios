@@ -284,7 +284,7 @@ struct VersionIconPicker: View {
             }
         }
         .background(ZLTheme.background.ignoresSafeArea())
-        .onChange(of: pickedItem) { _, newItem in
+        .onChange(of: pickedItem) { newItem in   // 第258轮：iOS 16 只有单参数版
             guard let newItem else { return }
             Task {
                 if let data = try? await newItem.loadTransferable(type: Data.self),

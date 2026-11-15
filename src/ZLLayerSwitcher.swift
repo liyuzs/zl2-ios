@@ -186,7 +186,8 @@ public final class ZLLayerSwitcher: NSObject {
     }
 
     /// 保存「伪键码 → uuid」映射，供按钮点击时反查
-    @objc(persistPseudoKeysFor:)
+    // 第258轮：去掉 @objc —— 参数类型 ZLControlLayout 是 internal Swift 类型，
+    // ObjC 表示不了它，@objc 会直接编译失败。core 里也没有调用方（已 grep 确认）。
     public static func persistPseudoKeys(for layout: ZLControlLayout) {
         let map = LayerPseudoKey.buildMapping(for: layout)
         LayerPseudoKey.persist(map)

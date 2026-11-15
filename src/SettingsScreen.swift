@@ -997,6 +997,12 @@ struct SettingsScreen: View {
                         themeManager.darkMode = (value == "DarkMode.Enable")
                     })
                 }
+            default:
+                // **第 258 轮补**：`ZLSettingRow.Kind` 有 11 个 case，有特殊外观的只有 5 个
+                // （hotspot / keyCode / blur / animateSpeed / darkMode），
+                // 其余（toggle / slider / picker / text / number / info）用最简一行兜底。
+                // Swift 要求 switch 穷尽，漏了就是编译错误（CI 第 240 次构建）。
+                labelBlock(row.title, row.summary)
         }
     }
 

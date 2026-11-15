@@ -1317,7 +1317,7 @@ struct ControlEditorScreen: View {
     ///   - point: 拖拽中的归一化坐标（0~1）
     ///   - current: 正在拖的控件（不参与吸附，避免自己吸自己）
     private func applySnap(_ point: CGPoint, current: ControlItem) -> CGPoint {
-        guard snap > 0 else { return point }   // 编辑器内的手动开关
+        guard snap else { return point }   // 编辑器内的手动开关（第258轮：snap 是 Bool，原来写成 > 0）
 
         let tol = snapTolerance
         // 收集可吸附参考点
@@ -1370,7 +1370,7 @@ struct ControlEditorScreen: View {
         var point = CGPoint(x: min(max(x / size.width, 0.03), 0.97),
                             y: min(max(y / size.height, 0.03), 0.97))
 
-        if snap > 0 && snapEnabled {
+        if snap && snapEnabled {
             // 有其它控件可吸附 → 用边缘吸附；否则退回 50 分格
             let snapped = applySnap(point, current: item)
             if abs(snapped.x - point.x) > 1e-6 || abs(snapped.y - point.y) > 1e-6 {
@@ -1379,7 +1379,7 @@ struct ControlEditorScreen: View {
                 point.x = (point.x * 50).rounded() / 50
                 point.y = (point.y * 50).rounded() / 50
             }
-        } else if snap > 0 {
+        } else if snap {
             // 关掉设置开关但编辑器内手动开了吸附 → 只做分格
             point.x = (point.x * 50).rounded() / 50
             point.y = (point.y * 50).rounded() / 50

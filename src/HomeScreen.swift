@@ -26,7 +26,6 @@ struct HomeScreen: View {
     @State private var versionDisplayMeta: String?
     /// 累计启动次数（UserDefaults 的 finishedGame）。只在 > 0 时显示 —— "已启动 0 次"是负反馈。
     @State private var launchCount = 0
-    @State private var zzWritten = 0
     // 彩蛋：连点标题
     @State private var titleTaps = 0
     @State private var eggText: String?
@@ -58,7 +57,6 @@ struct HomeScreen: View {
     var onVersionSettings: () -> Void = {}
 
     var body: some View {
-        let _ = zzWritten; zzWritten = 1
         ZStack(alignment: .topLeading) {
             // 动态背景：纯色底 + 缓慢漂移的主题色光斑（静止时几乎零开销）
             ZLBackdrop()

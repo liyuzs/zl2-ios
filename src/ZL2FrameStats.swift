@@ -12,6 +12,7 @@
 //
 
 import Foundation
+import QuartzCore   // CACurrentMediaTime() —— 第258轮 CI 编译报 cannot find in scope
 
 // MARK: - 核心桥接声明
 //

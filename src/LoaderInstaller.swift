@@ -134,7 +134,7 @@ struct ZLLoaderInstaller {
                             do {
                                 try d.write(to: dest, options: .atomic)
                             } catch {
-                                failedLibs.append(url.lastPathComponent + "（写盘失败）")
+                                failedLibs.append(u.lastPathComponent + "（写盘失败）")   // 第258轮：原来写 url，不在作用域
                             }
                         }
                     }

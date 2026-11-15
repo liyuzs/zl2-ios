@@ -265,7 +265,7 @@ enum CoreLayoutExporter {
             "displayInMenu": visibilityFlags(joy.visibilityType).inMenu,
             "passThruEnabled": false,
             "forwardLock": joy.canLock,
-            "absolute": joy.triggerMode == .absolute,
+            "absolute": joy.triggerMode == .touch,   // 第258轮：ZLJoystickTriggerMode 只有 drag/touch，没有 .absolute（touch=绝对位置）
             "deadZoneRatio": joy.deadZoneRatio,
             "lockThreshold": joy.lockThreshold,
         ]
