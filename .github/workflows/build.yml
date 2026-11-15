@@ -80,7 +80,14 @@ jobs:
             "s|^\( *\)CURRENT_PROJECT_VERSION: .*|\1CURRENT_PROJECT_VERSION: \"${BUILD}\"|" \
             > /tmp/zl2-version.sed
           cat /tmp/zl2-version.sed
-          sed -i -f /tmp/zl2-version.sed project.yml
+          # **第 258 轮修**：原来写的是 `sed -i -f /tmp/zl2-version.sed project.yml`。
+          # macOS 的 BSD sed 里 `-i` **要求一个备份后缀参数**，写成 `-i -f` 时：
+          #   · `-f` 被当成备份后缀
+          #   · `/tmp/zl2-version.sed` 被当成**脚本表达式**
+          #   → `sed: 1: "/tmp/zl2-version.sed": invalid command code z`（CI 第 239 次构建）
+          # 改成临时文件重定向，GNU sed / BSD sed 都能跑，不依赖 `-i` 的平台差异。
+          sed -f /tmp/zl2-version.sed project.yml > /tmp/zl2-project.tmp
+          mv /tmp/zl2-project.tmp project.yml
           echo "--- 注入结果 ---"
           grep -nE 'MARKETING_VERSION|CURRENT_PROJECT_VERSION' project.yml
           # 断言：必须真的改掉了，否则构建出来的 App 版本号还是旧的
