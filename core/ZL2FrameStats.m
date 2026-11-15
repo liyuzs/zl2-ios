@@ -15,6 +15,10 @@
 
 #import <Foundation/Foundation.h>
 #import <mach/mach.h>
+// **第 258 轮补**：下面用了 C11 原子（`_Atomic` / `atomic_fetch_add_explicit` / `memory_order_relaxed`），
+// 必须显式包含 stdatomic.h。第 2 轮写这个文件时本地没有编译器，静态检查也查不出缺 include ——
+// CI 第 238 次构建报的 6 个 error 全是这一个原因。
+#include <stdatomic.h>
 
 // 用原子累加，避免多线程竞争
 static _Atomic(uint64_t) g_frameCount = 0;
