@@ -134,8 +134,6 @@ public final class ZLLayerSwitcher: NSObject {
 
     // MARK: 三种图层动作
 
-    /// 切到某层（独占）：只显示这一层
-    @discardableResult
     /// 叠加显示某层：在「当前已显示的层」基础上再加一层
     ///
     /// 核心没有图层概念，所以做法是：重新导出一份
@@ -188,7 +186,7 @@ public final class ZLLayerSwitcher: NSObject {
     /// 保存「伪键码 → uuid」映射，供按钮点击时反查
     // 第258轮：去掉 @objc —— 参数类型 ZLControlLayout 是 internal Swift 类型，
     // ObjC 表示不了它，@objc 会直接编译失败。core 里也没有调用方（已 grep 确认）。
-    public static func persistPseudoKeys(for layout: ZLControlLayout) {
+    static func persistPseudoKeys(for layout: ZLControlLayout) {
         let map = LayerPseudoKey.buildMapping(for: layout)
         LayerPseudoKey.persist(map)
         NSLog("[ZL2] 图层伪键码已保存：%ld 条", map.count)
