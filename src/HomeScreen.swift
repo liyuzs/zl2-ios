@@ -469,6 +469,22 @@ struct HomeScreen: View {
                           lastPlayed: UserDefaults.standard.object(forKey: "lastLaunchDate") as? Date)
 
         launchCount = CoreBridge.gameLaunchCount
+
+        // 启动次数里程碑（第259轮）：踩到 1 / 10 / 25 / 50 / 100 / 365 时弹一句。
+        //
+        // 用 `zl.milestoneSeen` 记住「已经庆祝到哪个数」，保证同一个里程碑只弹一次 ——
+        // 否则每进出一次首页都会重新弹，那就从惊喜变成骚扰了。
+        //
+        // **键名写成字面量、不抽成常量**：`_check-orphan-keys.js` 只认
+        // `forKey: "字面量"` 这种写法，用变量拼键名它就看不见 —— 那就等于绕过了检查。
+        // 这个键是内部记账（不是设置项），已在那个脚本的 INTERNAL 白名单里登记理由。
+        let milestoneSeen = UserDefaults.standard.integer(forKey: "zl.milestoneSeen")
+        if launchCount > milestoneSeen,
+           let milestone = ZLLaunchMilestone.greeting(for: launchCount) {
+            UserDefaults.standard.set(launchCount, forKey: "zl.milestoneSeen")
+            showEgg(milestone, duration: 4.0)
+        }
+
         guard !list.isEmpty else {
             selectedVersion = "还没有安装版本"
             versionDisplayMeta = nil
