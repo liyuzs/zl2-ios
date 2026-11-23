@@ -42,6 +42,15 @@ workflows:
           brew install xcodegen
           xcodegen --version
 
+      - name: 静态检查
+        script: |
+          set -e
+          # 和 GitHub Actions 跑的是同一套（清单唯一来源：tools/config-guard/_run-all.ps1，
+          # 由 run-checks.js 执行）。**放在编译之前** —— 语法/契约类错误几秒就能发现，
+          # 不必等十几分钟编译完才在日志里看到。
+          cd tools/config-guard
+          node run-checks.js --with-tests
+
       - name: 编译 Amethyst 核心（静态库）
         script: |
           set -e
@@ -64,6 +73,29 @@ workflows:
           cmake --build build -j 4 || cmake --build build --target ZL2Core -j 4
           ls -lh build/*.a build/*.dylib 2>/dev/null || true
           cd ..
+
+      - name: 注入版本号
+        script: |
+          set -e
+          # **第 259 轮补**：这份配置原来**完全没有版本注入** —— 构建出来的 IPA 版本号是
+          # project.yml 里的静态 "1.0.0" / "1"，和 build-243 无法区分，「检查更新」也会误判。
+          # （这正是第 18 轮在 GitHub Actions 上修过的同一个 bug，当时漏了这条通道。）
+          #
+          # **不用 `sed -i`**：macOS 是 BSD sed，`-i` 必须跟一个备份后缀，
+          # 写成 `-i -f x.sed` 会让三个参数全部错位 → `invalid command code z`
+          # （第 258 轮 GitHub CI 第 239 次构建就是这么挂的）。
+          VER="1.0.${BUILD_NUMBER}"
+          printf '%s\n' \
+            "s|^\( *\)MARKETING_VERSION: .*|\1MARKETING_VERSION: \"${VER}\"|" \
+            "s|^\( *\)CURRENT_PROJECT_VERSION: .*|\1CURRENT_PROJECT_VERSION: \"${BUILD_NUMBER}\"|" \
+            > /tmp/zl2-version.sed
+          cat /tmp/zl2-version.sed
+          sed -f /tmp/zl2-version.sed project.yml > /tmp/zl2-project.tmp
+          mv /tmp/zl2-project.tmp project.yml
+          grep -nE 'MARKETING_VERSION|CURRENT_PROJECT_VERSION' project.yml
+          # 注入失败即构建失败 —— 宁可红，也不要静默产出一个自称 1.0.0(1) 的包
+          grep -q "MARKETING_VERSION: \"${VER}\"" project.yml || { echo "::error::版本注入失败（BUILD_NUMBER='${BUILD_NUMBER}'）"; exit 1; }
+          grep -q "CURRENT_PROJECT_VERSION: \"${BUILD_NUMBER}\"" project.yml || { echo "::error::build 号注入失败"; exit 1; }
 
       - name: 生成 Xcode 工程
         script: |

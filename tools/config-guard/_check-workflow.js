@@ -1,4 +1,5 @@
-// 极简 YAML 结构校验：专门针对 GitHub Actions workflow 的 block scalar 缩进。
+// 极简 YAML 结构校验：针对 **CI workflow 的 block scalar 缩进**。
+// 支持两种写法：GitHub Actions（`run: |`）与 Codemagic（`script: |`）。
 // 不追求完整 YAML 规范，只要能抓出「步骤缩进错、run 内容被截断、块标量丢失」这几类致命错。
 //
 // **局限**（不查什么）—— **这条检查的局限特别重要，因为 workflow 错了 CI 就跑不起来**：
@@ -7,7 +8,10 @@
 //   · **不查 action 的版本号对不对**（`actions/checkout@v4` 写成 `@v99` 也通过）。
 //   · **不查 secrets / 环境变量名拼错**（那要跟仓库的 secrets 列表对，本地拿不到）。
 //   · **不查 CI 逻辑是否正确**（步骤顺序、条件表达式、矩阵展开）—— 只查"结构上像不像一个能跑的 workflow"。
-//   · 真正能不能跑，只能推上去看 Actions 的输出。**这条检查的价值是"在推之前挡掉明显的结构错误"。**
+//   · **只强制要求主 workflow（`build.yml`）有版本注入**；其它 workflow 有就检查、没有不报
+//     （否则拿这条去验别的文件会得到假阳性 —— 第250轮「判据有适用范围」）。
+//   · 真正能不能跑，只能推上去看 Actions / Codemagic 的输出。
+//     **这条检查的价值是"在推之前挡掉明显的结构错误"。**
 const fs = require('fs');
 const nodePath = require('path');
 const PATHS = require('./_paths');
@@ -40,7 +44,10 @@ stepLines.forEach((s, idx) => {
   const start = s.line - 1;
   const end = idx + 1 < stepLines.length ? stepLines[idx + 1].line - 1 : lines.length;
   const block = lines.slice(start, end);
-  const runIdx = block.findIndex(l => /^\s*run:\s*\|/.test(l));
+  // 两种块标量写法都要认：GitHub Actions 用 `run: |`，Codemagic 用 `script: |`。
+  // 第259轮发现原来只认 `run:` → **对 codemagic.yaml 这一条判据直接 return 了**，
+  // 等于它的多行脚本缩进错误从来没被检查过。
+  const runIdx = block.findIndex(l => /^\s*(run|script):\s*\|/.test(l));
   if (runIdx < 0) return;
   const runIndent = block[runIdx].match(/^(\s*)/)[1].length;
   // run 内容从下一行开始
@@ -52,32 +59,57 @@ stepLines.forEach((s, idx) => {
     if (ind <= runIndent) break;   // 回到同级 = 块结束
     contentLines++;
   }
-  if (contentLines === 0) problem(`步骤「${s.name}」的 run: | 后面没有内容`);
+  if (contentLines === 0) problem(`步骤「${s.name}」的块标量（run:/script: |）后面没有内容`);
 });
 
-// 4) 针对 Inject version 的专项检查：printf 三行续行必须都在
-const iv = stepLines.find(s => s.name === 'Inject version');
+// 4) 版本注入步骤的专项检查：printf 三行续行必须都在
+//
+// **步骤名有两种**：GitHub Actions 那份叫 `Inject version`，Codemagic 那份叫 `注入版本号`
+// （第259轮补的 —— 之前 `codemagic.yaml` **完全没有版本注入**，构建出来的包版本号是
+//  project.yml 里的静态 "1.0.0"/"1"，和 build-243 无法区分，「检查更新」也会误判）。
+//
+// **强制要求只对主 workflow**：`build.yml` 必须有；其它 workflow（如 codemagic.yaml）有就检查、
+// 没有不报。否则拿这条去验别的文件会得到假阳性 —— 判据有适用范围（第250轮）。
+const isMainWorkflow = /build\.yml$/.test(wfPath.replace(/\\/g, '/'));
+const iv = stepLines.find(s => s.name === 'Inject version' || s.name === '注入版本号');
 if (!iv) {
-  problem('没有找到 Inject version 步骤');
+  if (isMainWorkflow) {
+    problem('主 workflow 里没有版本注入步骤 —— 产出的包会自称 1.0.0(1)，第18轮那个 bug 会复发');
+  }
 } else {
   const start = iv.line - 1;
   const idx = stepLines.indexOf(iv);
   const end = idx + 1 < stepLines.length ? stepLines[idx + 1].line - 1 : lines.length;
   const body = lines.slice(start, end).join('\n');
+
+  // **先剥整行注释再判**。
+  // 第259轮发现：原来的判据要求 `sed -i -f`，而 `build.yml` 之所以"通过"，
+  // 是因为**注释里**写着「原来写的是 `sed -i -f /tmp/zl2-version.sed`」——
+  // 注释把它满足了。（第143/150/175 轮同一个坑：注释被当成代码。）
+  const bodyCode = body.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
+
   const checks = [
-    ['BUILD=', '缺少 BUILD 变量'],
-    ['VER="1.0.${BUILD}"', '缺少 VER 变量'],
-    ['printf', '缺少 printf'],
-    ['MARKETING_VERSION', '缺少 MARKETING_VERSION 替换'],
-    ['CURRENT_PROJECT_VERSION', '缺少 CURRENT_PROJECT_VERSION 替换'],
-    ['sed -i -f', '缺少 sed -f 执行'],
-    ['exit 1', '缺少失败断言'],
+    [/VER=/, '缺少版本变量（VER=）'],
+    [/printf/, '缺少 printf'],
+    [/MARKETING_VERSION/, '缺少 MARKETING_VERSION 替换'],
+    [/CURRENT_PROJECT_VERSION/, '缺少 CURRENT_PROJECT_VERSION 替换'],
+    [/sed -f/, '缺少 sed -f 执行'],
+    [/exit 1/, '缺少失败断言'],
   ];
-  checks.forEach(([needle, msg]) => { if (!body.includes(needle)) problem(msg); });
+  checks.forEach(([re, msg]) => { if (!re.test(bodyCode)) problem(msg); });
+
+  // **绝对不能出现 `sed -i`**。
+  // macOS 是 BSD sed，`-i` 必须跟一个备份后缀；写成 `-i -f x.sed` 会让三个参数全部错位
+  // → `sed: 1: "/tmp/x.sed": invalid command code z`（第258轮 CI 第239次构建就是这么挂的）。
+  // 正确写法是 `sed -f x.sed in > out && mv out in`（不碰 `-i`）。
+  if (/sed\s+-i\b/.test(bodyCode)) {
+    problem('用了 `sed -i` —— BSD sed 的 `-i` 必须跟备份后缀，`-i -f` 会让参数错位；改用 `sed -f x.sed in > out && mv out in`');
+  }
+
   // 绝对不能残留 heredoc 结束符被缩进的问题
   if (/^\s+SEDEOF\s*$/m.test(body)) problem('heredoc 结束符被缩进（POSIX shell 无法识别）');
   // printf 的三行续行：两个反斜杠续行
-  const contCount = (body.match(/\\\s*$/gm) || []).length;
+  const contCount = (bodyCode.match(/\\\s*$/gm) || []).length;
   if (contCount < 2) problem(`printf 续行不足（找到 ${contCount} 个，至少 2 个）`);
 }
 

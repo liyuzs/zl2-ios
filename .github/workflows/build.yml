@@ -30,7 +30,7 @@ jobs:
       # 静态检查放在编译之前：语法/契约类错误几秒就能发现，不必等 10 分钟构建。
       # 清单来自 tools/config-guard/_run-all.ps1（唯一来源，不另写一份），
       # 由 run-checks.js 在 macOS 上执行（.ps1 用 pwsh，runner 自带）。
-      - name: Static checks (50)
+      - name: Static checks
         run: |
           cd tools/config-guard
           node run-checks.js --with-tests

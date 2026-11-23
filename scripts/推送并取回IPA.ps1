@@ -102,7 +102,7 @@ while ((Get-Date) -lt $deadline) {
 
 if (-not $run) { throw "超过 $TimeoutMinutes 分钟没等到构建，去 $Repo/actions 看看（CI 自身上限也是 45 分钟）" }
 if ($run.conclusion -ne "success") {
-    throw ("构建没成功（conclusion = $($run.conclusion)）。可能是编译前的静态检查没过。" + "打开 $($run.html_url) 先看 `"Static checks (50)`" 那一步的日志")
+    throw ("构建没成功（conclusion = $($run.conclusion)）。可能是编译前的静态检查没过。" + "打开 $($run.html_url) 先看 `"Static checks`" 那一步的日志")
 }
 Write-Ok "构建成功：$($run.html_url)"
 
