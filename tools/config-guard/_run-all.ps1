@@ -121,7 +121,8 @@ $tests = @(
     @('_test-joystick.js',          'js',  '摇杆键码 32 槽'),
     @('_test-preflight.js',         'js',  '启动前预检契约 11 条'),
     @('_test-msauth-poll.js',       'js',  '微软登录轮询契约 7 条'),
-    @('_test-motd.js',              'js',  'MOTD 三形态解析 11 条')
+    @('_test-motd.js',              'js',  'MOTD 三形态解析 11 条'),
+    @('_test-milestone.js',         'js',  '启动里程碑 6 条不变量')
 )
 
 $simulate = @('_simulate-ci.ps1', 'ps1', 'CI 完整装配 15 项断言')

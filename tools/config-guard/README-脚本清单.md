@@ -132,6 +132,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_test-preflight.js` | 启动前预检的契约：布局名必须从核心偏好读、jar 检查要考虑 inheritsFrom、只提示不阻止（11 条） |
 | `_test-msauth-poll.js` | 微软设备码轮询契约：slow_down 必须提高间隔、间隔必须可变、必须有 deadline、未知错误要留痕（7 条） |
 | `_test-motd.js` | MOTD 三种形态（纯字符串 / text 对象 / text+extra）都能解析出文本（11 条） |
+| `_test-milestone.js` | 启动次数里程碑彩蛋的不变量：数字递增唯一、文案不重复、`default` 必须 `nil`（否则每次启动都弹）、不许区间写法、含第 1 次（6 条） |
 
 ## 三、模拟（改 CI 之后跑）
 
