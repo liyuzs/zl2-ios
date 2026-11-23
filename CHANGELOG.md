@@ -23,6 +23,8 @@
 
 ### 修复
 
+- **Codemagic 通道缺版本注入**：`codemagic.yaml`（第 259 轮的备选构建通道）**完全没有版本注入步骤** —— 构建出来的包版本号是 `project.yml` 里的静态 `1.0.0` / `1`，和 build-243 无法区分，「检查更新」也会误判。这正是第 18 轮在 GitHub Actions 上修过的同一个 bug，当时漏了这条通道。已补两步：**静态检查**（放在编译核心之前，早失败）、**注入版本号**（放在 `xcodegen generate` 之前），注入用 `sed -f > tmp && mv` 不碰 `-i`。
+- **`_check-workflow.js` 第 4 条判据要求了错误写法**：它检查注入步骤里必须有 `sed -i -f`，而这正是第 258 轮已经证明错误（BSD sed 的 `-i` 要备份后缀）、并且已经被修掉的写法。`build.yml` 之所以一直"通过"，是因为**注释里**写着「原来写的是 `sed -i -f`」，注释把判据满足了 —— 第 143/150/175 轮同一个坑（注释被当成代码）。已改成**要求 `sed -f`、禁止 `sed -i`**，且判之前先剥整行注释。同轮还修了两处：①「必须有版本注入」只对主 workflow 强制（否则验 codemagic 会假阳性）②块标量判据原来只认 `run: |`、对 Codemagic 的 `script: |` 直接 return（等于它的缩进从没被检查过）。
 - **`_check-orphan-keys.js` 有个存在了 100 多轮的盲区**：判据里 `if (k.includes(".")) continue;` 把**所有带点的键**都跳过，于是 App 自己的 `zl.*` 命名空间（`zl.welcomeShown` / `zl.game.instance` / `zl.theme.name` / `zl.assets.favorites`…）**从来没被这条检查看见过** —— 白名单里那两条 `zl.authlib.*` 实际上也是装饰性的。改成只跳过「核心 pref 的段.键」（`control.default_ctrl` 那种），`zl.` 前缀照常检查。改完立刻暴露 **11 个未登记的 `zl.*` 键**，逐个核实全部合法后加进白名单并写明读写方 —— 这份 Map 现在是「App 内部键的权威清单」，以后新增必须登记，拼错会立刻报出来。三向注入验证：把 `zl.milestoneSeen` 拼成 `zl.milestonSeen` → 精确报出 `HomeScreen.swift:481` / `:484`；还原后 0 处、文件字节一致。
 - **特殊按钮 / 方向键 / 小键盘的键位全是哑的**：控制布局的键位存的是字符串，导出时要翻译成整数键码，而核心有一份自己的键名表（108 个名字）。三处对不上：①`SPECIALBTN_*`（打开菜单、弹键盘、虚拟鼠标等 9 个，核心里是负数 −1…−9）完全没映射；②核心用 `NUMPAD_*` / `DPAD_*`，我们写的是 `KP_*` / `UP|LEFT|...`；③导出器用 `code > 0` 过滤，把所有负数特殊键码丢掉了。全部已对齐。
 - **首次进游戏没有任何控件**：`defaultTouchCtrl` 的默认值是 `default.json`，但生成该文件的 `generateAndSaveDefaultControl()` **在整个工程里没有任何调用点**，`controlmap/` 目录也没人创建（而它用 `NSOutputStream` 写文件，父目录不在会静默失败）。首次启动必然弹 `Could not open ...`，且屏幕上没有按钮和摇杆 —— 进游戏没法操作。
