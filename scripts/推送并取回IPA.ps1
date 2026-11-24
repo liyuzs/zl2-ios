@@ -154,6 +154,17 @@ if ($mb -lt $MinIpaMB) {
 }
 Write-Ok "$mb MB，符合预期"
 
+# ---------- 5.5 内容核对 ----------
+# 体积只是个粗代理：缺一整套 JRE 也还有 100 MB 出头，可那个版本的 MC 直接起不来。
+# 所以下载完再核一遍内容（条目 / 主程序 / 渲染库 / 三套 JRE / 启动器 jar / log4j / JIT / 版本号）。
+Write-Step "5.5" "核对 IPA 内容"
+$node = (Get-Command node -ErrorAction SilentlyContinue).Source
+if (-not $node) { throw "找不到 node —— 无法核对 IPA 内容（请先装 Node.js）" }
+& $node (Join-Path $LocalRepo "scripts\verify-ipa.js") $ipa.FullName
+if ($LASTEXITCODE -ne 0) {
+    throw "IPA 内容不对（缺运行时 / 渲染库 / 启动器 jar / 版本号）—— 不要用它替换交付包，先看上面哪一项失败。"
+}
+
 # ---------- 6. 替换交付包 ----------
 Write-Step 6 "替换交付包里的旧 IPA"
 $target = Join-Path $DeliveryDir "ZL2.ipa"
