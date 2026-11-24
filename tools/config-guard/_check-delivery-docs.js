@@ -174,10 +174,12 @@ try {
   const bundlePath = path.join(DELIVERY, 'zl2-ios-完整仓库.bundle');
   if (fs.existsSync(bundlePath)) {
     const heads = cp.execSync(`git bundle list-heads "${bundlePath}"`, { encoding: 'utf8' });
-    const hit = heads.split('\n').map(l => l.trim().split(/\s+/)).find(p => p[1] === 'HEAD');
-    const sha = hit ? hit[0] : '';
-    if (!sha) staleArtifacts.push('bundle 里读不到 HEAD（`git bundle list-heads` 没给出）');
-    else if (sha !== head) staleArtifacts.push(`bundle 里的 HEAD 是 ${sha.slice(0, 7)}，仓库是 ${head.slice(0, 7)}`);
+    // 只打 master 的 bundle 里**没有名为 HEAD 的 ref** —— 所以判「有没有当前 HEAD」，不认 ref 名。
+    // （第534轮：原来按 p[1] === 'HEAD' 找，改用 master 打之后这条永远匹配不上，
+    //  会把一个能克隆的好包报成"读不到 HEAD"。）
+    const shas = heads.split('\n').map(l => l.trim().split(/\s+/)[0]).filter(Boolean);
+    if (!shas.length) staleArtifacts.push('bundle 里读不到任何 ref（`git bundle list-heads` 没给出）');
+    else if (!shas.includes(head)) staleArtifacts.push(`bundle 里没有当前 HEAD（已有 ${shas[0].slice(0, 7)}，仓库是 ${head.slice(0, 7)}）`);
   }
 
   const zipPath = path.join(DELIVERY, 'zl2-ios-源码.zip');
