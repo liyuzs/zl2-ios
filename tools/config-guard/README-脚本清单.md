@@ -34,6 +34,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-indentation.js` | 缩进体检：**块内却贴行首**这类排版错（第116轮踩过 —— `if` 缩进跑到第 0 列，而 swift-lint 只验括号配对、照样报绿）。已排除 `case`/`default:`/`@unknown default:`、`]`/`)` 收尾行、多行字符串内容 |
 | `_check-interpolation.js` | 字符串插值里拼错的变量名（编译错误，括号检查查不出） |
 | `_check-imports.js` | 用了某框架符号却没 import 对应框架（UIKit / CryptoKit / Compression / PhotosUI / AVFoundation） |
+| `_check-ios17-apis.js` | 裸用 iOS 17+ API（`symbolEffect` / `@Observable` / `onChange(of:initial:)` 等 15 个符号）而没 `#available(iOS 17` 守卫 —— deploymentTarget 16.0 下**编译直接失败**，第258轮那 26 种错误里就有这类 |
 | `_check-call-labels.js` | 调工程内类型的方法时参数标签与声明对不上（如 `requiredJavaVersion(for:)` vs `(_:)`）—— 没有编译器时的编译前置检查 |
 | `_check-error-hints.js` | 面向用户的失败提示必须带「怎么办」：`ZLPreflight` / `ZLDiagnostics` 里每条 `level: .fail` / `.warn` 的 `ZLDiagItem` 都要有非空 `advice:`（界面会把它显示在红字下方） |
 | `_check-error-locale.js` | 错误翻译必须**优先按错误码**判断（`NSURLErrorDomain` / `URLError.Code`），`localizedDescription` 的文本匹配只能作补充。第145轮发现 `ZLFriendlyError` 原来全靠文本匹配，而中文系统上它已经是中文（"请求超时。"）→ **9 条映射全部失效**，用户看到"请求超时。（错误码 -1001）" |

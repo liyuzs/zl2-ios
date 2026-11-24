@@ -30,6 +30,7 @@ $checks = @(
     @('_check-hotpath-cost.js',   'js',  '渲染期不许昂贵操作'),
     @('_check-interpolation.js',    'js',  '插值里拼错的变量名'),
     @('_check-imports.js',          'js',  '框架 import 缺失（会编译失败）'),
+    @('_check-ios17-apis.js',       'js',  '裸用 iOS 17+ API（deploymentTarget 16 会编译失败）'),
     @('_check-error-hints.js',      'js',  '失败提示必须带 advice'),
     @('_check-error-locale.js',    'js',  '错误翻译先按错误码'),
     @('_check-guide-claims.js',    'js',  '文案教的操作必须有实现'),
