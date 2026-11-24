@@ -42,4 +42,31 @@ function readSettingsSets(settingsScreenPath) {
   return out;
 }
 
-module.exports = { LIMIT_MARKERS, LIMIT_SPECIFIC, readSettingsSets };
+/**
+ * 列出所有「构建通道」文件（绝对路径）。
+ *
+ * **为什么抽出来**：第 260 轮把 `_check-workflow.js` 从"只验 `build.yml`"改成"验全部"，
+ * 而 `_check-ci-contract.js` 需要知道自己有没有漏掉某条通道 —— 两处都要"知道有哪些通道"，
+ * 各写一份必然漂（第 225 轮那条"同一个东西写过两次就该抽"）。
+ *
+ * **已知限制**（前提，不是局限）：只认 `.github/workflows/*.yml|*.yaml` 与仓库根的
+ * `codemagic.yaml`。放到别处（比如 `ci/` 目录）的通道文件这里看不见 —— 加新通道请放进这两处之一。
+ */
+function listWorkflowChannels(repo) {
+  const fs = require('fs');
+  const path = require('path');
+  const out = [];
+  const wfDir = path.join(repo, '.github', 'workflows');
+  if (fs.existsSync(wfDir)) {
+    fs.readdirSync(wfDir).sort().forEach(f => {
+      if (/\.ya?ml$/i.test(f)) out.push(path.join(wfDir, f));
+    });
+  }
+  ['codemagic.yaml', 'codemagic.yml'].forEach(f => {
+    const p = path.join(repo, f);
+    if (fs.existsSync(p)) out.push(p);
+  });
+  return out;
+}
+
+module.exports = { LIMIT_MARKERS, LIMIT_SPECIFIC, readSettingsSets, listWorkflowChannels };

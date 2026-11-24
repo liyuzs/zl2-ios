@@ -3,7 +3,8 @@
 // 不追求完整 YAML 规范，只要能抓出「步骤缩进错、run 内容被截断、块标量丢失」这几类致命错。
 //
 // **扫描范围（前提，不是局限）**：不给参数时验**全部**已知构建通道 ——
-//   `.github/workflows/*.yml|*.yaml` + 仓库根的 `codemagic.yaml`。
+//   清单来自 `_shared.js` 的 `listWorkflowChannels`（`.github/workflows/*.yml|*.yaml` +
+//   仓库根 `codemagic.yaml`），**两处共用一份，别再各写一份**。
 //   第 521 轮发现原来只验 `build.yml`：`codemagic.yaml`（16901 字节、12 步）与
 //   `easytier-probe.yml`（6 步，拉 EasyTier 静态库那条通道）**从来没被这条检查看过** ——
 //   而它们一样会把 CI 跑挂。想验单个文件仍可 `node _check-workflow.js <路径>`。
@@ -24,23 +25,13 @@
 const fs = require('fs');
 const nodePath = require('path');
 const PATHS = require('./_paths');
+const { listWorkflowChannels } = require('./_shared');
 
-// 目标文件：显式参数 → 只验那一个；不给参数 → 验全部已知通道
+// 目标文件：显式参数 → 只验那一个；不给参数 → 验全部已知通道（清单来自 _shared）
 function collectTargets() {
   const arg = process.argv[2];
   if (arg) return [nodePath.resolve(arg)];
-  const out = [];
-  const wfDir = nodePath.join(PATHS.REPO, '.github', 'workflows');
-  if (fs.existsSync(wfDir)) {
-    fs.readdirSync(wfDir).sort().forEach(f => {
-      if (/\.ya?ml$/i.test(f)) out.push(nodePath.join(wfDir, f));
-    });
-  }
-  ['codemagic.yaml', 'codemagic.yml'].forEach(f => {
-    const p = nodePath.join(PATHS.REPO, f);
-    if (fs.existsSync(p)) out.push(p);
-  });
-  return out;
+  return listWorkflowChannels(PATHS.REPO);
 }
 
 function checkFile(wfPath) {

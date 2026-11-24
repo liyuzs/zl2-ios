@@ -10,8 +10,10 @@
 // 这类"两个文件约定同一件事"的契约最容易漂，所以固化成检查。
 //
 // **局限**（不查什么）：
-//   · **只查这六条**：超时对齐 / artifact 名 / 产物是 `.ipa` / 失败提示提静态检查 /
-//     四个 `core/resources/*` 目录存在 / `project.yml` 里提到的 `.sh` 存在。
+//   · **只查这八条**：超时对齐 / artifact 名 / 产物是 `.ipa` / 失败提示提静态检查 /
+//     四个 `core/resources/*` 目录存在 / `project.yml` 里提到的 `.sh` 存在 /
+//     **通道对等**（磁盘上每条构建通道都被 `_check-workflow` 校验到）/
+//     **产 IPA 的通道都有版本注入**。
 //     **CI 里其它隐含约定全看不见**：secrets 名、runner 版本（`macos-14` 还是 `-15`）、
 //     Xcode 版本、缓存键、`concurrency` 组。
 //   · **判不了"这套 workflow 真的能跑通"**。那是 `_check-workflow`（结构）+ **真推一次**才知道。
@@ -19,6 +21,12 @@
 //   · **解析靠正则抓文本**：如果超时改写成 `$Timeout = 45 * 60`、或 artifact 名存进变量，
 //     正则抓不到具体值 → **会误报**（说没对齐，其实对齐了）。
 //   · **只认 `推送并取回IPA.ps1` 这一个脚本**。将来若出现第二个推送入口，它不在范围。
+//   · **第 7 条只比"文件名在不在 `_check-workflow` 的输出里"**：某条通道被扫到了、但里面某些
+//     判据被跳过（比如早年的 `script: |` 不认），它看不出来 —— 那一层是 `_check-workflow` 自己的局限。
+//     **第 8 条只查"有没有那两样字符串"**（步骤名 + `MARKETING_VERSION`），不查注入的值对不对、
+//     顺序对不对、断言强不强。两条都是"防漏掉整条通道"，不是"证明通道正确"。
+//   · **依赖 `_check-workflow.js` 能跑起来**：它语法错或崩溃时，第 7 条会报"没被校验到" ——
+//     那是**连带告警**，不是独立的第二个问题。
 
 const fs = require('fs');
 const path = require('path');
@@ -93,7 +101,47 @@ if (fs.existsSync(py)) {
     if (!found) problems.push(`project.yml 提到 ${name}，但仓库里找不到这个脚本`);
   }
 }
-console.log(`CI timeout=${wfTimeout || '?'} 分钟 · artifact=${artName || '?'} · 脚本等待=${shTimeout || '?'} 分钟`);
+// ---- 7. 通道对等：磁盘上的每条构建通道都要真的被 `_check-workflow` 校验到 ----
+// 第 260 轮加。起因是 `_check-workflow.js` 的默认目标写死 `build.yml`，
+// 于是 `codemagic.yaml` 与 `easytier-probe.yml` **从来没被看过** —— 而上一轮刚给
+// `codemagic.yaml` 补了版本注入，却没人发现检查根本没扫它（"多通道只修一条"）。
+//
+// **用行为验证，不做文本匹配**：真跑一次 `_check-workflow`，数它输出里几个 `--- 路径 ---`。
+// 文本匹配挡不住"改了写法但仍然是单文件"这种回退。
+const { listWorkflowChannels } = require('./_shared');
+const channels = listWorkflowChannels(REPO);
+const wfCheckPath = path.join(__dirname, '_check-workflow.js');
+const wfRun = require('child_process').spawnSync(process.execPath, [wfCheckPath], { encoding: 'utf8' });
+const wfOut = (wfRun.stdout || '') + (wfRun.stderr || '');
+const covered = new Set(
+  [...wfOut.matchAll(/^--- (.+?) ---$/gm)].map(m => m[1].replace(/\\/g, '/').trim())
+);
+if (channels.length === 0) {
+  problems.push('磁盘上一条构建通道都没找到（.github/workflows/*.yml 与 codemagic.yaml 都不存在）—— 这不是"没问题"，是"没看到东西"');
+}
+for (const c of channels) {
+  const rel = path.relative(REPO, c).replace(/\\/g, '/');
+  if (!covered.has(rel)) {
+    problems.push(`通道 ${rel} 不在 _check-workflow 的校验范围里 —— 加通道时忘了让它进检查（它错了 CI 一样会挂）`);
+  }
+}
+
+// ---- 8. 每条会产出 IPA 的通道都必须有版本注入 ----
+// 第 521 轮那个 bug（codemagic.yaml 零版本注入）在这里变成通用判据：
+// 不针对某一个文件，而是"凡产 IPA 的通道都算" —— 将来加第三条通道也拦得住。
+for (const c of channels) {
+  const rel = path.relative(REPO, c).replace(/\\/g, '/');
+  let txt = '';
+  try { txt = fs.readFileSync(c, 'utf8'); } catch { problems.push(`通道 ${rel} 读不到 —— 读不到就等于没查`); continue; }
+  if (!/\.ipa/.test(txt)) continue;   // 不产 IPA 的通道（比如拉静态库）不要求版本注入
+  const hasStep = /Inject version|注入版本号/.test(txt);
+  const hasVer = /MARKETING_VERSION/.test(txt);
+  if (!hasStep || !hasVer) {
+    problems.push(`通道 ${rel} 会产出 IPA，但没有版本注入（步骤名 Inject version/注入版本号 + MARKETING_VERSION）—— 包会自称 1.0.0(1)`);
+  }
+}
+
+console.log(`CI timeout=${wfTimeout || '?'} 分钟 · artifact=${artName || '?'} · 脚本等待=${shTimeout || '?'} 分钟 · 通道=${channels.length} 个（被 _check-workflow 覆盖 ${covered.size} 个）`);
 console.log('');
 
 if (problems.length === 0) {
