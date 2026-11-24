@@ -11,6 +11,7 @@
 
 ### 新增
 
+- **`verify-ipa.js` 补三条"这个包是不是本工程"的断言**：交付目录只要被别的包替换过一次，体积、条目数、渲染库都可能正常，但装上去是另一个 App。现在核 `CFBundleIdentifier = com.liyuzs.craftlauncher`、`CFBundleDisplayName = CraftLauncher`、`MinimumOSVersion = 16.0`（从 Info.plist 的 ASCII 段读，不需要 plist 解析器）。受控注入：造一个 6 条目、包名 `com.evil.other.app` 的伪 IPA → 精确报出这三条，连同体积/渲染库/JRE 共 13 项，exit 1。
 - **版本注入有了行为测试**（`_test-ci-version-inject.js`）：版本号注入是"包能不能自称正确版本"的唯一环节，而它已经错过两次 —— 第 18 轮 GitHub Actions 那条通道根本没有注入，第 521 轮 `codemagic.yaml` 又漏了一次（同一个 bug 换通道复发）。两次都是**人工**验的，而人工验一次等于下次不会再验。现在把两条通道里的注入脚本**原样抠出来，在本机 bash 里对一份 `project.yml` 副本真跑一遍**，断言结果变成 `1.0.<号码>`、且静态 `1.0.0` 不残留。注入验证：把 sed 里的 `MARKETING_VERSION` 改成 `MARKETING_VERSIONS` → 测试报「注入脚本退出码 1 + `::error::版本注入失败`」；还原后通过。**局限**：本机是 GNU sed，BSD sed 的 `-i` 差异只能靠推 macOS 才知道（判据已避开 `-i`，但那是纪律不是证明）。
 - **交付包路径改成可指走**（`_paths.js` 新增 `DELIVERY` + 环境变量 `ZL2_DELIVERY`）：依赖交付包的那几条检查原来各自写死 `D:\ZL2-iOS交付包`，要证明"CI 上没有交付包也能跑"只能把用户的文件夹改名 —— 危险且不可重复。现在一条命令就能模拟：`ZL2_DELIVERY=D:\__absent__ node run-checks.js --with-tests` → 全绿，每条自己打印「跳过」（静默通过与"查了没问题"在输出上一样，跳过必须留痕）。顺带把几个脚本里的重复副本收进 `_paths.js`（第 225 轮那条：同一个东西抄几份必然漂）。
 - **IPA 内容自检**（`scripts/verify-ipa.js`，已接进推送脚本）：交付包的 `ZL2.ipa` 以前每次重建都要人工核一遍 —— 条目数、主程序体积、四个渲染库、三套 JRE、启动器 jar、log4j 补丁、`UniversalJIT26.js`、版本号。**人工核一遍是一次性的**（第 123 轮那条），而体积校验（≥100 MB）只是粗代理：**缺一整套 JRE 也还有 100 MB 出头**，可依赖那个版本的 MC 直接起不来。现在一条命令核完九项，`exit 1` 就说明不该拿它替换交付包。实测 build-243：998 条目 / 主程序 15.1 MB / 版本 `1.0.243` 全对；拿源码 zip 当输入会被判「这不像一个 iOS 包」。推送脚本新增第 5.5 步，内容不对就停手、不覆盖旧包。

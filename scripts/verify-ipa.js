@@ -142,6 +142,12 @@ if (appRoot) {
       note(`版本 1.0.${m[1]}`);
     }
     need(!/0\.1\.0/.test(text), 'Info.plist 里还有 0.1.0 —— 那是第18轮之前写死的旧版本号');
+
+    // 9) 这个包必须真的来自本工程（防"串包"：拿到别的工程/更早的包替换进交付目录，
+    //    体积和条目数都可能正常，但装上去是完全另一个 App）
+    need(/com\.liyuzs\.craftlauncher/.test(text), 'Info.plist 里没有 CFBundleIdentifier = com.liyuzs.craftlauncher —— 这个包不是本工程的（串包）');
+    need(/CraftLauncher/.test(text), 'Info.plist 里没有 CFBundleDisplayName = CraftLauncher');
+    need(/(^|[^0-9])16\.0([^0-9]|$)/.test(text), 'Info.plist 里找不到 MinimumOSVersion 16.0（最低系统被改过）');
   }
 }
 
