@@ -42,6 +42,15 @@ const RULES = [
     framework: 'AVFoundation',
     re: /\bAVAudioSession\b|\bAVAudioPlayer\b|\bAVPlayer\b/,
   },
+  {
+    framework: 'QuartzCore',
+    // CACurrentMediaTime / CALayer 来自 QuartzCore。
+    // **第 258 轮真编译撞过**：`ZL2FrameStats.swift` 只 import Foundation，
+    // 用 `CACurrentMediaTime()` 直接报 "cannot find 'CACurrentMediaTime' in scope"。
+    // UIKit 会间接带入 QuartzCore，所以「有 UIKit」也算满足（否则只 import UIKit 的文件会被误报）。
+    alsoOk: ['UIKit'],
+    re: /\b(CACurrentMediaTime|CALayer|CATransaction|CAShapeLayer|CABasicAnimation|CAAnimation)\b/,
+  },
 ];
 
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.swift'));
@@ -61,7 +70,8 @@ for (const name of files) {
   for (const rule of RULES) {
     if (!rule.re.test(text)) continue;
     checked++;
-    if (!imports.has(rule.framework)) {
+    const okBy = rule.alsoOk || [];
+    if (!imports.has(rule.framework) && !okBy.some(f => imports.has(f))) {
       // 找出具体命中的符号，方便定位
       const hit = text.match(rule.re);
       const line = text.slice(0, hit.index).split('\n').length;
