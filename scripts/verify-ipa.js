@@ -26,8 +26,10 @@ const zlib = require('zlib');
 
 const args = process.argv.slice(2);
 const quiet = args.includes('--quiet');
+// 交付包目录同样支持 ZL2_DELIVERY（与 tools/config-guard/_paths.js 用同一个变量名）
+const DELIVERY = process.env.ZL2_DELIVERY || 'D:/ZL2-iOS交付包';
 const target = args.filter(a => !a.startsWith('--'))[0]
-  || 'D:/ZL2-iOS交付包/ZL2.ipa';
+  || path.join(DELIVERY, 'ZL2.ipa');
 
 // ---------- 最小 zip 读取（同 tools/config-guard/_audit-jni-classes.js）----------
 function readCentral(buf) {

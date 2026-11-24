@@ -27,9 +27,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const { REPO } = require('./_paths');
+const { REPO, DELIVERY } = require('./_paths');
 
-const DELIVERY = 'D:\\ZL2-iOS交付包';
 
 // **交付包目录不存在时整条跳过**（CI / 只检出源码的环境）。
 // 这几条检查的对象是"交付包里那 13 个文件"，没有交付包的机器上它们无从下手 ——

@@ -188,6 +188,7 @@ cd C:\Users\21793\.dsh\config-guard
 
 ---
 
+
 ## 六、加新脚本的约定
 
 1. 放进这个目录，命名带前缀：`_check-` 检查 / `_audit-` 审计 / `_test-` 契约测试 / `_simulate-` 模拟
@@ -195,3 +196,4 @@ cd C:\Users\21793\.dsh\config-guard
 3. 有豁免/白名单的，必须写明"为什么可以豁免"——否则未来的你（或别人）会当它是遗漏
 4. 退役时在本文档登记，并在脚本头部加一行「⚠️ 已退役：<原因>，替代者：<脚本名>」
 5. `.ps1` 必须存成 **UTF-8 带 BOM**（PowerShell 5.1 无 BOM 时按 GBK 解码，中文乱码且吃掉引号）
+6. **依赖交付包的检查**：路径必须 `require('./_paths')` 取 `DELIVERY`，不许写死；目录不存在时要**打印"跳过"并 exit 0**。改完用 `ZL2_DELIVERY=<不存在的路径> node run-checks.js --with-tests` 验一遍（CI 上就没有交付包）

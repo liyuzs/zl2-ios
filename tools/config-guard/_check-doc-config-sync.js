@@ -16,8 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { REPO } = require('./_paths');
-const DELIVERY = 'D:\\ZL2-iOS交付包';
+const { REPO, DELIVERY } = require('./_paths');
 const GUIDE = path.join(DELIVERY, '给朋友的安装指南.md');
 
 if (!fs.existsSync(GUIDE)) { console.log('· 交付包里没有安装指南，跳过'); process.exit(0); }

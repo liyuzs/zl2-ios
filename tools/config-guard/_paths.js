@@ -38,12 +38,19 @@ function findRepo() {
 
 const REPO = findRepo();
 
+// 交付包目录（不在仓库里，所以单独解析）。
+// **环境变量 ZL2_DELIVERY 优先** —— 这条是为了能在"没有交付包"的环境（CI、别人的机器）
+// 里验证检查网不会挂：设成任意不存在的路径，所有依赖交付包的检查必须走 skip 分支并 exit 0。
+// 第 530 轮的实测：`ZL2_DELIVERY=D:\__absent__ node run-checks.js --with-tests` 全绿。
+const DELIVERY = process.env.ZL2_DELIVERY || 'D:\\ZL2-iOS交付包';
+
 module.exports = {
   REPO,
   SRC: path.join(REPO, 'src'),
   CORE: path.join(REPO, 'core'),
   DOCS: path.join(REPO, 'docs'),
   GUARD: __dirname,
+  DELIVERY,
   // 工作副本位置（只在需要对照两份时用）；仓库副本里它就是 __dirname
   WORKING_GUARD: 'C:\\Users\\21793\\.dsh\\config-guard',
 };
