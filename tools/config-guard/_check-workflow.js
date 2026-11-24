@@ -130,7 +130,19 @@ function checkFile(wfPath) {
     if (contCount < 2) problem(`printf 续行不足（找到 ${contCount} 个，至少 2 个）`);
   }
 
-  // 5) 检查是否有 tab 混入（YAML 禁止 tab 缩进）
+  // 6) 版本注入必须在「生成 Xcode 工程」之前 —— 顺序错了等于没注入
+  // 注入改的是 `project.yml`，而 `xcodegen generate` 把 project.yml 变成 xcodeproj/Info.plist。
+  // 若顺序反了，生成出来的工程里还是静态的 1.0.0(1)，而构建**不会报错** ——
+  // 表现是"检查更新"永远说已是最新（第18轮那个 bug 的另一种形态）。
+  const genStep = stepLines.find(s => /Generate Xcode|生成 Xcode/i.test(s.name));
+  const hasXcodegen = /xcodegen\s+generate/.test(raw);
+  if (hasXcodegen && !genStep) {
+    problem('文件里有 xcodegen generate，但找不到「生成 Xcode 工程」这一步 —— 判不了注入顺序，请核对步骤名');
+  } else if (iv && genStep && iv.line > genStep.line) {
+    problem(`版本注入步骤「${iv.name}」（第 ${iv.line} 行）排在「${genStep.name}」（第 ${genStep.line} 行）之后 —— 注入改的是 project.yml，生成工程之后再改就晚了`);
+  }
+
+  // 7) 检查是否有 tab 混入（YAML 禁止 tab 缩进）
   lines.forEach((l, i) => {
     if (/^\t/.test(l)) problem(`第 ${i + 1} 行用 tab 缩进`);
   });
