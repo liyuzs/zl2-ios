@@ -133,6 +133,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_test-msauth-poll.js` | 微软设备码轮询契约：slow_down 必须提高间隔、间隔必须可变、必须有 deadline、未知错误要留痕（7 条） |
 | `_test-motd.js` | MOTD 三种形态（纯字符串 / text 对象 / text+extra）都能解析出文本（11 条） |
 | `_test-milestone.js` | 启动次数里程碑彩蛋的不变量：数字递增唯一、文案不重复、`default` 必须 `nil`（否则每次启动都弹）、不许区间写法、含第 1 次（6 条） |
+| `_test-ci-version-inject.js` | **两条通道的版本注入真能改对 `project.yml`**：把 workflow 里的注入脚本原样抠出来，在本机 bash 里对一份副本跑一遍，断言结果变成 `1.0.<run号>`；脚本自带断言也会拦（sed 模式写错 → exit 1 并打印 `::error::版本注入失败`） |
 
 ## 三、模拟（改 CI 之后跑）
 
