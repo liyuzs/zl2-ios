@@ -32,6 +32,7 @@
 
 ### 修复
 
+- **源码 zip 解压出来跑检查会崩**：新加的第 ④ 条（bundle / 源码 zip 与 HEAD 同步）用 `git rev-parse HEAD`，而**源码 zip 里没有 `.git`** → 抛错被当成"产物落后"，整个检查 exit 1。这是第 258 轮那次的同族错（当时是"没有交付包目录"）—— **环境不具备前提时要跳过并说明，不是当失败**。现在先判 `rev-parse --is-inside-work-tree`，不是 git 工作区就打印「无从判断，跳过」。复验：把交付包的 `zl2-ios-源码.zip` 解压到 `%TEMP%` 随机目录、**不设任何环境变量** → `run-checks.js --with-tests` **全绿**（798 文件）。
 - **交接文档第一句还在说「没有 token，推不上去」**：那份文档开头写着「新会话开场读这一份就够」，而第一节停在 token 到手之前（一百多轮前）—— 新接手的人会去找 token，而真正的阻塞是 macOS 额度。第一节已改成三行现状表（代码 / 产物 / 真机），并写明**每一步之前先跑 `核对推送链路.ps1`**；第三节标题改为「曾经唯一的阻塞：推送（✅ 2026-11-23 已解决）」并保留当时过程（token 过期才用得上）；`推送操作手册.md` 顶部也补了当前状态。**这是「描述与实物各自演化」最严重的一处：它错在文档最开头那一句。**
 - **文案术语做了一轮审计**（1536 条 `ZLStrings` + 各页面字符串）：成对检查「登录/登陆」「账号/帐号」「账户/帐户」「加载/载入」「网络/网路」「像素/画素」——结果**只有「登陆」2 处**（都在 `ZLStrings` 里、目前未被引用，但将来接上会带错字）→ 已改成「登录」；另有一处**用户可见**的措辞：皮肤/披风页的「无法获取档案」对玩家不通（"档案"在这里指 profile）→ 改「无法获取皮肤资料」。「存档」75 处是 Minecraft 的 save（名词），与「保存」不是一个概念，不动；「设置项」也是独立术语。
 - **`_check-imports` 漏了 QuartzCore**：`CACurrentMediaTime` / `CALayer` / `CATransaction` 这些来自 QuartzCore，而映射表里从来没有它 —— 而第 258 轮第一次真编译正是栽在 `ZL2FrameStats.swift` 的「cannot find CACurrentMediaTime in scope」。现在补上 QuartzCore 规则，并给规则加了 `alsoOk`：UIKit 会间接带入 QuartzCore，只 import UIKit 的文件不该被误报。注入验证：删掉那句 `import QuartzCore` → 精确报出 `ZL2FrameStats.swift:71`；还原后通过。**另**：本轮复跑 `_simulate-ci.ps1`，CI 装配仍是 **15/15、400.9 MB**，没有漂移。

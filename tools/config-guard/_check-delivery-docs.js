@@ -168,7 +168,18 @@ function readZipEntry(buf, want) {
   return null;
 }
 
+// **前提：必须是 git 工作区。** 源码 zip 解压出来的目录没有 `.git`，
+// 那时「bundle 与 HEAD 同步」根本无从判断 —— 要**跳过并说明**，不能报错。
+// （第258轮那次是"没有交付包目录"，这次是"没有 .git"：同一类错——环境不具备前提时当成失败。）
+let isGitWorktree = false;
 try {
+  cp.execSync(`git -C "${REPO}" rev-parse --is-inside-work-tree`, { stdio: 'pipe' });
+  isGitWorktree = true;
+} catch { isGitWorktree = false; }
+
+if (!isGitWorktree) {
+  console.log('· 这里没有 .git（源码 zip / 导出目录）—— bundle 与源码 zip 的「与 HEAD 同步」无从判断，跳过');
+} else try {
   const head = cp.execSync(`git -C "${REPO}" rev-parse HEAD`, { encoding: 'utf8' }).trim();
 
   const bundlePath = path.join(DELIVERY, 'zl2-ios-完整仓库.bundle');
