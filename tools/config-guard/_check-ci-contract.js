@@ -10,12 +10,16 @@
 // 这类"两个文件约定同一件事"的契约最容易漂，所以固化成检查。
 //
 // **局限**（不查什么）：
-//   · **只查这八条**：超时对齐 / artifact 名 / 产物是 `.ipa` / 失败提示提静态检查 /
+//   · **只查这九条**：超时对齐 / artifact 名 / 产物是 `.ipa` / 失败提示提静态检查 /
 //     四个 `core/resources/*` 目录存在 / `project.yml` 里提到的 `.sh` 存在 /
 //     **通道对等**（磁盘上每条构建通道都被 `_check-workflow` 校验到）/
-//     **产 IPA 的通道都有版本注入**。
+//     **产 IPA 的通道都有版本注入** / **CI 里引用的仓库路径存在**。
 //     **CI 里其它隐含约定全看不见**：secrets 名、runner 版本（`macos-14` 还是 `-15`）、
 //     Xcode 版本、缓存键、`concurrency` 组。
+//   · **第 9 条只认 `core/ src/ jre/ tools/ scripts/ docs/` 开头的相对路径**。别的前缀
+//     （`assets/`、`ci/`…）看不见；含 `$` 的变量拼接、后面紧跟 `*` 的通配一律跳过；
+//     `GENERATED` 名单是手写的（`core/build` / `out` / `Payload`… 构建时才生成），
+//     新增"生成目录"要回来加，否则会误报。
 //   · **判不了"这套 workflow 真的能跑通"**。那是 `_check-workflow`（结构）+ **真推一次**才知道。
 //     本检查只能说"两边说到一起了"，不能说"构建会成功"。
 //   · **解析靠正则抓文本**：如果超时改写成 `$Timeout = 45 * 60`、或 artifact 名存进变量，
@@ -141,7 +145,42 @@ for (const c of channels) {
   }
 }
 
-console.log(`CI timeout=${wfTimeout || '?'} 分钟 · artifact=${artName || '?'} · 脚本等待=${shTimeout || '?'} 分钟 · 通道=${channels.length} 个（被 _check-workflow 覆盖 ${covered.size} 个）`);
+// ---- 9. CI 里引用的仓库路径必须真实存在（对所有通道，不只 build.yml）----
+// 第 261 轮加：原来只硬编码查了 4 个 `core/resources/<子目录>`。而 CI 里还引用着
+// `core/resources/log4j-rce-patch-*.xml`、`jre/*.tar.xz`、`tools/config-guard`…
+// 这些名字改了本地毫无感觉：CI 里 `cp` 失败（或 `set -e` 把整步吞掉），
+// 最后表现为"装得上、能启动、进游戏崩" —— 症状离原因隔着打包+安装+启动四层。
+//
+// **只查"看起来是仓库相对路径"的 token**：跳过含 `$` 的变量拼接、后面紧跟 `*` 的通配、
+// 以及构建时才生成的目录（GENERATED 名单手写，新增生成目录要回来加）。
+const GENERATED = ['core/build', 'out', 'Payload', 'DerivedData', 'build'];
+const PATH_RE = /(?:^|[\s'"=(:,])((?:core|src|jre|tools|scripts|docs)\/[A-Za-z0-9_./-]*[A-Za-z0-9_.-])/g;
+let checkedPaths = 0;
+const missingPaths = new Set();
+for (const c of channels) {
+  const rel = path.relative(REPO, c).replace(/\\/g, '/');
+  let txt = '';
+  try { txt = fs.readFileSync(c, 'utf8'); } catch { continue; }
+  for (const m of txt.matchAll(PATH_RE)) {
+    const token = m[1];
+    const start = m.index + m[0].indexOf(token);
+    const next = txt[start + token.length] || '';
+    // 通配（`core/resources/log4j-rce-patch-*.xml`）和变量拼接（`jre/jre${JV}-ios-...`）
+    // 都是"路径只写了一半"，不能当完整路径去判存在 —— 第261轮第一版漏了后者，误报 2 处。
+    if (next === '*' || next === '$') continue;
+    if (token.includes('$')) continue;                          // 变量拼接
+    const clean = token.replace(/\/+$/, '').replace(/\/\.$/, '');
+    if (!clean) continue;
+    if (GENERATED.some(g => clean === g || clean.startsWith(g + '/'))) continue;
+    checkedPaths++;
+    if (!fs.existsSync(path.join(REPO, clean))) missingPaths.add(`${rel} → ${clean}`);
+  }
+}
+for (const mp of missingPaths) {
+  problems.push(`通道 ${mp.split(' → ')[0]} 引用了 ${mp.split(' → ')[1]}，但仓库里没有 —— 改名/删除不会报错，CI 里 cp 会失败或打进缺文件的 IPA`);
+}
+
+console.log(`CI timeout=${wfTimeout || '?'} 分钟 · artifact=${artName || '?'} · 脚本等待=${shTimeout || '?'} 分钟 · 通道=${channels.length} 个（被 _check-workflow 覆盖 ${covered.size} 个）· 引用路径=${checkedPaths} 处`);
 console.log('');
 
 if (problems.length === 0) {
