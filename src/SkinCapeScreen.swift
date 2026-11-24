@@ -174,7 +174,7 @@ struct SkinCapeScreen: View {
             VStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(ZLTheme.warning)
-                Text(errorText ?? "无法获取档案").font(.system(size: 12))
+                Text(errorText ?? "无法获取皮肤资料").font(.system(size: 12))
                     .foregroundStyle(ZLTheme.textSecond)
                 Button("重试") { Task { await load() } }
                     .font(.system(size: 12, weight: .medium))

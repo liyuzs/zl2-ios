@@ -946,9 +946,9 @@ enum ZLStrings {
     /// account_logging_frequent
     static let account_logging_frequent = "登录过于频繁，请稍后再试。"
     /// account_logging_blocked_ip
-    static let account_logging_blocked_ip = "当前 IP 地址已被禁止登陆。"
+    static let account_logging_blocked_ip = "当前 IP 地址已被禁止登录。"
     /// account_logging_profile_not_exists
-    static let account_logging_profile_not_exists = "请先创建 Minecraft 玩家档案，然后再重新登陆！"
+    static let account_logging_profile_not_exists = "请先创建 Minecraft 玩家资料，然后再重新登录！"
     /// account_logging_not_purchased_minecraft
     static let account_logging_not_purchased_minecraft = "未检查到 Minecraft 配置信息，请前往 Minecraft 的官方网站购买。"
     /// account_relogin_title
