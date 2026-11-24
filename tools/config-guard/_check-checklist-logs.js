@@ -83,6 +83,20 @@ function fragmentsOf(s) {
 }
 
 let pass = 0;
+// ---- 附：文档里引用的「UI 原文」必须一字不差地在代码里 ----
+// 第 539 轮发现：清单写「七项前置条件全部就位」，而预检卡片的绿字早就改成
+// 「前置条件全部就位」，项数也从 7 变成 8（第181轮加了 JIT）。朋友拿着清单对照卡片，
+// 会觉得"这软件和说明对不上"。
+// **只收"确定的 UI 原文"**（关键词表里那几个）：全量对撞 52 处「」会误报 18 处
+// （iOS 系统文字「信任此电脑」/ 节标题 / 带占位符的格式串），第250轮那条教训。
+const UI_QUOTE_KEYWORDS = ['就位'];
+const quoteBad = [];
+for (const m of doc.matchAll(/「([^」]{2,40})」/g)) {
+  const q = m[1];
+  if (!UI_QUOTE_KEYWORDS.some(k => q.includes(k))) continue;
+  if (!code.includes(q)) quoteBad.push(q);
+}
+
 const bad = [];
 
 for (const span of spans) {
@@ -104,16 +118,27 @@ for (const span of spans) {
 console.log(`清单表格里的行内代码：${spans.size} 处`);
 console.log('');
 
-if (bad.length === 0) {
+if (bad.length === 0 && quoteBad.length === 0) {
   console.log('✓ 清单里让用户搜的每一句，都能在代码里找到对应文案');
   process.exit(0);
 }
 
-console.log(`⚠ ${bad.length} 处对不上（清单会静默失效）：`);
-for (const b of bad) {
-  console.log(`\n  \`${b.span}\``);
-  for (const m of b.missing) console.log(`    代码里找不到： "${m}"`);
+if (bad.length) {
+  console.log(`⚠ ${bad.length} 处对不上（清单会静默失效）：`);
+  for (const b of bad) {
+    console.log(`\n  \`${b.span}\``);
+    for (const m of b.missing) console.log(`    代码里找不到： "${m}"`);
+  }
+  console.log('');
+  console.log('修法二选一：① 改清单，写成代码里真实的文案 ② 改代码，让日志真的输出这句');
 }
+
+if (quoteBad.length) {
+  console.log('');
+  console.log(`⚠ ${quoteBad.length} 处界面原文引用对不上（朋友对照界面会以为这软件和说明不一致）：`);
+  for (const q of quoteBad) console.log(`  · 「${q}」`);
+  console.log('  （只查关键词表里的那类：iOS 系统文字 / 节标题 / 带占位符的格式串不算）');
+}
+
 console.log('');
-console.log('修法二选一：① 改清单，写成代码里真实的文案 ② 改代码，让日志真的输出这句');
 process.exit(1);
