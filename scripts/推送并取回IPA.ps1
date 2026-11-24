@@ -102,6 +102,23 @@ while ((Get-Date) -lt $deadline) {
 
 if (-not $run) { throw "超过 $TimeoutMinutes 分钟没等到构建，去 $Repo/actions 看看（CI 自身上限也是 45 分钟）" }
 if ($run.conclusion -ne "success") {
+    # **先分清「额度/队列取消」和「真的编译失败」** —— 两者的 conclusion 都不是 success，
+    # 但提示必须不同：一次从来没跑过的构建，让人去看 "Static checks" 的日志等于把人送进死胡同
+    # （那一步的日志根本不存在，拉下来是 404）。第519轮总结的判据：
+    #   job 的 steps 数为 0 且 runner_name 为空 → 一条都没跑过 = 平台层问题。
+    $jobsReq = @{ Uri = "https://api.github.com/repos/$Repo/actions/runs/$($run.id)/jobs"; Headers = $apiHeaders }
+    if (-not $NoProxy) { $jobsReq.Proxy = $Proxy }
+    $jobInfo = $null
+    try { $jobInfo = @((Invoke-RestMethod @jobsReq).jobs)[0] } catch { }
+    $neverRan = $false
+    if ($jobInfo) {
+        if ((@($jobInfo.steps).Count -eq 0) -and (-not $jobInfo.runner_name)) { $neverRan = $true }
+    }
+    if ($neverRan) {
+        throw ("这次构建被取消了，而且那个 job 一条步骤都没跑过（steps = 0、runner_name 为空）—— 这不是代码问题。" +
+               "最可能是 GitHub Actions 的 macOS 额度用完了（macOS 按 10 倍计费，额度每月 1 日刷新，见 STATUS 第七点五节）。" +
+               "另两条路：改用 Codemagic（codemagic.yaml 已就绪），或等额度刷新后重跑本脚本。")
+    }
     throw ("构建没成功（conclusion = $($run.conclusion)）。可能是编译前的静态检查没过。" + "打开 $($run.html_url) 先看 `"Static checks`" 那一步的日志")
 }
 Write-Ok "构建成功：$($run.html_url)"
