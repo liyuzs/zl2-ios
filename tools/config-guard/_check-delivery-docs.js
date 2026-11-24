@@ -8,8 +8,10 @@
 // 两条断言：
 //   ① 交付包里的每个文档，都必须在仓库里有来源（同名，或在下面的 ALIAS 映射里）
 //   ② 映射过来的副本必须和仓库原件**字节一致** —— 否则就是忘了同步
+//   ③（第172轮）IPA 比源码旧超一天时，`从这里开始.md` 必须有 `build-数字` 警告
+//   ④（第534轮）bundle 里的 HEAD、源码 zip 里的 `CHANGELOG.md` 必须与当前 HEAD 一致
 //
-// 不检查非文档文件（.ipa 等大文件）。
+// 不检查非文档文件（.ipa 等大文件），但 ④ 会读 bundle 的 refs 与 zip 里的一个条目。
 // 注意：`_run-all.ps1` 刻意**不**作为交付物 —— 它是工具，每加一个检查就会变，
 // 留在交付包必然反复漂移。交付包只放"给人读"的东西（说明、清单）。
 //
@@ -20,6 +22,8 @@
 //     但**表本身要人维护**，漏登记一个就会把正常副本当孤本。
 //   · **"IPA 比源码旧超 1 天"只看文件修改时间**：时钟不准、或 `git checkout` 恢复了旧时间戳，
 //     会误报/漏报。它判的是"时间差"，不是"内容是否同一版本"。
+//   · **第 ④ 条只拿 `CHANGELOG.md` 一个文件当探针**：如果某次提交没改 CHANGELOG，zip 落后
+//     也不会被发现。它是"最灵敏的探针"，不是"完整校验"（完整校验要逐个文件比，zip 里近千个）。
 //   · **交付包目录不存在时整条跳过**（CI / 仓库副本环境）—— 那时它对交付物是**完全空转**的。
 
 const fs = require('fs');
@@ -122,4 +126,76 @@ if (ipaStale) {
   console.log('');
 }
 
-process.exit(orphans.length + drifted.length === 0 && !ipaStale ? 0 : 1);
+// ---- 第534轮加的判据：bundle / 源码 zip 必须与当前 HEAD 同步 ----
+// 背景：交付包里的 `zl2-ios-完整仓库.bundle` 与 `zl2-ios-源码.zip` 还停在 build-243 那天，
+// 而仓库已经往前走了十几个提交 —— 文档却写着"全部提交历史"。这是第172轮那条
+// 「交付物里每样都得是同一个版本」的另一种形态：IPA 落后是已知的（只能等 CI 重建），
+// 但 **bundle / 源码 zip 随时能重新生成**，落后没有任何理由。
+//
+// 两条都用**内容**判，不看 mtime（`touch` 一下就能骗过时间戳）：
+//   · bundle：`git bundle list-heads` 里的 HEAD 必须等于 `git rev-parse HEAD`
+//   · 源码 zip：包里 `CHANGELOG.md` 的字节必须与仓库里那份一致（每次改动都会写 CHANGELOG，它是最灵敏的探针）
+let staleArtifacts = [];
+const cp = require('child_process');
+const zlib = require('zlib');
+
+function readZipEntry(buf, want) {
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= 0 && i > buf.length - 66000; i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) return null;
+  const count = buf.readUInt16LE(eocd + 10);
+  let off = buf.readUInt32LE(eocd + 16);
+  for (let n = 0; n < count; n++) {
+    if (buf.readUInt32LE(off) !== 0x02014b50) return null;
+    const nameLen = buf.readUInt16LE(off + 28);
+    const extraLen = buf.readUInt16LE(off + 30);
+    const commentLen = buf.readUInt16LE(off + 32);
+    const name = buf.toString('utf8', off + 46, off + 46 + nameLen);
+    if (name === want) {
+      const method = buf.readUInt16LE(off + 10);
+      const compSize = buf.readUInt32LE(off + 20);
+      const lo = buf.readUInt32LE(off + 42);
+      const nl = buf.readUInt16LE(lo + 26);
+      const el = buf.readUInt16LE(lo + 28);
+      const start = lo + 30 + nl + el;
+      const data = buf.subarray(start, start + compSize);
+      try { return method === 0 ? data : zlib.inflateRawSync(data); } catch { return null; }
+    }
+    off += 46 + nameLen + extraLen + commentLen;
+  }
+  return null;
+}
+
+try {
+  const head = cp.execSync(`git -C "${REPO}" rev-parse HEAD`, { encoding: 'utf8' }).trim();
+
+  const bundlePath = path.join(DELIVERY, 'zl2-ios-完整仓库.bundle');
+  if (fs.existsSync(bundlePath)) {
+    const heads = cp.execSync(`git bundle list-heads "${bundlePath}"`, { encoding: 'utf8' });
+    const hit = heads.split('\n').map(l => l.trim().split(/\s+/)).find(p => p[1] === 'HEAD');
+    const sha = hit ? hit[0] : '';
+    if (!sha) staleArtifacts.push('bundle 里读不到 HEAD（`git bundle list-heads` 没给出）');
+    else if (sha !== head) staleArtifacts.push(`bundle 里的 HEAD 是 ${sha.slice(0, 7)}，仓库是 ${head.slice(0, 7)}`);
+  }
+
+  const zipPath = path.join(DELIVERY, 'zl2-ios-源码.zip');
+  if (fs.existsSync(zipPath)) {
+    const inZip = readZipEntry(fs.readFileSync(zipPath), 'CHANGELOG.md');
+    const inRepo = fs.readFileSync(path.join(REPO, 'CHANGELOG.md'));
+    if (!inZip) staleArtifacts.push('源码 zip 里读不到 CHANGELOG.md');
+    else if (!inZip.equals(inRepo)) staleArtifacts.push('源码 zip 里的 CHANGELOG.md 和仓库里的不一致（zip 是旧的）');
+  }
+} catch (e) {
+  staleArtifacts.push('核对 bundle / 源码 zip 时出错：' + String(e.message || e).split('\n')[0]);
+}
+
+if (staleArtifacts.length) {
+  console.log('⚠ 交付包的源码类产物落后于仓库：');
+  for (const s of staleArtifacts) console.log('  · ' + s);
+  console.log('  修法：跑 `scripts/刷新交付包产物.ps1`（重新生成 bundle + 源码 zip，约两分钟）。');
+  console.log('');
+}
+
+process.exit(orphans.length + drifted.length === 0 && !ipaStale && staleArtifacts.length === 0 ? 0 : 1);

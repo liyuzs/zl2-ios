@@ -185,5 +185,16 @@ if (Test-Path $statusPath) {
 }
 
 Write-Host ""
+# 源码类产物（bundle / 源码 zip）也要和刚推上去的 HEAD 对齐 —— 它们随时能重生成，落后没有理由。
+# 不解这一条，交付包里「完整历史」就是旧历史（第534轮发现：停在 build-243 那天）。
+$refresh = Join-Path $LocalRepo "scripts\刷新交付包产物.ps1"
+if (Test-Path $refresh) {
+    Write-Step 7 "刷新交付包的 bundle / 源码 zip"
+    & $refresh -LocalRepo $LocalRepo -DeliveryDir $DeliveryDir
+    if ($LASTEXITCODE -ne 0) { Write-Warn2 "源码类产物刷新失败 —— 不影响 App，但交付包的 bundle/zip 会是旧的" }
+} else {
+    Write-Warn2 "找不到 scripts\刷新交付包产物.ps1 —— 交付包的 bundle/zip 没有刷新"
+}
+
 Write-Host "全部完成。下一步：把 D:\ZL2-iOS交付包\ZL2.ipa 发给朋友，让他按「真机验证清单」走一遍。" -ForegroundColor Green
 Write-Host "           重点看启动前预检那张卡片有没有红色的。" -ForegroundColor Green
