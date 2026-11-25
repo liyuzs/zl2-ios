@@ -232,9 +232,14 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build-sim \
             CODE_SIGNING_ALLOWED=NO \
-            OTHER_LDFLAGS="" \
             SWIFT_ACTIVE_COMPILATION_CONDITIONS="" \
             build
+          # **第 563 轮删掉了这里的 `OTHER_LDFLAGS=""`** —— 它把 project.yml 里那串
+          # `-lZL2Core -lAFNetworking ... -framework CAltKit` 整个清空，模拟器构建于是在
+          # Ld 阶段报 `Undefined symbols for architecture arm64` / `linker command failed`，
+          # 产出一个**没有可执行文件**的 ZL2.app（资源已 copy，二进制没生成），
+          # 于是 simctl install 报 `ZL2.app is missing its bundle executable`。
+          # 那个报错被外层的 `|| true` 吞掉，CI 一路 success，截图拍的是模拟器主屏。
           APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
           if [ -n "$APP" ]; then
             ditto -c -k --sequesterRsrc --keepParent "$APP" out/ZL2-simulator.zip
@@ -260,7 +265,7 @@ jobs:
             echo "CFBundleExecutable=$EXE"
             file "$APP/$EXE" 2>&1 || echo "!! $APP/$EXE 不存在 —— 模拟器构建没产出可执行文件"
             xcodebuild -project ZL2iOS.xcodeproj -scheme ZL2iOS -sdk iphonesimulator -showBuildSettings 2>/dev/null \
-              | grep -E '^\s+(EXECUTABLE_NAME|PRODUCT_NAME|MACH_O_TYPE|PRODUCT_TYPE|WRAPPER_EXTENSION) =' | head -10 || true
+              | grep -E '^\s+(EXECUTABLE_NAME|PRODUCT_NAME|MACH_O_TYPE|PRODUCT_TYPE|WRAPPER_EXTENSION|OTHER_LDFLAGS) =' | head -12 || true
             echo "=== 安装 ==="
             xcrun simctl install "$DEVICE" "$APP" 2>&1 | tee out/install.log || true
             echo "=== 启动 ==="
