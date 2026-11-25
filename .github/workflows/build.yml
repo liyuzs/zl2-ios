@@ -221,6 +221,36 @@ jobs:
           zip -qry "out/ZL2.ipa" Payload
           ls -la out
 
+      - name: Build Amethyst core for simulator（模拟器版静态库）
+        continue-on-error: true
+        run: |
+          set -x
+          # 第 563 轮加：上面那份 libZL2Core.a 是用 iPhoneOS SDK 编的（只有 device arm64 切片），
+          # 模拟器构建链接 `-lZL2Core` 时找不到 `_getPrefFloat` / `_setPrefBool` 这些符号 →
+          # `BUILD FAILED` → 产出一个**没有可执行文件**的 ZL2.app →
+          # simctl install 报 "missing its bundle executable"、截图拍的是模拟器主屏。
+          # 这里用 Simulator SDK 再编一份，覆盖进 build/（device 的 IPA 已经打包完，不受影响）。
+          SIM_SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          SIM_CLANG=$(xcrun --sdk iphonesimulator -f clang)
+          SIM_CLANGXX=$(xcrun --sdk iphonesimulator -f clang++)
+          cd core
+          cmake -B build-sim \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT="$SIM_SDK" \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
+            -DCMAKE_C_COMPILER="$SIM_CLANG" \
+            -DCMAKE_CXX_COMPILER="$SIM_CLANGXX" \
+            -DCONFIG_RELEASE=1 \
+            -DCONFIG_BRANCH=main \
+            -DCONFIG_COMMIT=zl2 \
+            -DCONFIG_CURSEFORGE_API_KEY= \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-sim -j 4 || cmake --build build-sim --target ZL2Core -j 4
+          ls -lh build-sim/*.a build-sim/*.dylib 2>/dev/null || true
+          cp -f build-sim/lib*.a build-sim/lib*.dylib build/ 2>/dev/null || true
+          ls -lh build/*.a build/*.dylib
+
       - name: Build for simulator
         continue-on-error: true
         run: |
