@@ -253,6 +253,14 @@ jobs:
           APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' 2>/dev/null | head -1)
           echo "SIM APP=$APP"
           if [ -n "$APP" ]; then
+            echo "=== 产物诊断（第 563 轮加：之前 install 一直失败但被 || true 吞掉）==="
+            ls -la "$APP" || true
+            plutil -p "$APP/Info.plist" 2>/dev/null | grep -E 'CFBundleExecutable|CFBundleIdentifier|MinimumOSVersion|UIDeviceFamily' || true
+            EXE=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$APP/Info.plist" 2>/dev/null || echo ZL2)
+            echo "CFBundleExecutable=$EXE"
+            file "$APP/$EXE" 2>&1 || echo "!! $APP/$EXE 不存在 —— 模拟器构建没产出可执行文件"
+            xcodebuild -project ZL2iOS.xcodeproj -scheme ZL2iOS -sdk iphonesimulator -showBuildSettings 2>/dev/null \
+              | grep -E '^\s+(EXECUTABLE_NAME|PRODUCT_NAME|MACH_O_TYPE|PRODUCT_TYPE|WRAPPER_EXTENSION) =' | head -10 || true
             echo "=== 安装 ==="
             xcrun simctl install "$DEVICE" "$APP" 2>&1 | tee out/install.log || true
             echo "=== 启动 ==="
@@ -271,6 +279,17 @@ jobs:
             cp -R "$CRASH_DIR"/ZL2* out/ 2>/dev/null || true
             echo "=== 最近的 App 日志 ==="
             xcrun simctl spawn "$DEVICE" log show --last 2m --predicate 'process == "ZL2"' 2>/dev/null | tail -40 || true
+          fi
+          # 第 563 轮加：这个步骤原来永远 success（两步都是 `|| true` + continue-on-error），
+          # 而实测 out/install.log 里写着「ZL2.app is missing its bundle executable」——
+          # App 根本装不上，screenshot-home.png 拍的是模拟器主屏。断言让它在 CI 里显形。
+          if grep -q 'missing its bundle executable' out/install.log 2>/dev/null; then
+            echo "::error::模拟器装不上：ZL2.app 里没有可执行文件 —— 截图是模拟器主屏，不是 App 界面"
+            exit 1
+          fi
+          if grep -q 'Simulator device failed to launch' out/launch.log 2>/dev/null; then
+            echo "::error::模拟器启动失败（App 未安装或崩溃）—— 见 launch.log"
+            exit 1
           fi
           ls -la out || true
 
