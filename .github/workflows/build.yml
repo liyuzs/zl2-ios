@@ -221,36 +221,6 @@ jobs:
           zip -qry "out/ZL2.ipa" Payload
           ls -la out
 
-      - name: Build Amethyst core for simulator（模拟器版静态库）
-        continue-on-error: true
-        run: |
-          set -x
-          # 第 563 轮加：上面那份 libZL2Core.a 是用 iPhoneOS SDK 编的（只有 device arm64 切片），
-          # 模拟器构建链接 `-lZL2Core` 时找不到 `_getPrefFloat` / `_setPrefBool` 这些符号 →
-          # `BUILD FAILED` → 产出一个**没有可执行文件**的 ZL2.app →
-          # simctl install 报 "missing its bundle executable"、截图拍的是模拟器主屏。
-          # 这里用 Simulator SDK 再编一份，覆盖进 build/（device 的 IPA 已经打包完，不受影响）。
-          SIM_SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
-          SIM_CLANG=$(xcrun --sdk iphonesimulator -f clang)
-          SIM_CLANGXX=$(xcrun --sdk iphonesimulator -f clang++)
-          cd core
-          cmake -B build-sim \
-            -DCMAKE_SYSTEM_NAME=iOS \
-            -DCMAKE_OSX_SYSROOT="$SIM_SDK" \
-            -DCMAKE_OSX_ARCHITECTURES=arm64 \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
-            -DCMAKE_C_COMPILER="$SIM_CLANG" \
-            -DCMAKE_CXX_COMPILER="$SIM_CLANGXX" \
-            -DCONFIG_RELEASE=1 \
-            -DCONFIG_BRANCH=main \
-            -DCONFIG_COMMIT=zl2 \
-            -DCONFIG_CURSEFORGE_API_KEY= \
-            -DCMAKE_BUILD_TYPE=Release
-          cmake --build build-sim -j 4 || cmake --build build-sim --target ZL2Core -j 4
-          ls -lh build-sim/*.a build-sim/*.dylib 2>/dev/null || true
-          cp -f build-sim/lib*.a build-sim/lib*.dylib build/ 2>/dev/null || true
-          ls -lh build/*.a build/*.dylib
-
       - name: Build for simulator
         continue-on-error: true
         run: |
@@ -318,6 +288,19 @@ jobs:
           # 第 563 轮加：这个步骤原来永远 success（两步都是 `|| true` + continue-on-error），
           # 而实测 out/install.log 里写着「ZL2.app is missing its bundle executable」——
           # App 根本装不上，screenshot-home.png 拍的是模拟器主屏。断言让它在 CI 里显形。
+          # 第 563 轮：把"这张图是什么"写进产物，避免下一个人以为它是 App 界面。
+          # （用 printf 而不是 heredoc —— heredoc 的内容跟着 YAML 缩进后 POSIX shell 认不出来。）
+          printf '%s\n' \
+            'screenshot-home.png 是【模拟器主屏】，不是 App 界面。' \
+            '原因：App 的模拟器构建链接不上 —— Amethyst 核心的 4 个 dylib' \
+            '(AFNetworking / AmethystAccountJNI / awt_headless / tinygl4angle)' \
+            '在 iPhoneSimulator SDK 下链接失败（clang: linker command failed），' \
+            '产出的 ZL2.app 因此没有可执行文件，simctl install 报' \
+            '"ZL2.app is missing its bundle executable"。' \
+            '第 563 轮试过删 OTHER_LDFLAGS、并单独用 Simulator SDK 编核心库，都不行 ——' \
+            '卡在核心 dylib 本身不支持 simulator SDK。' \
+            '要看真实界面只能在 iPhone 上跑（TrollStore / SideStore / Sideloadly）。' \
+            > out/SIMULATOR-READ-ME.txt 2>/dev/null || true
           if grep -q 'missing its bundle executable' out/install.log 2>/dev/null; then
             echo "::error::模拟器装不上：ZL2.app 里没有可执行文件 —— 截图是模拟器主屏，不是 App 界面"
             exit 1

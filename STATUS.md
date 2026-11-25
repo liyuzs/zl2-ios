@@ -213,6 +213,13 @@ git push   # 本地分支 master → 线上 main
 
    **第 259 轮已经把它补齐**：这份配置原来**缺版本注入**（产出的包会自称 `1.0.0(1)`，和 build-243 分不清）也**没跑静态检查**。现在步骤顺序是 **静态检查 → 编译核心 → 注入版本号 → 生成工程 → 编译**，注入用 `sed -f > tmp && mv`（BSD sed 不碰 `-i`）。**第 260 轮又补了两道**：`_check-workflow.js` 改成**默认校验全部三条通道**（`build.yml` / `easytier-probe.yml` / `codemagic.yaml` —— 后两条以前从没被看过），并加了**顺序判据**（版本注入必须排在「生成 Xcode 工程」之前，否则改了 `project.yml` 也没用）；`_check-ci-contract.js` 会对比"磁盘上的通道"与"被校验到的通道"，新加一条通道忘了纳入检查会立刻报错。
 
+**没有设备时看界面：这条路当前不通。** CI 里有个「Run in simulator & screenshot」步骤，但 App 在模拟器上
+**装不上** —— Amethyst 核心的 4 个 dylib（`AFNetworking` / `AmethystAccountJNI` / `awt_headless` / `tinygl4angle`）
+在 `iPhoneSimulator` SDK 下 `linker command failed`，产出的 `ZL2.app` 没有可执行文件（`simctl install` 报
+`missing its bundle executable`）。第 563 轮试过删 `OTHER_LDFLAGS`、又试过用 Simulator SDK 单独编核心库，
+两种都不行；最终**止损**，只在产物里附一份 `SIMULATOR-READ-ME.txt` 说明那张图是模拟器主屏。
+**所以 UI 还原度只能靠真机看** —— 这也是为什么它一直挂在"真机零验证"里。
+
 **当前状态**：交付包里的 `ZL2.ipa` 是 **build-275**（2026-11-25 编译成功，run #275），包含全部 506 个提交的代码。第 259 轮加的"启动次数里程碑彩蛋 / 加载提示扩到 20 条"**还没进任何 IPA** —— 只在本仓库里。
 
 ---
