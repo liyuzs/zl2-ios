@@ -7,7 +7,7 @@
 
 ## [未发布] —— 打磨中
 
-这一轮次的改动**已构建成 IPA**（build-243，2026-11-15，137 MB），但**还没在任何 iPhone 上跑过** —— 下面的条目都只过了编译与静态检查，不等于真机能跑。
+这一轮次的改动**已构建成 IPA**（build-275，2026-11-25，137 MB），但**还没在任何 iPhone 上跑过** —— 下面的条目都只过了编译与静态检查，不等于真机能跑。
 
 ### 新增
 
@@ -32,6 +32,7 @@
 
 ### 修复
 
+- **build-275 出来了 —— 等了 27 轮之后第一次真出包**。做法是 `workflow_dispatch` 手动派发（不产生空提交），**18 步全过，约 9 分钟**。派发前先查了失败 run 的 job 明细：#272–#274 的 `jobs` 数组是**空的** —— 一个 job 都没建，那是"没有 runner"，不是代码错；而 #275 立刻分到了 runner（`GitHub Actions 1000000372`）。**这两件事长得很像，区别只在"有没有 job"**，比看 `conclusion` 可靠得多。产物两条路都拿到了：artifact `ZL2-build` 137.4 MB、Release `build-275` 的 asset 137.3 MB —— 走 Release asset 的 API（`Accept: application/octet-stream`）**31 秒下完，比解 zip 少一步**。`verify-ipa` 通过：998 条目 / 主程序 15.1 MB / 版本 **1.0.275**；文档里 10 处 `build-243` 改成 `build-275`（含 Release 直链），STATUS 时间线补了一行。**一个失误要记**：替换 IPA 前用 `Move-Item` 备份旧包失败（`The parameter is incorrect`），旧包被直接覆盖 —— 好在 GitHub Release 上 build-243 的 asset 还在，随时能重下。教训：**备份用 `Copy-Item` + 比对大小，成功后再删源**，别用 Move 一步到位。
 - **给 12-01 那次构建再拆一颗雷：CI 侧的 `.ps1` 检查会不会在 macOS 上挂**。本地跑 `run-checks.js` 会跳过 `.ps1`（这台机器没有 pwsh），所以那两个脚本**从没在 CI 环境里被执行过**。核对结果：它们只用跨平台 cmdlet（`Get-ChildItem` / `Get-Content` / `Join-Path` / `Split-Path` / `Test-Path` / `Sort-Object` / `Where-Object`），**没有 Registry / COM / Add-Type / Windows Forms / `-Encoding OEM`**；`run-checks.js` 用的是 `pwsh`（PowerShell Core，macOS runner 自带）并且**先探测可用性**，没有就标"跳过"而不是失败。结论：这一层不会成为 12-01 的失败点（已写进交接文档的「已验证」表）。
 - **检查输出质量复扫（一次审计 + 一次放弃）**：①扫 104 个脚本的所有 `console.log`，抓「因果结论」用词（因此/所以/就不会/保证）共 **9 处**，逐条看过 —— **全是解释性文字或带限定的措辞**（「没有必然溢出的固定宽度」「只保证默认路径，真机耗时未测」），没有越界结论；②想把「通过输出必须带量」做成自动检查（`output-amount 那条`），**两版判据都不稳**：第一版只认 `\d+量词` 与 `${…}`，把 3 个用 `+ n +` 拼接的检查误判成"不带量"；第二版收窄成"只看第一条 ✓ 之前的输出"，又把 `_check-runtime-assets` 误报成不带量，而真正的注入（删掉某检查的分母行）反而不报 —— **判据既误报又漏报**。按第 107/127 轮那条「不可信的检查比没有更糟」**直接删掉，不做成检查**；73 个 `_check-*.js` 现在都有分母，是人工核过的。
 - **源码 zip 解压出来跑检查会崩**：新加的第 ④ 条（bundle / 源码 zip 与 HEAD 同步）用 `git rev-parse HEAD`，而**源码 zip 里没有 `.git`** → 抛错被当成"产物落后"，整个检查 exit 1。这是第 258 轮那次的同族错（当时是"没有交付包目录"）—— **环境不具备前提时要跳过并说明，不是当失败**。现在先判 `rev-parse --is-inside-work-tree`，不是 git 工作区就打印「无从判断，跳过」。复验：把交付包的 `zl2-ios-源码.zip` 解压到 `%TEMP%` 随机目录、**不设任何环境变量** → `run-checks.js --with-tests` **全绿**（798 文件）。
