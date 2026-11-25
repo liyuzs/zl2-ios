@@ -55,6 +55,7 @@ cd C:\Users\21793\.dsh\config-guard
 | `_check-symbol-names.js` | `Image(systemName:)` 的名字必须来自**已验证清单**。第159轮发现 `folder.fill.badge.person.crop` **不存在**（只有 `folder.badge.person.crop`）——"当前游戏目录"卡片的图标一直是**空白**的，因为 `Image(systemName:)` 对无效名**不报错、不崩溃、只渲染空白**。没有 SF Symbols 完整列表没法自动验证，所以用**基线冻结**：67 个逐个核实过的名字固化在脚本里，新增的要人工确认 |
 | `_check-hstack-budget.js` | 横向预算：同一 `HStack` **直接子层**多个固定宽度之和 ≥288pt（375pt 屏可用 339pt 的 85%）就报。⚠️ 只看内联块，写在 computed property 里的宽度追不到（已在文件头写明） |
 | `_check-dark-mode.js` | 深色模式链路：`ZLPalette.color` 必须会按 darkMode 把 `…Light` 换成 `…Dark`；RootView 必须把系统 colorScheme 同步给 ThemeManager；色板 Light/Dark 两组键必须成对 |
+| `_check-contrast.js` | 主题配色的**文字可读性**：12 组 Material 配对 × 浅/深 × 7 主题 = 168 对，全部要 ≥ 4.5:1（WCAG AA 正文）。`_check-dark-mode` 只管"会不会切 Dark"，这一条管"切了之后看不看得清" |
 | `_check-trademark-strings.js` | 命名合规：界面字符串不得把 App 自称 `ZL2` / `ZalithLauncher`（README 声明的 GPLv3 第 7 条）；上游署名、格式名、Bonjour 服务名等例外逐条登记理由 |
 | `_check-license-page.js` | 许可页 ↔ 实际打包内容：`Frameworks/`、`libs/*.jar`、`jre/` 里每个第三方都要在「关于与开源许可」页有署名；页面里列了但仓库没文件的也要报（第103轮：漏了 AltKit / FreeType / shaderc / Gson / jsr305 与 Java 21/25，还错列了不存在的 MobileGlues） |
 | `_check-readme-claims.js` | README 里能机器验证的声明（内存比例 / 视距 / GC 参数 / 支持版本区间）必须与代码实现一致 |

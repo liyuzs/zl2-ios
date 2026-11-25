@@ -76,6 +76,7 @@ $checks = @(
     @('_check-download-magic.js', 'js', '下载写盘须校验内容'),
     @('_check-decode-recovery.js',  'js',  '解码失败必须备份原始数据'),
     @('_check-dark-mode.js',        'js',  '深色模式是否真的生效'),
+@('_check-contrast.js',       'js',  '主题配色的文字对比度（WCAG AA）'),
     @('_check-install-docs.js',     'js',  '三份安装文档一致性（JIT/StikDebug/孤例工具）'),
     @('_check-section-refs.js', 'js', '第N节引用要带标题'),
     @('_check-obsolete-docs.js', 'js', '失效文档必须标注'),
